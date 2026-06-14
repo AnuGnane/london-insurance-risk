@@ -1,0 +1,40 @@
+project:
+  name: london-insurance-risk
+  crs_working: "EPSG:27700"     # British National Grid — use for area/length maths
+  crs_display: "EPSG:4326"      # WGS84 — use only for GeoJSON / map output
+
+geography:
+  region_code: "E12000007"      # London region (GSS code)
+  unit: "LSOA"                  # modelling + display unit
+  lsoa_vintage: "2011"          # matches IMD 2019; see PLAN.md gotcha if bridging to 2021
+  bbox_wgs84: [-0.5103, 51.2868, 0.3340, 51.6919]   # rough Greater London bbox
+
+data_years:
+  crime_months_back: 24         # how many months of police.uk crime to pull (from latest available)
+  stats19_years: [2021, 2022, 2023, 2024]
+
+risk_index:
+  normalisation: "percentile"   # percentile | zscore | minmax
+  weights:                      # expert defaults; can be back-fit during calibration
+    vehicle_crime: 0.35
+    road_casualties: 0.25
+    deprivation: 0.15
+    vehicle_density: 0.15
+    population_density: 0.10
+  severity_weights:             # applied to STATS19 casualties
+    slight: 1
+    serious: 3
+    fatal: 8
+  buckets: 5                    # quintiles for the legend
+
+sources:
+  police_api: "https://data.police.uk/api"
+  stats19_landing: "https://www.data.gov.uk/dataset/cb7ae6f0-4be6-4935-9277-47e5ce24a11f/road-accidents-safety-data"
+  imd2019: "https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019"
+  geoportal: "https://geoportal.statistics.gov.uk"
+  wtw_index: "https://www.confused.com/car-insurance/price-index"
+
+paths:
+  raw: "data/raw"
+  interim: "data/interim"
+  processed: "data/processed"
