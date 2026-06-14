@@ -16,11 +16,11 @@ data_years:
 risk_index:
   normalisation: "percentile"   # percentile | zscore | minmax
   weights:                      # expert defaults; can be back-fit during calibration
-    vehicle_crime: 0.35
-    road_casualties: 0.25
-    deprivation: 0.15
-    vehicle_density: 0.15
-    population_density: 0.10
+    vehicle_crime: 0.40           # was 0.35; absorbed share of vehicle_density
+    road_casualties: 0.30         # was 0.25
+    deprivation: 0.18             # was 0.15
+    population_density: 0.12      # was 0.10
+    # vehicle_density: skipped (VEH0125 not wired in v1)
   severity_weights:             # applied to STATS19 casualties
     slight: 1
     serious: 3

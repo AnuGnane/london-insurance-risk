@@ -22,12 +22,17 @@ def test_normalise_percentile_bounds():
     assert out.min() > 0 and out.max() == 100
 
 
+def test_normalise_minmax_bounds():
+    s = pd.Series([10, 20, 30, 40])
+    out = normalise(s, "minmax")
+    assert out.min() == 0 and out.max() == 100
+
+
 def test_composite_runs():
     feats = pd.DataFrame({
         "vehicle_crime": [1, 5, 9],
         "road_casualties": [2, 4, 8],
         "deprivation": [3, 6, 9],
-        "vehicle_density": [1, 2, 3],
         "population_density": [4, 5, 6],
     })
     weights = load_config()["risk_index"]["weights"]

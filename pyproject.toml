@@ -7,6 +7,7 @@ dependencies = [
   "pandas>=2.2",
   "geopandas>=1.0",
   "shapely>=2.0",
+  "pyarrow>=17.0",
   "duckdb>=1.0",
   "requests>=2.32",
   "pydantic-settings>=2.3",
@@ -23,6 +24,9 @@ dev = ["pytest>=8.0", "ruff>=0.5"]
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
 
 [build-system]
 requires = ["hatchling"]
