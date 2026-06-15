@@ -10,7 +10,7 @@ geography:
   bbox_wgs84: [-0.5103, 51.2868, 0.3340, 51.6919]   # rough Greater London bbox
 
 data_years:
-  crime_months_back: 24         # how many months of police.uk crime to pull (from latest available)
+  crime_months_back: 12         # how many months of police.uk crime to pull (from latest available)
   stats19_years: [2021, 2022, 2023, 2024]
 
 risk_index:

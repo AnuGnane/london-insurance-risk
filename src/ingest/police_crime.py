@@ -105,68 +105,55 @@ def _download_force_month(force: str, month: str) -> pd.DataFrame | None:
 def _download_all_crime_data(months: list[str]) -> pd.DataFrame:
     """Download vehicle crime for all London forces across all months.
 
-    Uses the force-wide crimes endpoint and caches per force/month.
-    Falls back to the street-level API with a simplified approach.
+    Downloads the bulk ZIP for each month, extracts the relevant force CSVs,
+    and caches them.
     """
     frames: list[pd.DataFrame] = []
     cache_dir = raw("police")
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    for force in FORCES:
-        for month in months:
+    for month in months:
+        for force in FORCES:
             cache_file = cache_dir / f"{force}_{month}.csv"
-
             if cache_file.exists():
                 log.debug("Cache hit: %s", cache_file.name)
                 df = pd.read_csv(cache_file)
                 frames.append(df)
                 continue
 
-            # Street-level crimes for the whole force
-            url = f"{POLICE_API}/crimes-street/vehicle-crime"
-            params = {"force": force, "date": month}
-
-            try:
-                log.info("Fetching %s %s", force, month)
-                resp = requests.get(url, params=params, timeout=120)
-
-                if resp.status_code == 429:
-                    log.warning("Rate-limited — sleeping 60s")
-                    time.sleep(60)
-                    resp = requests.get(url, params=params, timeout=120)
-
-                if resp.status_code == 502:
-                    log.warning(
-                        "502 for %s/%s — too large, trying no-location",
-                        force, month,
-                    )
-                    # Fallback: crimes-no-location (smaller response)
-                    url2 = f"{POLICE_API}/crimes-no-location"
-                    params2 = {
-                        "category": "vehicle-crime",
-                        "force": force,
-                        "date": month,
-                    }
-                    resp = requests.get(url2, params=params2, timeout=120)
-
-                resp.raise_for_status()
-                data = resp.json()
-
-                if not data:
-                    log.info("No data for %s/%s", force, month)
+            # If cache is missing, we need to download the zip for the month
+            zip_url = f"https://policeuk-data.s3.amazonaws.com/archive/{month}.zip"
+            zip_cache = cache_dir / f"{month}.zip"
+            
+            if not zip_cache.exists():
+                log.info("Downloading bulk archive for %s", month)
+                try:
+                    resp = requests.get(zip_url, timeout=120, stream=True)
+                    resp.raise_for_status()
+                    zip_cache.write_bytes(resp.content)
+                except requests.RequestException as e:
+                    log.warning("Failed to fetch archive for %s: %s", month, e)
                     continue
-
-                df = pd.json_normalize(data)
-                df["force"] = force
-                df["query_month"] = month
-                df.to_csv(cache_file, index=False)
-                frames.append(df)
-
-            except requests.RequestException as e:
-                log.warning("Failed %s/%s: %s — skipping", force, month, e)
-
-            # Throttle: be polite to police.uk
-            time.sleep(1.0)
+            
+            # Extract the specific force CSV from the ZIP
+            try:
+                with zipfile.ZipFile(zip_cache) as zf:
+                    csv_name = f"{month}/{month}-{force}-street.csv"
+                    if csv_name in zf.namelist():
+                        with zf.open(csv_name) as f:
+                            df = pd.read_csv(f)
+                            # Filter to vehicle crime
+                            if "Crime type" in df.columns:
+                                df = df[df["Crime type"] == "Vehicle crime"]
+                            
+                            df["force"] = force
+                            df["query_month"] = month
+                            df.to_csv(cache_file, index=False)
+                            frames.append(df)
+                    else:
+                        log.warning("CSV %s not found in %s zip", csv_name, month)
+            except zipfile.BadZipFile:
+                log.warning("Bad ZIP file for %s", month)
 
     if not frames:
         log.error("No crime data fetched at all!")

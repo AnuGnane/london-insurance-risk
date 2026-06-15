@@ -1,0 +1,20 @@
+# Ignore git and environments
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+
+# Ignore frontend build artifacts and dependencies
+frontend/node_modules
+frontend/dist
+
+# Ignore massive raw data and unneeded interim data
+data/raw/
+data/interim/*
+!data/interim/postcode_lookup.parquet
+!data/interim/wtw_anchors.csv
+
+# Ignore MacOS specific
+.DS_Store

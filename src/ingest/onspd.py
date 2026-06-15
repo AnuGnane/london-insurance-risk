@@ -27,48 +27,47 @@ from src.common.io import interim, raw, write_parquet
 
 log = logging.getLogger(__name__)
 
-# The NSPL is periodically republished. We use a direct URL for a recent release.
-# If this 404s, check https://geoportal.statistics.gov.uk for the latest NSPL.
+# The ONSPD contains lsoa11cd which we need. NSPL dropped it in 2026.
 NSPL_URL = (
     "https://www.arcgis.com/sharing/rest/content/items"
-    "/7668e0d35cab4f6db6f15f03be610fb0/data"
+    "/6fff67d204fd4f339591ed667a6e3642/data"
 )
 
-# Columns we need from the NSPL (column positions vary by vintage)
+# Columns we need from the ONSPD
 NSPL_KEEP_COLS = {
     "pcd7": "pcd7",       # 7-char postcode
     "pcd8": "pcd8",       # 8-char postcode (with space)
-    "lsoa11": "lsoa11cd",  # LSOA 2011 code
+    "lsoa11": "lsoa11cd",  # LSOA 2011 code (sometimes lsoa11)
+    "lsoa11cd": "lsoa11cd",
     "lat": "lat",
     "long": "long",
 }
 
 
 def _download_nspl() -> Path:
-    """Download the NSPL ZIP and return path to the extracted data CSV."""
-    cache_dir = raw("nspl")
+    """Download the ONSPD ZIP and return path to the extracted data CSV."""
+    cache_dir = raw("onspd")
     cache_dir.mkdir(parents=True, exist_ok=True)
-    zip_path = cache_dir / "nspl.zip"
-    csv_sentinel = cache_dir / "nspl_extracted.csv"
+    zip_path = cache_dir / "onspd.zip"
+    csv_sentinel = cache_dir / "onspd_extracted.csv"
 
     if csv_sentinel.exists():
-        log.info("Using cached NSPL CSV at %s", csv_sentinel)
+        log.info("Using cached ONSPD CSV at %s", csv_sentinel)
         return csv_sentinel
 
     if not zip_path.exists():
-        log.info("Downloading NSPL from ONS (%s)...", NSPL_URL)
+        log.info("Downloading ONSPD from ONS (%s)...", NSPL_URL)
         resp = requests.get(NSPL_URL, timeout=300, stream=True)
         resp.raise_for_status()
         zip_path.write_bytes(resp.content)
-        log.info("Downloaded NSPL ZIP to %s (%.1f MB)", zip_path, zip_path.stat().st_size / 1e6)
+        log.info("Downloaded ONSPD ZIP to %s (%.1f MB)", zip_path, zip_path.stat().st_size / 1e6)
 
     # Find the main data CSV inside the ZIP
     with zipfile.ZipFile(zip_path) as zf:
         data_csv = None
         for name in zf.namelist():
             lower = name.lower()
-            # The main data file is typically in Data/ and named NSPL*.csv
-            if "data/" in lower and lower.endswith(".csv") and "nspl" in lower:
+            if "data/" in lower and lower.endswith(".csv") and "onspd" in lower and "multi_csv" not in lower:
                 data_csv = name
                 break
 
@@ -81,7 +80,7 @@ def _download_nspl() -> Path:
 
         if data_csv is None:
             raise FileNotFoundError(
-                f"Could not find NSPL data CSV in {zip_path}. "
+                f"Could not find ONSPD data CSV in {zip_path}. "
                 f"Contents: {zf.namelist()[:20]}"
             )
 

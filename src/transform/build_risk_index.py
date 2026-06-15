@@ -100,8 +100,14 @@ def run() -> None:
         return
 
     boundaries = gpd.read_parquet(boundary_path)[["lsoa11cd", "geometry"]]
+    # Simplify while in EPSG:27700 (meters) to reduce payload size
+    boundaries["geometry"] = boundaries["geometry"].simplify(15)
+
     gdf = boundaries.merge(features, on="lsoa11cd", how="inner")
     gdf = gpd.GeoDataFrame(gdf, geometry="geometry")
+
+    # GeoJSON must be EPSG:4326 for web maps (MapLibre)
+    gdf = gdf.to_crs("EPSG:4326")
 
     dest_geojson = processed(LSOA_RISK_GEOJSON)
     write_geojson(gdf, dest_geojson)

@@ -261,6 +261,13 @@ def _write_report(results: dict) -> Path:
 
     report_path.write_text("\n".join(lines), encoding="utf-8")
     log.info("Wrote calibration report to %s", report_path)
+    
+    # Write JSON for M5 API to consume
+    import json
+    json_path = REPORTS_DIR / "calibration.json"
+    json_path.write_text(json.dumps(results, indent=2))
+    log.info("Wrote calibration JSON to %s", json_path)
+    
     return report_path
 
 
