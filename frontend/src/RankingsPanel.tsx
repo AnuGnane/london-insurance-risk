@@ -1,49 +1,105 @@
 import { useEffect, useState } from 'react';
+import type { Feature } from 'geojson';
 import type { RankingArea } from './types';
+import { gbp, dominantDriver } from './utils';
 
 interface RankingsPanelProps {
-  onSelectRanking: (code: string) => void;
+  onSelectRanking: (code: string, coords?: [number, number]) => void;
+  lookup: Map<string, Feature>;
 }
 
-export const RankingsPanel: React.FC<RankingsPanelProps> = ({ onSelectRanking }) => {
+type Order = 'desc' | 'asc';
+
+const DRIVER_SHORT: Record<string, string> = {
+  vehicle_crime: 'crime-driven',
+  road_casualties: 'collision-driven',
+  deprivation: 'deprivation-driven',
+  population_density: 'density-driven',
+};
+
+export const RankingsPanel: React.FC<RankingsPanelProps> = ({
+  onSelectRanking,
+  lookup,
+}) => {
   const [rankings, setRankings] = useState<RankingArea[]>([]);
   const [loading, setLoading] = useState(true);
+  const [order, setOrder] = useState<Order>('desc');
 
   useEffect(() => {
-    fetch('/api/rankings?n=10')
-      .then(res => res.json())
-      .then(data => {
-        setRankings(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch rankings", err);
-        setLoading(false);
-      });
-  }, []);
+    setLoading(true);
+    fetch(`/api/rankings?n=10&order=${order}`)
+      .then((r) => r.json())
+      .then((data: RankingArea[]) => setRankings(data))
+      .catch((e) => console.error('Failed to fetch rankings', e))
+      .finally(() => setLoading(false));
+  }, [order]);
 
   return (
     <div className="card rankings-panel">
-      <div className="card-title">Areas at most risk</div>
+      <div className="rankings-head">
+        <div className="card-title" style={{ margin: 0 }}>
+          {order === 'desc' ? 'Highest-risk areas' : 'Lowest-risk areas'}
+        </div>
+        <div className="seg seg-sm">
+          <button
+            className={order === 'desc' ? 'seg-on' : ''}
+            onClick={() => setOrder('desc')}
+          >
+            Most
+          </button>
+          <button
+            className={order === 'asc' ? 'seg-on' : ''}
+            onClick={() => setOrder('asc')}
+          >
+            Least
+          </button>
+        </div>
+      </div>
+
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <div className="loader"></div>
+        <div style={{ textAlign: 'center', padding: 20 }}>
+          <span className="loader" />
         </div>
       ) : (
         <div>
-          {rankings.map((r, i) => (
-            <div 
-              key={r.code} 
-              className="ranking-item"
-              onClick={() => onSelectRanking(r.code)}
-            >
-              <div className="ranking-info">
-                <span className="ranking-name">{i + 1}. {r.name}</span>
-                <span className="stat-label">£{r.calibrated_premium} expected</span>
-              </div>
-              <span className="ranking-score">{r.risk_index.toFixed(1)}</span>
-            </div>
-          ))}
+          {rankings.map((r, i) => {
+            const coords =
+              r.lng != null && r.lat != null
+                ? ([r.lng, r.lat] as [number, number])
+                : undefined;
+
+            // Dominant driver from the in-memory GeoJSON lookup.
+            const feature = lookup.get(r.code);
+            const driver = feature?.properties
+              ? dominantDriver(feature.properties as Record<string, any>)
+              : null;
+            const driverChip = driver ? DRIVER_SHORT[driver] : null;
+
+            return (
+              <button
+                key={r.code}
+                className="ranking-item"
+                onClick={() => onSelectRanking(r.code, coords)}
+              >
+                <span className="ranking-info">
+                  <span className="ranking-name">
+                    {i + 1}. {r.name}
+                  </span>
+                  <span className="ranking-meta">
+                    <span className="stat-label">
+                      {gbp(r.calibrated_premium)} expected
+                    </span>
+                    {driverChip && (
+                      <span className="driver-chip">{driverChip}</span>
+                    )}
+                  </span>
+                </span>
+                <span className="ranking-score">
+                  {r.risk_index.toFixed(1)}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

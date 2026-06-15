@@ -1,69 +1,60 @@
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-import pandas as pd
+from contextlib import asynccontextmanager
 import json
 import logging
-from pathlib import Path
-from pydantic import BaseModel
 import re
+
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.common.config import settings, ROOT
 from src.common.io import processed, interim
 
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="London Insurance Risk Map API")
+# In-memory datasets, populated at startup.
+STATE: dict = {}
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # For dev. Prod should restrict this.
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+COMPONENT_COLS = ["vehicle_crime", "road_casualties", "deprivation", "population_density"]
 
-# In-memory datasets
-STATE = {}
 
-@app.on_event("startup")
-def load_data():
+def _load_data() -> None:
     log.info("Loading precomputed data into memory...")
-    
-    # Risk features
+
+    # Risk features (already enriched by build_risk_index with *_pct etc.)
     risk_path = processed("lsoa_risk.parquet")
     if risk_path.exists():
-        STATE["risk"] = pd.read_parquet(risk_path)
-        # Compute percentiles for components upfront
-        cols = ["vehicle_crime", "road_casualties", "deprivation", "population_density"]
-        for col in cols:
-            if col in STATE["risk"].columns:
-                STATE["risk"][f"{col}_pct"] = STATE["risk"][col].rank(pct=True) * 100
-        
-        # Precompute rankings for /api/rankings
-        STATE["rankings"] = STATE["risk"].sort_values("risk_index", ascending=False).to_dict(orient="records")
+        risk = pd.read_parquet(risk_path)
+        # Backfill percentiles only if the build step didn't bake them.
+        for col in COMPONENT_COLS:
+            if col in risk.columns and f"{col}_pct" not in risk.columns:
+                risk[f"{col}_pct"] = risk[col].rank(pct=True) * 100
+        STATE["risk"] = risk
     else:
         log.warning("lsoa_risk.parquet not found")
         STATE["risk"] = pd.DataFrame()
 
-    # Postcode lookup
+    # Postcode → LSOA lookup
     lookup_path = interim("postcode_lookup.parquet")
     if lookup_path.exists():
         pc_df = pd.read_parquet(lookup_path)
-        # Remove spaces and uppercase to make lookup robust
-        pc_df["pcd_clean"] = pc_df["pcd7"].str.replace(" ", "").str.upper()
+        pc_df["pcd_clean"] = pc_df["pcd7"].str.replace(" ", "", regex=False).str.upper()
         STATE["postcodes"] = pc_df.set_index("pcd_clean")
     else:
         log.warning("postcode_lookup.parquet not found")
         STATE["postcodes"] = pd.DataFrame()
 
-    # WTW anchors
+    # WTW anchors (postcode-area grain)
     anchors_path = interim("wtw_anchors.csv")
     if anchors_path.exists():
         wtw = pd.read_csv(anchors_path)
-        # Only keep postcode_area grain
-        STATE["anchors"] = wtw[wtw["grain"] == "postcode_area"].set_index("postcode_area")["avg_premium_gbp"].to_dict()
+        STATE["anchors"] = (
+            wtw[wtw["grain"] == "postcode_area"]
+            .set_index("postcode_area")["avg_premium_gbp"]
+            .to_dict()
+        )
     else:
         log.warning("wtw_anchors.csv not found")
         STATE["anchors"] = {}
@@ -73,16 +64,48 @@ def load_data():
     if calib_path.exists():
         STATE["calibration"] = json.loads(calib_path.read_text())
     else:
-        log.warning("calibration.json not found")
-        STATE["calibration"] = {"coefficients": {}}
+        log.warning(
+            "reports/calibration.json not found — premiums will be 0 and R² null. "
+            "Have the calibrate step persist it (see project notes)."
+        )
+        STATE["calibration"] = {"coefficients": {}, "r_squared": None}
 
-    # GeoJSON Path
-    STATE["geojson_path"] = processed("lsoa_risk.geojson.gz")
-    
     log.info("Data loading complete.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _load_data()
+    yield
+    STATE.clear()
+
+
+app = FastAPI(title="London Insurance Risk Map API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # dev convenience; same-origin in the Docker build
+    allow_credentials=False,    # no cookies/auth — wildcard origin needs this False
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def clean_postcode(pc: str) -> str:
     return re.sub(r"\s+", "", str(pc)).upper()
+
+
+def estimate_premium(row, coefs: dict) -> int:
+    """Linear premium estimate from calibration coefficients. Works for a
+    pandas Series or a dict row."""
+    est = float(coefs.get("const", 0.0))
+    for col, coef in coefs.items():
+        if col == "const":
+            continue
+        val = row.get(col)
+        if val is not None and pd.notna(val):
+            est += float(coef) * float(val)
+    return round(est)
 
 
 @app.get("/api/health")
@@ -92,116 +115,113 @@ def health():
 
 @app.get("/api/geojson")
 def get_geojson():
-    if not STATE["geojson_path"].exists():
-        raise HTTPException(status_code=404, detail="GeoJSON not found")
-    
-    return FileResponse(
-        STATE["geojson_path"],
-        media_type="application/geo+json",
-        headers={"Content-Encoding": "gzip"},
-        filename="lsoa_risk.geojson"
-    )
+    """Serve the gzipped choropleth; fall back to plain if the .gz isn't built."""
+    gz = processed("lsoa_risk.geojson.gz")
+    if gz.exists():
+        return FileResponse(
+            gz,
+            media_type="application/geo+json",
+            headers={"Content-Encoding": "gzip", "Cache-Control": "public, max-age=3600"},
+        )
+    plain = processed("lsoa_risk.geojson")
+    if plain.exists():
+        return FileResponse(
+            plain,
+            media_type="application/geo+json",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
+    raise HTTPException(status_code=404, detail="GeoJSON not found — run `make risk`.")
+
 
 @app.get("/api/risk")
 def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
     pc_clean = clean_postcode(postcode)
-    
-    if pc_clean not in STATE["postcodes"].index:
+    if STATE["postcodes"].empty or pc_clean not in STATE["postcodes"].index:
         raise HTTPException(status_code=404, detail="Postcode not found or outside London")
-    
+
     pc_data = STATE["postcodes"].loc[pc_clean]
     if isinstance(pc_data, pd.DataFrame):
         pc_data = pc_data.iloc[0]
-        
+
     lsoa = pc_data["lsoa11cd"]
-    # Get postcode area (the letters before the numbers, e.g. SW from SW1A)
-    match = re.match(r"^([A-Z]+)", pc_clean)
-    postcode_area = match.group(1) if match else ""
+    m = re.match(r"^([A-Z]+)", pc_clean)
+    postcode_area = m.group(1) if m else ""
 
     risk_df = STATE["risk"]
-    row = risk_df[risk_df["lsoa11cd"] == lsoa]
-    if row.empty:
+    rows = risk_df[risk_df["lsoa11cd"] == lsoa]
+    if rows.empty:
         raise HTTPException(status_code=404, detail="LSOA not found in risk table")
-    
-    row = row.iloc[0]
-    
-    # Calculate premium estimate
-    coefs = STATE["calibration"].get("coefficients", {})
-    est = coefs.get("const", 0)
-    for col in ["vehicle_crime", "road_casualties", "deprivation", "population_density"]:
-        if col in coefs and col in row:
-            est += coefs[col] * row[col]
+    row = rows.iloc[0]
 
-    # Calculate weighted contributions
+    coefs = STATE["calibration"].get("coefficients", {})
     weights = settings["risk_index"]["weights"]
-    total_weight = sum(weights.values())
-    
+    total_weight = sum(weights.values()) or 1.0
+    method = settings["risk_index"]["normalisation"]
+
     components = {}
     for col, w in weights.items():
-        if col in row:
-            val = float(row[col])
-            pct = float(row[f"{col}_pct"]) if f"{col}_pct" in row else 0
-            # To calculate exact contribution to the index:
-            # normalise(val) * w / total_weight. We use pct for normalise if percentile.
-            norm_method = settings["risk_index"]["normalisation"]
-            if norm_method == "percentile":
-                contrib = (pct * w) / total_weight
-            else:
-                contrib = 0 # simplified fallback
-                
-            components[col] = {
-                "value": val,
-                "percentile": pct,
-                "contribution": contrib
-            }
+        if col not in row:
+            continue
+        pct = float(row[f"{col}_pct"]) if f"{col}_pct" in row else 0.0
+        contrib = (pct * w) / total_weight if method == "percentile" else 0.0
+        components[col] = {
+            "value": float(row[col]),
+            "percentile": pct,
+            "contribution": contrib,
+        }
 
     return {
         "postcode": pc_data.get("pcd8", pc_clean),
         "lsoa11cd": lsoa,
         "risk_index": float(row["risk_index"]),
-        "quintile": int(row["risk_bucket"]),
+        "quintile": int(row.get("quintile", row.get("risk_bucket", 0))),
         "components": components,
-        "calibrated_premium_estimate": round(est),
+        "calibrated_premium_estimate": estimate_premium(row, coefs),
         "postcode_area": postcode_area,
-        "wtw_anchor_premium": STATE["anchors"].get(postcode_area)
+        "wtw_anchor_premium": STATE["anchors"].get(postcode_area),
     }
 
+
 @app.get("/api/rankings")
-def get_rankings(n: int = Query(20, le=100)):
-    rankings = STATE["rankings"][:n]
-    
+def get_rankings(
+    n: int = Query(20, le=100),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
+):
+    df = STATE["risk"]
+    if df.empty:
+        return []
+
+    has_name = "lsoa_name" in df.columns
+    top = df.sort_values("risk_index", ascending=(order == "asc")).head(n)
+    coefs = STATE["calibration"].get("coefficients", {})
+
     results = []
-    for row in rankings:
-        # Calculate premium estimate
-        coefs = STATE["calibration"].get("coefficients", {})
-        est = coefs.get("const", 0)
-        for col in ["vehicle_crime", "road_casualties", "deprivation", "population_density"]:
-            if col in coefs and col in row:
-                est += coefs[col] * row[col]
-                
+    for _, row in top.iterrows():
         results.append({
             "code": row["lsoa11cd"],
-            "name": row.get("lsoa11nm", row["lsoa11cd"]),
+            "name": row["lsoa_name"] if has_name and pd.notna(row.get("lsoa_name")) else row["lsoa11cd"],
             "risk_index": float(row["risk_index"]),
-            "quintile": int(row["risk_bucket"]),
-            "calibrated_premium": round(est)
+            "quintile": int(row.get("quintile", row.get("risk_bucket", 0))),
+            "calibrated_premium": estimate_premium(row, coefs),
         })
-        
     return results
+
 
 @app.get("/api/methodology")
 def get_methodology():
+    calib = STATE["calibration"]
     return {
         "weights": settings["risk_index"]["weights"],
         "normalisation": settings["risk_index"]["normalisation"],
         "calibration": {
-            "r_squared": STATE["calibration"].get("r_squared"),
-            "coefficients": STATE["calibration"].get("coefficients"),
-            "backfit_weights": STATE["calibration"].get("backfit_weights")
-        }
+            "r_squared": calib.get("r_squared"),
+            "coefficients": calib.get("coefficients"),
+            "backfit_weights": calib.get("backfit_weights"),
+        },
     }
 
-# Serve frontend static files if they exist (for production Docker image)
+
+# Serve the built frontend (production Docker image). Must be mounted last.
 frontend_dist = ROOT / "frontend" / "dist"
 if frontend_dist.exists() and frontend_dist.is_dir():
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
