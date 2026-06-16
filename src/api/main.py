@@ -158,14 +158,19 @@ def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
     total_weight = sum(weights.values()) or 1.0
     method = settings["risk_index"]["normalisation"]
 
+    def _num(x):
+        """NaN -> None so the response is JSON-compliant (e.g. Scotland has no
+        vehicle_crime, which the risk index reweights around)."""
+        return float(x) if pd.notna(x) else None
+
     components = {}
     for col, w in weights.items():
         if col not in row:
             continue
-        pct = float(row[f"{col}_pct"]) if f"{col}_pct" in row else 0.0
-        contrib = (pct * w) / total_weight if method == "percentile" else 0.0
+        pct = _num(row[f"{col}_pct"]) if f"{col}_pct" in row else 0.0
+        contrib = (pct * w) / total_weight if (method == "percentile" and pct is not None) else None
         components[col] = {
-            "value": float(row[col]),
+            "value": _num(row[col]),
             "percentile": pct,
             "contribution": contrib,
         }
