@@ -57,6 +57,12 @@ _CALIB = settings.get("calibration", {})
 _FEATURES = settings.get("features", {})
 FEATURE_BASIS = _CALIB.get("feature_basis", "raw")
 RESPONSE = _CALIB.get("response", "absolute_gbp")
+_SUPPORTED_RESPONSES = {"relative_index"}
+if RESPONSE not in _SUPPORTED_RESPONSES:
+    raise ValueError(
+        f"calibration.response={RESPONSE!r} is not supported. "
+        f"Supported values: {sorted(_SUPPORTED_RESPONSES)}"
+    )
 _BASIS_SUFFIX = "_pct" if FEATURE_BASIS == "percentile" else ""
 
 

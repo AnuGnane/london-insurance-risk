@@ -143,12 +143,22 @@ def bake_premium_and_contributions(features: pd.DataFrame, comps: list[str]) -> 
 
     composition_cols = set(calib.get("composition_features", []))
     const = float(coefs["const"])
-    model_cols = [c for c in coefs if c != "const" and c in features.columns]
+    all_model_cols = [c for c in coefs if c != "const"]
+    missing = [c for c in all_model_cols if c not in features.columns]
+    if missing:
+        log.warning(
+            "Calibration features missing from feature table — treating as national mean (pct=50): %s",
+            missing,
+        )
+    model_cols = all_model_cols
 
     def predict(hold_at_median: set[str]) -> pd.Series:
         z = pd.Series(const, index=features.index)
         for col in model_cols:
-            vals = MEDIAN_PCT if col in hold_at_median else features[col].fillna(MEDIAN_PCT)
+            if col in hold_at_median or col not in features.columns:
+                vals = MEDIAN_PCT
+            else:
+                vals = features[col].fillna(MEDIAN_PCT)
             z = z + float(coefs[col]) * vals
         return float(national_avg) * np.exp(z)
 

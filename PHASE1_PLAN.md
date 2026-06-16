@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11, pandas, geopandas, statsmodels, scikit-learn, duckdb, requests; data from Nomis (E+W Census 2021) and NRS/statistics.gov.scot (Scotland Census 2022).
 
-Scope: **no frontend changes** in Phase 1 (UI place/composition split is deferred to a later sub-phase per the design). Verified via API responses + reports.
+Scope: Backend-first. Minimal frontend changes were included to expose the three premium numbers (`calibrated_premium_estimate`, `premium_place_only`, `composition_uplift`) in `types.ts` and `DetailPanel.tsx`; richer UI surfacing is deferred to a later sub-phase. Verified via API responses + reports.
 
 ---
 
