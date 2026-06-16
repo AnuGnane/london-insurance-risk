@@ -84,6 +84,18 @@ def compute_casualty_rate(collisions: pd.DataFrame, population: pd.DataFrame,
     return merged[["area_code", "casualty_weighted", "collision_count", "road_casualties"]]
 
 
+def merge_demographics(features: pd.DataFrame, demographics: pd.DataFrame) -> pd.DataFrame:
+    """Left-merge the demographic CONTROLS (young_driver_share, cars_per_household)
+    onto the feature table by area_code. Pure function.
+
+    Demographics are on Census 2021 (E+W) boundaries; the ~7% of 2011 codes that
+    changed in 2021 don't match and are left NaN (the premium reconstruction holds
+    missing controls at the national mean — see build_risk_index)."""
+    cols = ["area_code", "young_driver_share", "cars_per_household"]
+    present = [c for c in cols if c in demographics.columns]
+    return features.merge(demographics[present], on="area_code", how="left")
+
+
 def compute_population_density(population: pd.DataFrame,
                               boundaries: pd.DataFrame) -> pd.DataFrame:
     """Persons per km². Pure function."""
@@ -141,6 +153,18 @@ def run() -> None:
     features.loc[covered, "vehicle_crime_count"] = (
         features.loc[covered, "vehicle_crime_count"].fillna(0)
     )
+
+    # Demographic CONTROLS (young-driver share, cars/household) if ingested.
+    demo_path = interim("demographics.parquet")
+    if demo_path.exists():
+        demo = pd.read_parquet(demo_path)
+        features = merge_demographics(features, demo)
+        matched = features["young_driver_share"].notna().sum()
+        log.info("Merged demographic controls: %d/%d areas matched (%.0f%%)",
+                 matched, len(features), 100 * matched / len(features))
+    else:
+        log.warning("No %s — demographic controls absent. Run "
+                    "`python -m src.ingest.census_demographics` first.", demo_path)
 
     features["lsoa11cd"] = features["area_code"]  # backward-compat alias
     features = features.sort_values("area_code").reset_index(drop=True)
