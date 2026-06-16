@@ -1,289 +1,341 @@
-"""M4b: calibrate the risk index against real published premiums.
+"""M4b: calibrate the risk index against the WTW/Confused price-index panel.
 
-In  : data/processed/lsoa_risk.parquet  (+ features)
-      data/interim/wtw_anchors.csv
-      data/interim/postcode_lookup.parquet  (for LSOA → postcode_area roll-up)
-Out : reports/calibration.md  (+ optional fitted weights for build_risk_index)
+In  : data/processed/lsoa_risk.parquet            (area features + risk_index)
+      data/interim/wtw_anchors.csv                (multi-quarter, multi-grain panel)
+      data/interim/postcode_lookup.parquet        (area_code -> postcode_area)
+Out : reports/calibration.{md,json}
 
-Steps:
-  1. Roll LSOA features up to postcode_area (mean), join to WTW avg premium.
-  2. Fit interpretable regression premium ~ features (OLS / Ridge).
-     Report coefficients, signs, R². Sanity check: crime ↑ → premium ↑ etc.
-  3. (Optional) derive back-fit weights from standardised coefficients; write
-     them out so M3 can re-score with market-aligned weights.
-  4. Be explicit in the report: WTW's London grain is coarse, so this is a
-     directional sanity check + weight aid, NOT a per-LSOA price model.
+Upgrades over the original London-only calibration:
+  1. Multi-grain matching — panel rows are matched to model features at their own
+     grain: postcode_area / town directly by postcode-area code, region via a
+     curated region -> postcode-area mapping (pop-weighted). National rows, NI and
+     ambiguous regions are skipped (logged, never silently dropped).
+  2. Panel OLS with quarter fixed effects + area-clustered SEs — controls for the
+     national premium trend and the repeated-measures structure.
+  3. Ridge with K-fold CV — reports CV-R² alongside in-sample R².
+  4. Leave-one-area-out hold-out — predict each area from the others; MAE in £.
+  5. Temporal back-test — fit on quarters <= T, predict T+1; MAE in £.
+  6. Spearman rank correlation — does the index rank areas like the market does?
+
+This remains a directional validation + weight aid, NOT a per-LSOA price model:
+the panel grain is far coarser than an LSOA.
 """
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from scipy.stats import spearmanr
+from sklearn.linear_model import LinearRegression, RidgeCV
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.preprocessing import StandardScaler
 
-from src.common.config import settings, ROOT
-from src.common.io import (
-    LSOA_RISK_PARQUET,
-    WTW_ANCHORS,
-    interim,
-    processed,
-)
+from src.common.config import ROOT, settings
+from src.common.io import LSOA_RISK_PARQUET, WTW_ANCHORS, interim, processed
 
 log = logging.getLogger(__name__)
 
 REPORTS_DIR = ROOT / "reports"
 FEATURE_COLS = list(settings["risk_index"]["weights"].keys())
 
+# Curated WTW region -> GB postcode areas. Only regions we can define with
+# confidence and that have complete model features (E+W) are included. Scottish
+# regions are omitted (data.police.uk has no Scottish crime, so vehicle_crime is
+# NaN there); Northern Ireland is not modelled; vague regions ("North of
+# England", "South Central England", …) are skipped. All skips are logged.
+REGION_POSTCODE_AREAS = {
+    "Inner London": ["EC", "WC", "E", "N", "NW", "SE", "SW", "W"],
+    "Outer London": ["BR", "CR", "DA", "EN", "HA", "IG", "KT", "RM", "SM", "TW", "UB", "WD"],
+    "Manchester / Merseyside": ["M", "L", "BL", "OL", "WN", "SK", "WA"],
+    "West Midlands": ["B", "WV", "DY", "WS", "CV"],
+    "Leeds / Sheffield": ["LS", "S", "WF", "BD", "HD", "HX", "DN"],
+    "South West": ["BS", "BA", "TA", "EX", "PL", "TQ", "TR", "DT", "GL", "SN"],
+    "South Wales": ["CF", "NP", "SA"],
+    "Central & North Wales": ["LL", "LD", "SY"],
+}
+
 
 def _load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Load risk features, postcode lookup, and WTW anchors."""
     risk = pd.read_parquet(processed(LSOA_RISK_PARQUET))
     postcode_lookup = pd.read_parquet(interim("postcode_lookup.parquet"))
     wtw = pd.read_csv(interim(WTW_ANCHORS))
     return risk, postcode_lookup, wtw
 
 
-def rollup_to_postcode_area(
-    risk: pd.DataFrame,
-    postcode_lookup: pd.DataFrame,
-) -> pd.DataFrame:
-    """Roll LSOA-level features up to postcode-area grain (mean).
+def _wmean(values: pd.Series, weights: pd.Series) -> float:
+    """Population-weighted mean ignoring NaN; NaN if nothing to average."""
+    mask = values.notna()
+    if not mask.any() or weights[mask].sum() == 0:
+        return np.nan
+    return float(np.average(values[mask], weights=weights[mask]))
 
-    The WTW index publishes at postcode_area (e.g. 'WC', 'E', 'SW') and
-    region ('Inner London', 'Outer London') grain. We aggregate to
-    postcode_area first.
 
-    Pure function for testability.
+def build_pca_features(risk: pd.DataFrame, postcode_lookup: pd.DataFrame) -> pd.DataFrame:
+    """Roll area-level features up to postcode-area grain (population-weighted).
+
+    Pure function for testability. Returns one row per postcode_area with the
+    feature columns, risk_index, summed population and area count.
     """
-    # Map each LSOA to its dominant postcode area
-    # An LSOA may span multiple postcode areas; we use the most common one
-    lsoa_pca = (
-        postcode_lookup.groupby("lsoa11cd")["postcode_area"]
-        .agg(lambda x: x.mode().iloc[0] if len(x) > 0 else None)
+    dominant = (
+        postcode_lookup.groupby("area_code")["postcode_area"]
+        .agg(lambda x: x.mode().iloc[0] if len(x) else None)
         .reset_index()
     )
+    merged = risk.merge(dominant, on="area_code", how="inner")
 
-    merged = risk.merge(lsoa_pca, on="lsoa11cd", how="left")
-
-    # Aggregate features to postcode area level (population-weighted mean)
-    if "population" in merged.columns:
-        # Weighted average
-        def _wmean(group: pd.DataFrame, col: str) -> float:
-            weights = group["population"].fillna(1)
-            return np.average(group[col].fillna(0), weights=weights)
-
-        rows = []
-        for pca, grp in merged.groupby("postcode_area"):
-            row = {"postcode_area": pca}
-            for col in FEATURE_COLS:
-                if col in grp.columns:
-                    row[col] = _wmean(grp, col)
-            row["risk_index"] = _wmean(grp, "risk_index")
-            row["n_lsoas"] = len(grp)
-            rows.append(row)
-        return pd.DataFrame(rows)
-    else:
-        # Simple mean fallback
-        agg_cols = [c for c in FEATURE_COLS + ["risk_index"] if c in merged.columns]
-        return (
-            merged.groupby("postcode_area")[agg_cols]
-            .mean()
-            .reset_index()
-        )
+    rows = []
+    for pca, grp in merged.groupby("postcode_area"):
+        w = grp["population"].fillna(0)
+        row = {"postcode_area": pca, "population": float(w.sum()), "n_areas": len(grp)}
+        for col in FEATURE_COLS + ["risk_index"]:
+            if col in grp.columns:
+                row[col] = _wmean(grp[col], w)
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("postcode_area")
 
 
-def fit_calibration(
-    pca_features: pd.DataFrame,
-    wtw: pd.DataFrame,
-) -> dict:
-    """Fit OLS regression: avg_premium ~ features at postcode-area grain.
+def _region_features(pca: pd.DataFrame, areas: list[str]) -> dict | None:
+    """Population-weighted aggregate of postcode-area features over a region."""
+    members = pca[pca.index.isin(areas)]
+    if members.empty:
+        return None
+    w = members["population"].fillna(0)
+    out = {"population": float(w.sum()), "n_areas": int(members["n_areas"].sum())}
+    for col in FEATURE_COLS + ["risk_index"]:
+        out[col] = _wmean(members[col], w)
+    return out
 
-    Returns dict with model summary, coefficients, R², diagnostics.
+
+def match_panel(wtw: pd.DataFrame, pca: pd.DataFrame) -> pd.DataFrame:
+    """Attach model features to each panel row at its own grain.
+
+    Returns matched rows (area_name, grain, quarter, avg_premium_gbp + features).
+    Logs every row that cannot be matched (NI, unmapped/ambiguous region, area
+    outside GB) rather than dropping it silently.
     """
-    # Join WTW anchors to postcode-area features
-    # WTW has postcode_area for postcode-area-grain rows
-    wtw_pca = wtw[wtw["grain"] == "postcode_area"].copy()
-    if wtw_pca.empty:
-        log.warning("No postcode_area-grain WTW anchors — using all rows")
-        wtw_pca = wtw.copy()
+    matched, skipped = [], []
+    for _, r in wtw.iterrows():
+        grain, name = r["grain"], r["area_name"]
+        feats = None
+        if grain in ("postcode_area", "town"):
+            code = r.get("postcode_area")
+            if pd.notna(code) and code in pca.index:
+                feats = pca.loc[code].to_dict()
+        elif grain == "region":
+            if name in REGION_POSTCODE_AREAS:
+                feats = _region_features(pca, REGION_POSTCODE_AREAS[name])
+        # national rows carry no geography to match — skipped by design.
 
-    joined = pca_features.merge(
-        wtw_pca[["postcode_area", "avg_premium_gbp"]],
-        on="postcode_area",
-        how="inner",
+        if feats is None:
+            skipped.append((name, grain, str(r.get("quarter"))))
+            continue
+        matched.append({
+            "area_name": name, "grain": grain, "quarter": r["quarter"],
+            "avg_premium_gbp": r["avg_premium_gbp"],
+            **{c: feats.get(c) for c in FEATURE_COLS + ["risk_index"]},
+        })
+
+    df = pd.DataFrame(matched)
+    if skipped:
+        from collections import Counter
+        reasons = Counter(f"{n} ({g})" for n, g, _ in skipped)
+        log.info("Skipped %d unmatched panel rows: %s", len(skipped), dict(reasons))
+    # Drop rows missing any feature (e.g. Scottish postcode areas lack vehicle_crime).
+    before = len(df)
+    df = df.dropna(subset=FEATURE_COLS)
+    if len(df) < before:
+        log.info("Dropped %d matched rows with incomplete features (e.g. Scotland)",
+                 before - len(df))
+    return df.reset_index(drop=True)
+
+
+def _panel_ols(df: pd.DataFrame) -> dict:
+    """OLS: premium ~ features + C(quarter), area-clustered SEs."""
+    formula = "avg_premium_gbp ~ " + " + ".join(FEATURE_COLS) + " + C(quarter)"
+    model = smf.ols(formula, data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["area_name"]}
     )
+    # Effective intercept averaged over quarters, for a per-area premium estimate.
+    qeffects = [0.0] + [
+        v for k, v in model.params.items() if k.startswith("C(quarter)")
+    ]
+    coefs = {"const": float(model.params["Intercept"] + np.mean(qeffects))}
+    for c in FEATURE_COLS:
+        coefs[c] = float(model.params[c])
 
-    if len(joined) < 3:
-        log.warning(
-            "Only %d matched postcode areas — too few for meaningful regression. "
-            "Add more WTW anchor rows.",
-            len(joined),
-        )
-        return {
-            "n_matched": len(joined),
-            "matched_areas": joined["postcode_area"].tolist(),
-            "error": "Too few observations for regression",
-        }
-
-    # Prepare X and y
-    available_features = [c for c in FEATURE_COLS if c in joined.columns]
-    X = joined[available_features].fillna(0)
-    y = joined["avg_premium_gbp"]
-
-    # OLS with constant
-    X_const = sm.add_constant(X)
-    model = sm.OLS(y, X_const).fit()
-
-    log.info("Calibration R² = %.3f (n=%d)", model.rsquared, len(joined))
-    log.info("Coefficients:\n%s", model.params.to_string())
-
-    # Sign checks
-    sign_checks = {}
-    expected_positive = ["vehicle_crime", "road_casualties", "deprivation", "population_density"]
-    for feat in available_features:
-        coef = model.params.get(feat, 0)
-        expected = "positive" if feat in expected_positive else "any"
-        actual = "positive" if coef > 0 else "negative"
-        ok = expected == "any" or expected == actual
-        sign_checks[feat] = {
-            "coefficient": float(coef),
-            "expected_sign": expected,
-            "actual_sign": actual,
-            "sensible": ok,
-        }
-
-    # Back-fit weights from standardised coefficients
-    if len(available_features) > 0:
-        # Standardise features for comparable coefficient magnitudes
-        X_std = (X - X.mean()) / X.std().clip(lower=1e-10)
-        X_std_const = sm.add_constant(X_std)
-        model_std = sm.OLS(y, X_std_const).fit()
-
-        abs_coefs = model_std.params.drop("const").abs()
-        backfit_weights = (abs_coefs / abs_coefs.sum()).to_dict()
-    else:
-        backfit_weights = {}
-
+    expected_pos = set(FEATURE_COLS)
+    sign_checks = {
+        c: {"coefficient": float(model.params[c]),
+            "sensible": bool(model.params[c] > 0) if c in expected_pos else True}
+        for c in FEATURE_COLS
+    }
     return {
-        "n_matched": len(joined),
-        "matched_areas": joined["postcode_area"].tolist(),
         "r_squared": float(model.rsquared),
         "adj_r_squared": float(model.rsquared_adj),
-        "coefficients": model.params.to_dict(),
-        "p_values": model.pvalues.to_dict(),
+        "coefficients": coefs,
+        "feature_p_values": {c: float(model.pvalues[c]) for c in FEATURE_COLS},
         "sign_checks": sign_checks,
-        "backfit_weights": backfit_weights,
         "ols_summary": model.summary().as_text(),
     }
 
 
-def _write_report(results: dict) -> Path:
-    """Write calibration results to reports/calibration.md."""
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    report_path = REPORTS_DIR / "calibration.md"
+def _ridge_cv(df: pd.DataFrame, qidx: pd.Series) -> dict:
+    """Ridge with K-fold CV-R²; features + numeric quarter trend, standardised."""
+    X = np.column_stack([StandardScaler().fit_transform(df[FEATURE_COLS]),
+                         StandardScaler().fit_transform(qidx.values.reshape(-1, 1))])
+    y = df["avg_premium_gbp"].values
+    ridge = RidgeCV(alphas=np.logspace(-2, 3, 20)).fit(X, y)
+    k = min(5, len(df))
+    cv = cross_val_score(ridge, X, y, cv=KFold(k, shuffle=True, random_state=0), scoring="r2")
+    return {"cv_r_squared_mean": float(cv.mean()), "cv_r_squared_std": float(cv.std()),
+            "ridge_alpha": float(ridge.alpha_), "cv_folds": k}
 
-    lines = [
-        "# Calibration Report",
-        "",
-        "## Overview",
-        "",
-        "This report validates the composite risk index against the WTW/Confused.com",
-        "Car Insurance Price Index. The calibration operates at **postcode-area** grain",
-        "(e.g. 'WC', 'E', 'SW') because that is the finest grain the WTW index publishes",
-        "for London.",
-        "",
-    ]
+
+def _leave_one_area_out(df: pd.DataFrame, qidx: pd.Series) -> dict:
+    """Predict each area's premiums from a model fit on all other areas; MAE £."""
+    X = pd.concat([df[FEATURE_COLS], qidx.rename("qidx")], axis=1)
+    y = df["avg_premium_gbp"]
+    errs = []
+    for area in df["area_name"].unique():
+        tr, te = df["area_name"] != area, df["area_name"] == area
+        if tr.sum() < len(FEATURE_COLS) + 2:
+            continue
+        pred = LinearRegression().fit(X[tr], y[tr]).predict(X[te])
+        errs.extend(np.abs(pred - y[te].values))
+    return {"mae_gbp": float(np.mean(errs)) if errs else None,
+            "n_predictions": len(errs)}
+
+
+def _temporal_backtest(df: pd.DataFrame, quarters: list[str]) -> dict:
+    """Fit on quarters <= T, predict T+1; MAE £ across all forward steps."""
+    qpos = {q: i for i, q in enumerate(quarters)}
+    df = df.assign(_qpos=df["quarter"].map(qpos))
+    errs = []
+    for i in range(len(quarters) - 1):
+        tr = df[df["_qpos"] <= i]
+        te = df[df["_qpos"] == i + 1]
+        if len(tr) < len(FEATURE_COLS) + 2 or te.empty:
+            continue
+        model = LinearRegression().fit(tr[FEATURE_COLS], tr["avg_premium_gbp"])
+        pred = model.predict(te[FEATURE_COLS])
+        errs.extend(np.abs(pred - te["avg_premium_gbp"].values))
+    return {"mae_gbp": float(np.mean(errs)) if errs else None,
+            "n_predictions": len(errs)}
+
+
+def fit_calibration(matched: pd.DataFrame) -> dict:
+    """Run the full validation ladder on the matched panel."""
+    n = len(matched)
+    if n < 5:
+        return {"n_matched": n, "error": "Too few matched observations for regression",
+                "matched_areas": sorted(matched.get("area_name", pd.Series()).unique().tolist())}
+
+    quarters = sorted(matched["quarter"].unique())
+    qidx = matched["quarter"].map({q: i for i, q in enumerate(quarters)}).astype(float)
+
+    results = {
+        "n_matched": n,
+        "n_areas": int(matched["area_name"].nunique()),
+        "n_quarters": len(quarters),
+        "grain_counts": {str(k): int(v) for k, v in matched["grain"].value_counts().items()},
+        **_panel_ols(matched),
+        "ridge_cv": _ridge_cv(matched, qidx),
+        "leave_one_area_out": _leave_one_area_out(matched, qidx),
+        "temporal_backtest": _temporal_backtest(matched, quarters),
+    }
+
+    # Rank validation: does the rolled risk_index rank areas like premiums do?
+    rho, p = spearmanr(matched["risk_index"], matched["avg_premium_gbp"])
+    results["spearman_risk_vs_premium"] = {"rho": float(rho), "p_value": float(p)}
+
+    # Back-fit weights from standardised feature coefficients.
+    Xs = StandardScaler().fit_transform(matched[FEATURE_COLS])
+    std_coefs = pd.Series(
+        LinearRegression().fit(Xs, matched["avg_premium_gbp"]).coef_, index=FEATURE_COLS
+    ).abs()
+    results["backfit_weights"] = {c: float(v) for c, v in (std_coefs / std_coefs.sum()).items()}
+    return results
+
+
+def _write_report(results: dict) -> Path:
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    lines = ["# Calibration Report", "",
+             "Validates the composite risk index against the WTW/Confused.com price",
+             "index panel (multi-quarter, multi-grain). Directional validation + weight",
+             "aid — the panel grain is far coarser than an LSOA, so this is NOT a",
+             "per-LSOA price model.", ""]
 
     if "error" in results:
-        lines.extend([
-            f"> **⚠️ {results['error']}**",
-            f"",
-            f"Matched postcode areas: {results.get('matched_areas', [])}",
-            "",
-            "Add more WTW anchor rows to `src/calibrate/wtw_index.py` and re-run.",
-        ])
+        lines += [f"> ⚠️ {results['error']}",
+                  "", f"Matched areas: {results.get('matched_areas', [])}"]
     else:
-        lines.extend([
-            f"- **Observations**: {results['n_matched']} postcode areas matched",
-            f"- **R²**: {results['r_squared']:.3f}",
-            f"- **Adjusted R²**: {results['adj_r_squared']:.3f}",
-            f"- **Matched areas**: {', '.join(results['matched_areas'])}",
+        rc = results["ridge_cv"]
+        lo = results["leave_one_area_out"]
+        tb = results["temporal_backtest"]
+        sp = results["spearman_risk_vs_premium"]
+        lines += [
+            "## Fit", "",
+            f"- Matched observations: **{results['n_matched']}** "
+            f"({results['n_areas']} areas × up to {results['n_quarters']} quarters)",
+            f"- Grain mix: {results['grain_counts']}",
+            f"- Panel OLS (quarter FE, area-clustered SEs) R²: **{results['r_squared']:.3f}** "
+            f"(adj {results['adj_r_squared']:.3f})",
+            f"- Ridge {rc['cv_folds']}-fold CV-R²: **{rc['cv_r_squared_mean']:.3f}** "
+            f"± {rc['cv_r_squared_std']:.3f} (α={rc['ridge_alpha']:.2g})",
+            f"- Leave-one-area-out MAE: **£{lo['mae_gbp']:.0f}** (n={lo['n_predictions']})"
+            if lo["mae_gbp"] is not None else "- Leave-one-area-out MAE: n/a",
+            f"- Temporal back-test MAE (predict next quarter): **£{tb['mae_gbp']:.0f}** "
+            f"(n={tb['n_predictions']})" if tb["mae_gbp"] is not None
+            else "- Temporal back-test MAE: n/a",
+            f"- Spearman(risk_index, premium): **{sp['rho']:.3f}** (p={sp['p_value']:.3g})",
             "",
-            "## Coefficient Sign Checks",
-            "",
-            "| Feature | Coefficient | Expected | Actual | Sensible? |",
-            "|---------|------------|----------|--------|-----------|",
-        ])
-
-        for feat, check in results["sign_checks"].items():
-            emoji = "✅" if check["sensible"] else "❌"
-            lines.append(
-                f"| {feat} | {check['coefficient']:.4f} | "
-                f"{check['expected_sign']} | {check['actual_sign']} | {emoji} |"
-            )
-
-        lines.extend([
-            "",
-            "## Back-fit Weights",
-            "",
-            "These weights are derived from the absolute standardised regression",
-            "coefficients. They represent how the market (WTW index) weights each",
-            "factor, as opposed to our expert-set weights.",
-            "",
-            "| Feature | Expert Weight | Back-fit Weight |",
-            "|---------|-------------|----------------|",
-        ])
-
+            "## Coefficient sign checks", "",
+            "| Feature | Coefficient | p-value | Sensible (>0)? |",
+            "|---|---|---|---|",
+        ]
+        for c, chk in results["sign_checks"].items():
+            pv = results["feature_p_values"][c]
+            lines.append(f"| {c} | {chk['coefficient']:.3f} | {pv:.3g} | "
+                         f"{'✅' if chk['sensible'] else '❌'} |")
+        lines += ["", "## Expert vs back-fit weights", "",
+                  "| Feature | Expert | Back-fit |", "|---|---|---|"]
         expert = settings["risk_index"]["weights"]
-        for feat, bfw in results.get("backfit_weights", {}).items():
-            ew = expert.get(feat, 0)
-            lines.append(f"| {feat} | {ew:.2f} | {bfw:.2f} |")
+        for c, bfw in results["backfit_weights"].items():
+            lines.append(f"| {c} | {expert.get(c, 0):.2f} | {bfw:.2f} |")
+        lines += ["", "## Full OLS summary", "", "```", results["ols_summary"], "```", "",
+                  "## Caveats", "",
+                  "- WTW publishes at region / postcode-area / town grain — coarser than LSOA.",
+                  "- Scottish region/town rows are dropped (no Scottish vehicle_crime); NI and",
+                  "  ambiguous regions are skipped. See the log for exact counts.",
+                  "- Coefficients feed a per-area premium estimate, not a precise quote."]
 
-        lines.extend([
-            "",
-            "## Full OLS Summary",
-            "",
-            "```",
-            results.get("ols_summary", "N/A"),
-            "```",
-            "",
-            "## Caveats",
-            "",
-            "- The WTW/Confused index publishes London at **region / postcode-area grain**,",
-            "  so this calibration is approximate — it validates the *direction* of our risk",
-            "  factors, not the per-LSOA precision.",
-            "- With only ~3–50 anchor rows, R² should be interpreted cautiously.",
-            "- This is a **sanity check + weight aid**, NOT a per-LSOA price model.",
-            "- Coefficients may be unstable with few observations.",
-        ])
-
-    report_path.write_text("\n".join(lines), encoding="utf-8")
-    log.info("Wrote calibration report to %s", report_path)
-    
-    # Write JSON for M5 API to consume
-    import json
-    json_path = REPORTS_DIR / "calibration.json"
-    json_path.write_text(json.dumps(results, indent=2))
-    log.info("Wrote calibration JSON to %s", json_path)
-    
-    return report_path
+    md = REPORTS_DIR / "calibration.md"
+    md.write_text("\n".join(lines), encoding="utf-8")
+    (REPORTS_DIR / "calibration.json").write_text(
+        json.dumps({k: v for k, v in results.items() if k != "ols_summary"}, indent=2)
+    )
+    log.info("Wrote calibration report to %s", md)
+    return md
 
 
 def run() -> None:
-    log.info("Calibrating risk index against WTW anchors")
-
+    log.info("Calibrating risk index against the WTW panel")
     risk, postcode_lookup, wtw = _load_data()
-
-    # Roll up to postcode area
-    pca_features = rollup_to_postcode_area(risk, postcode_lookup)
-    log.info("Rolled up to %d postcode areas", len(pca_features))
-
-    # Fit calibration
-    results = fit_calibration(pca_features, wtw)
-
-    # Write report
+    pca = build_pca_features(risk, postcode_lookup)
+    log.info("Rolled up to %d postcode areas", len(pca))
+    matched = match_panel(wtw, pca)
+    log.info("Matched %d panel observations across %d areas",
+             len(matched), matched["area_name"].nunique() if not matched.empty else 0)
+    results = fit_calibration(matched)
+    if "error" not in results:
+        log.info("Panel R²=%.3f | CV-R²=%.3f | LOAO MAE=£%s | Spearman=%.3f",
+                 results["r_squared"], results["ridge_cv"]["cv_r_squared_mean"],
+                 results["leave_one_area_out"]["mae_gbp"],
+                 results["spearman_risk_vs_premium"]["rho"])
     _write_report(results)
 
 
