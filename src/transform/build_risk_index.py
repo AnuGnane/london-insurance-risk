@@ -87,13 +87,23 @@ def bucket(score: pd.Series, n_buckets: int) -> pd.Series:
     return pd.qcut(score, q=n_buckets, labels=range(1, n_buckets + 1)).astype(int)
 
 
+def model_features() -> list[str]:
+    """All feature base-names the model touches: legacy risk-index weights plus the
+    declared place + composition features (de-duplicated, order-preserving)."""
+    feats = settings.get("features", {})
+    ordered = (list(settings["risk_index"]["weights"].keys())
+               + feats.get("place", []) + feats.get("composition", []))
+    seen: set[str] = set()
+    return [f for f in ordered if not (f in seen or seen.add(f))]
+
+
 def enrich_components(features: pd.DataFrame, weights: dict[str, float]) -> list[str]:
-    """Add {c}_val and {c}_pct per component (used by the premium model, the map's
-    single-driver colour filters, and the click breakdown). The per-driver £
-    contributions are added later from the calibration coefficients — see
-    bake_premium_and_contributions."""
+    """Add {c}_val and {c}_pct per feature (used by the premium model, the map's
+    single-driver colour filters, and the click breakdown). Covers place AND
+    composition features. £ contributions are added later from the calibration
+    coefficients — see bake_premium_and_contributions."""
     cg = _crime_groups(features)
-    comps = [c for c in weights if c in features.columns]
+    comps = [c for c in model_features() if c in features.columns]
     for c in comps:
         # vehicle_crime is ranked within nation-group (E+W vs Scotland) — the two
         # come from different sources on incomparable scales (see normalise()).
