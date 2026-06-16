@@ -82,7 +82,9 @@ export type ColorMode =
   | 'vehicle_crime'
   | 'road_casualties'
   | 'deprivation'
-  | 'population_density';
+  | 'population_density'
+  | 'traffic_per_capita'
+  | 'ksi_collisions_per_billion_vehicle_miles';
 
 // Imperative focus request passed to the map (nonce forces re-fly).
 export interface FocusTarget {

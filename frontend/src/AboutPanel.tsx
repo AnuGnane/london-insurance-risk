@@ -16,6 +16,12 @@ const DATA_SOURCES = [
       'Road collisions from the Department for Transport, severity-weighted (slight ×1, serious ×3, fatal ×8) and normalised per 1,000 residents.',
   },
   {
+    key: 'ksi_collisions_per_billion_vehicle_miles',
+    source: 'DfT STATS19 + Road traffic statistics',
+    description:
+      'Fatal and serious collisions re-tested against DfT traffic exposure, measured per billion vehicle miles rather than per resident.',
+  },
+  {
     key: 'deprivation',
     source: 'IoD / WIMD / SIMD',
     description:
@@ -26,6 +32,12 @@ const DATA_SOURCES = [
     source: 'ONS mid-year estimates',
     description:
       'Resident population per square kilometre, derived from the census and ONS mid-year population estimates.',
+  },
+  {
+    key: 'traffic_per_capita',
+    source: 'DfT Road traffic statistics',
+    description:
+      'Local-authority annual vehicle miles allocated to small areas by population share for the Phase 3 traffic-exposure model.',
   },
 ];
 

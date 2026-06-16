@@ -5,16 +5,19 @@ Out : data/interim/lsoa_features.parquet
       columns (one row per area):
         area_code, lsoa11cd (alias), nation, population,
         vehicle_crime  — vehicle-crime incidents per 1k population per year
-                         (NaN for Scotland: data.police.uk has no Scottish crime)
+                         (E+W data.police.uk; Scotland Recorded Crime council data)
         road_casualties — severity-weighted collisions per 1k population per year
+        ksi_collisions_per_billion_vehicle_miles — fatal/serious collision rate
+                         on the DfT traffic denominator (Phase 3, if ingested)
+        traffic_per_capita — LA traffic exposure per resident (Phase 3, if ingested)
         deprivation — within-nation deprivation percentile (0–1, higher = worse)
         population_density — persons per km²
 
 Missing-feature handling:
   vehicle_crime is genuinely 0 for an E+W area with no recorded crime, but
-  MISSING (NaN) for Scotland where the source has no coverage. We distinguish the
-  two by nation so build_risk_index can reweight Scotland around the gap rather
-  than treating it as a crime-free area.
+  MISSING (NaN) for any nation where no source has coverage. We distinguish the
+  two by nation so build_risk_index can reweight unsupported future nations
+  around the gap rather than treating them as crime-free areas.
 """
 from __future__ import annotations
 
@@ -84,6 +87,45 @@ def compute_casualty_rate(collisions: pd.DataFrame, population: pd.DataFrame,
     return merged[["area_code", "casualty_weighted", "collision_count", "road_casualties"]]
 
 
+def compute_ksi_collision_rate(
+    collisions: pd.DataFrame, traffic: pd.DataFrame, years: list[int]
+) -> pd.DataFrame:
+    """Fatal/serious collision rate per billion vehicle miles. Pure function.
+
+    Source URL: https://roadtraffic.dft.gov.uk/downloads plus STATS19.
+    Grain in: collision points + small-area traffic exposure.
+    Grain out: one row per LSOA/Data Zone area_code.
+    Vintage: LSOA/DZ 2011; traffic years come from config.data_years.traffic_years.
+    """
+    ksi = collisions[
+        collisions["severity_label"].isin(["fatal", "serious"])
+    ].copy()
+    counts = (
+        ksi.groupby("area_code", as_index=False)
+        .size()
+        .rename(columns={"size": "ksi_collision_count"})
+    )
+    merged = traffic[["area_code", "traffic_million_vehicle_miles"]].merge(
+        counts, on="area_code", how="left"
+    )
+    merged["ksi_collision_count"] = merged["ksi_collision_count"].fillna(0)
+    years_covered = max(len(years), 1)
+    annual_ksi = merged["ksi_collision_count"] / years_covered
+    merged["ksi_collisions_per_billion_vehicle_miles"] = (
+        annual_ksi / merged["traffic_million_vehicle_miles"].where(
+            merged["traffic_million_vehicle_miles"] > 0
+        )
+        * 1000
+    )
+    return merged[
+        [
+            "area_code",
+            "ksi_collision_count",
+            "ksi_collisions_per_billion_vehicle_miles",
+        ]
+    ]
+
+
 def merge_demographics(features: pd.DataFrame, demographics: pd.DataFrame) -> pd.DataFrame:
     """Left-merge the demographic CONTROLS (young_driver_share, cars_per_household)
     onto the feature table by area_code. Pure function.
@@ -133,6 +175,21 @@ def run() -> None:
     deprivation = dep[["area_code", "deprivation_pct"]].rename(
         columns={"deprivation_pct": "deprivation"}
     )
+    traffic = None
+    ksi_rate = None
+    traffic_path = interim("traffic.parquet")
+    if traffic_path.exists():
+        traffic = pd.read_parquet(traffic_path)
+        ksi_rate = compute_ksi_collision_rate(
+            collisions, traffic, settings["data_years"]["stats19_years"]
+        )
+        log.info("Merged DfT traffic exposure for %d areas", len(traffic))
+    else:
+        log.warning(
+            "No %s — Phase 3 traffic/collision-denominator features absent. Run "
+            "`python -m src.ingest.traffic` first.",
+            traffic_path,
+        )
 
     # Master area list (one row per area, carries nation for the crime fill).
     features = (
@@ -142,10 +199,20 @@ def run() -> None:
         .merge(deprivation, on="area_code", how="left")
         .merge(pop_density, on="area_code", how="left")
     )
+    if traffic is not None:
+        features = features.merge(traffic, on="area_code", how="left")
+    if ksi_rate is not None:
+        features = features.merge(ksi_rate, on="area_code", how="left")
 
     # Collisions cover all GB, so a missing rate is a true zero everywhere.
     for col in ("road_casualties", "casualty_weighted", "collision_count"):
         features[col] = features[col].fillna(0)
+    if "ksi_collision_count" in features.columns:
+        features["ksi_collision_count"] = features["ksi_collision_count"].fillna(0)
+    if "ksi_collisions_per_billion_vehicle_miles" in features.columns:
+        features["ksi_collisions_per_billion_vehicle_miles"] = (
+            features["ksi_collisions_per_billion_vehicle_miles"].fillna(0)
+        )
     # Vehicle crime: 0 for E+W areas with no recorded crime, but NaN (missing)
     # for nations the source doesn't cover (Scotland) so they get reweighted.
     covered = features["nation"].isin(CRIME_NATIONS)
@@ -170,7 +237,7 @@ def run() -> None:
     features = features.sort_values("area_code").reset_index(drop=True)
 
     log.info("Feature table: %d rows × %d cols", *features.shape)
-    log.info("vehicle_crime NaN (expected = Scotland): %d",
+    log.info("vehicle_crime NaN (expected only for unsupported nations): %d",
              int(features["vehicle_crime"].isna().sum()))
     log.info("Feature summary:\n%s",
              features[["vehicle_crime", "road_casualties", "deprivation",

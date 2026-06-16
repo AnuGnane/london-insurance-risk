@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from fastapi.testclient import TestClient
 from src.api.main import app, STATE

@@ -6,6 +6,9 @@ ingest:        ## M1: download + parse all sources -> data/interim/*.parquet
 	python -m src.ingest.police_crime
 	python -m src.ingest.stats19
 	python -m src.ingest.imd
+	python -m src.ingest.scotland_crime
+	python -m src.ingest.census_demographics
+	python -m src.ingest.traffic
 
 features:      ## M2: build the LSOA feature table
 	python -m src.transform.aggregate_to_lsoa

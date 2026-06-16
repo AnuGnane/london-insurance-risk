@@ -4,7 +4,7 @@ Source : ONS Open Geography Portal — ONSPD (carries the 2011 small-area code)
 Grain  : one row per postcode
 Out    : data/interim/postcode_lookup.parquet
          columns: pcd7, pcd8, area_code, lsoa11cd, lat, long,
-                  postcode_district, postcode_area
+                  local_authority_code, postcode_district, postcode_area
 
 Powers the postcode search in the API. Filtered to the configured footprint by
 keeping only postcodes whose small area appears in area_boundaries.parquet.
@@ -45,6 +45,8 @@ NSPL_KEEP_COLS = {
     "lsoa11cd": "lsoa11cd",
     "lat": "lat",
     "long": "long",
+    "oslaua": "local_authority_code",
+    "laua": "local_authority_code",
 }
 
 

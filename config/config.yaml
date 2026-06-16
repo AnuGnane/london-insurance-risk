@@ -20,6 +20,7 @@ geography:
 data_years:
   crime_months_back: 36         # was 12; 36 smooths seasonality (E+W only via data.police.uk)
   stats19_years: [2021, 2022, 2023, 2024]
+  traffic_years: [2021, 2022, 2023, 2024]   # DfT LA traffic, aligned to STATS19 window
 
 risk_index:
   normalisation: "percentile"   # percentile | zscore | minmax
@@ -39,12 +40,15 @@ features:
   # Which features are attributed to the PLACE vs the area's demographic COMPOSITION.
   # PLACE features drive the territorial premium; COMPOSITION features are CONTROLS,
   # included so the place coefficients are estimated net of who lives there, then
-  # reported separately (NEXT_PHASE_DESIGN.md §2). road_casualties re-enters `place`
-  # in Phase 3 (on a traffic-exposure denominator).
+  # reported separately (NEXT_PHASE_DESIGN.md §2). Phase 3 adds traffic exposure
+  # and KSI collisions on a traffic denominator; legacy road_casualties remains a
+  # map layer/fallback composite feature rather than a premium driver.
   place:
     - vehicle_crime
     - deprivation
     - population_density
+    - traffic_per_capita
+    - ksi_collisions_per_billion_vehicle_miles
   composition:
     - young_driver_share
     - cars_per_household
@@ -70,6 +74,7 @@ calibration:
 sources:
   police_api: "https://data.police.uk/api"
   stats19_landing: "https://www.data.gov.uk/dataset/cb7ae6f0-4be6-4935-9277-47e5ce24a11f/road-accidents-safety-data"
+  road_traffic_downloads: "https://roadtraffic.dft.gov.uk/downloads"
   imd2019: "https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019"
   geoportal: "https://geoportal.statistics.gov.uk"
   wtw_index: "https://www.confused.com/car-insurance/price-index"
@@ -77,6 +82,11 @@ sources:
   # a motor vehicle" by council area, latest year, disaggregated to Data Zone by
   # population. Linked-data cube queried over SPARQL.
   scotland_crime_sparql: "https://statistics.gov.scot/sparql"
+  # Scotland Census 2022 demographic controls, published on 2011 Data Zones (so no
+  # 2022->2011 crosswalk is needed) and hosted as CSV by the UK Data Service.
+  # UV103 = age by single year; UV405 = car or van availability.
+  scotland_census_age_csv: "https://s3-eu-west-1.amazonaws.com/statistics.digitalresources.jisc.ac.uk/dkan/files/2022/NRS/UV103/census_2022_UV103_age_Data_Zone_2011.csv"
+  scotland_census_cars_csv: "https://s3-eu-west-1.amazonaws.com/statistics.digitalresources.jisc.ac.uk/dkan/files/2022/NRS/UV405/Census_2022_UV405_Car_or_van_availability_Data_Zone_2011.csv"
 
 paths:
   raw: "data/raw"

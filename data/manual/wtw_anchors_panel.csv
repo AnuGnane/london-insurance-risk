@@ -1,138 +1,141 @@
-area_name,grain,postcode_area,quarter,avg_premium_gbp,source_url,source_type
-Inner London,region,,2023-Q3,1503,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Leeds / Sheffield,region,,2023-Q3,1053,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Manchester / Merseyside,region,,2023-Q3,1154,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Outer London,region,,2023-Q3,1187,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-West Midlands,region,,2023-Q3,1139,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-United Kingdom,national,,2024-Q1,941,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-Central London,postcode_area,EC,2024-Q1,1815,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-North West London,postcode_area,NW,2024-Q1,1529,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-Central Scotland,region,,2024-Q1,871,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-Inner London,region,,2024-Q1,1501,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-Manchester / Merseyside,region,,2024-Q1,998,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2024/price-index-doc-q12024.pdf,confused_pdf
-Northern Ireland,region,,2024-Q1,968,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-South West,region,,2024-Q1,606,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-West Midlands,region,,2024-Q1,1157,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-Llandrindod Wells,town,LD,2024-Q1,557,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
-United Kingdom,national,,2024-Q2,882,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-West Central London,postcode_area,WC,2024-Q2,1735,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-Central Scotland,region,,2024-Q2,820,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
-Inner London,region,,2024-Q2,1404,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
-Leeds / Sheffield,region,,2024-Q2,1025,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Manchester / Merseyside,region,,2024-Q2,1064,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-North West,region,,2024-Q2,819,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-North of England,region,,2024-Q2,755,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
-Northern Ireland,region,,2024-Q2,925,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-Outer London,region,,2024-Q2,1168,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-South West,region,,2024-Q2,571,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-West Midlands,region,,2024-Q2,1082,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
-Llandrindod Wells,town,LD,2024-Q2,525,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-Perth,town,PH,2024-Q2,585,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
-United Kingdom,national,,2024-Q3,861,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Liverpool,postcode_area,L,2024-Q3,1031,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-London City,postcode_area,EC,2024-Q3,1253,https://www.confused.com/press/releases/2024/q3-2024-price-index,press
-Warrington,postcode_area,WA,2024-Q3,855,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-West Central London,postcode_area,WC,2024-Q3,1738,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Inner London,region,,2024-Q3,1357,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Leeds / Sheffield,region,,2024-Q3,977,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Manchester / Merseyside,region,,2024-Q3,1052,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-North West,region,,2024-Q3,830,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Northern Ireland,region,,2024-Q3,929,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Outer London,region,,2024-Q3,1104,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-South Central England,region,,2024-Q3,815,https://www.confused.com/press/releases/2024/q3-2024-price-index,press
-South West,region,,2024-Q3,571,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-West Midlands,region,,2024-Q3,1068,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Isle of Man,town,IM,2024-Q3,469,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
-Wigan,town,WN,2024-Q3,830,https://www.confused.com/press/releases/2024/q3-2024-price-index,press
-United Kingdom,national,,2024-Q4,834,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q4-2024/price-index-doc-q12024v2.pdf,confused_pdf
-Liverpool,postcode_area,L,2024-Q4,998,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-West Central London,postcode_area,WC,2024-Q4,1731,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
-Inner London,region,,2024-Q4,1308,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q4-2024/price-index-doc-q12024v2.pdf,confused_pdf
-Manchester / Merseyside,region,,2024-Q4,998,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q4-2024/price-index-doc-q12024v2.pdf,confused_pdf
-Northern Ireland,region,,2024-Q4,894,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Outer London,region,,2024-Q4,1081,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Scottish Borders,region,,2024-Q4,590,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
-South West,region,,2024-Q4,558,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
-West Midlands,region,,2024-Q4,1015,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
-Bolton,town,BL,2024-Q4,1049,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Oldham,town,OL,2024-Q4,1065,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
-United Kingdom,national,,2025-Q1,777,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
-South West London,postcode_area,SW,2025-Q1,1061,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
-West Central London,postcode_area,WC,2025-Q1,1430,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
-Central & North Wales,region,,2025-Q1,523,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
-Inner London,region,,2025-Q1,1208,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
-Outer London,region,,2025-Q1,996,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
-South West,region,,2025-Q1,532,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
-West Midlands,region,,2025-Q1,943,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
-Llandrindod Wells,town,LD,2025-Q1,455,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
-United Kingdom,national,,2025-Q2,757,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
-West Central London,postcode_area,WC,2025-Q2,1410,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Central & North Wales,region,,2025-Q2,524,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Inner London,region,,2025-Q2,1185,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
-Leeds / Sheffield,region,,2025-Q2,854,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Manchester / Merseyside,region,,2025-Q2,896,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
-Northern Ireland,region,,2025-Q2,852,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Outer London,region,,2025-Q2,967,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-South West,region,,2025-Q2,515,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-West Midlands,region,,2025-Q2,909,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
-Dorchester,town,DT,2025-Q2,496,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Exeter,town,EX,2025-Q2,496,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Llandrindod Wells,town,LD,2025-Q2,481,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-Torquay,town,TQ,2025-Q2,497,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
-United Kingdom,national,,2025-Q3,735,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Liverpool,postcode_area,L,2025-Q3,819,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Warrington,postcode_area,WA,2025-Q3,678,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-West Central London,postcode_area,WC,2025-Q3,1394,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Central & North Wales,region,,2025-Q3,514,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-Inner London,region,,2025-Q3,1149,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-Leeds / Sheffield,region,,2025-Q3,818,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-Manchester / Merseyside,region,,2025-Q3,859,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-North West,region,,2025-Q3,676,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Northern Ireland,region,,2025-Q3,849,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Outer London,region,,2025-Q3,939,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Scottish Borders,region,,2025-Q3,526,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-South West,region,,2025-Q3,499,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-West Midlands,region,,2025-Q3,896,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-West of England and South Wales,region,,2025-Q3,573,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
-Dorchester,town,DT,2025-Q3,481,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Exeter,town,EX,2025-Q3,484,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Llandrindod Wells,town,LD,2025-Q3,467,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-Torquay,town,TQ,2025-Q3,477,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
-United Kingdom,national,,2025-Q4,726,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Liverpool,postcode_area,L,2025-Q4,799,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-West Central London,postcode_area,WC,2025-Q4,1444,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Inner London,region,,2025-Q4,1119,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Manchester / Merseyside,region,,2025-Q4,836,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Northern Ireland,region,,2025-Q4,907,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Outer London,region,,2025-Q4,917,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-West Midlands,region,,2025-Q4,875,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Bolton,town,BL,2025-Q4,858,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Dorchester,town,DT,2025-Q4,487,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Exeter,town,EX,2025-Q4,486,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Llandrindod Wells,town,LD,2025-Q4,476,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Torquay,town,TQ,2025-Q4,482,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-Truro,town,TR,2025-Q4,484,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
-United Kingdom,national,,2026-Q1,711,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
-Central & North Wales,region,,2026-Q1,502,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Central Scotland,region,,2026-Q1,698,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-East,region,,2026-Q1,615,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-East & North East Scotland,region,,2026-Q1,584,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Highlands & Islands,region,,2026-Q1,573,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Inner London,region,,2026-Q1,1093,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
-Leeds / Sheffield,region,,2026-Q1,795,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-London - Outer,region,,2026-Q1,893,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Manchester / Merseyside,region,,2026-Q1,804,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
-Midlands - East,region,,2026-Q1,705,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Midlands - North,region,,2026-Q1,657,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Midlands - West,region,,2026-Q1,859,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-North East,region,,2026-Q1,614,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-North West,region,,2026-Q1,661,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-North of England,region,,2026-Q1,602,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Northern Ireland,region,,2026-Q1,947,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-Scottish Borders,region,,2026-Q1,523,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-South Central England,region,,2026-Q1,683,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-South East,region,,2026-Q1,608,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-South Wales,region,,2026-Q1,547,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
-South West,region,,2026-Q1,492,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-South of England,region,,2026-Q1,567,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
-West of England,region,,2026-Q1,554,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+area_name,grain,postcode_area,quarter,avg_premium_gbp,source,source_url,source_type
+Inner London,region,,2023-Q3,1503.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Leeds / Sheffield,region,,2023-Q3,1053.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Manchester / Merseyside,region,,2023-Q3,1154.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Outer London,region,,2023-Q3,1187.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+West Midlands,region,,2023-Q3,1139.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+United Kingdom,national,,2024-Q1,941.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+Central London,postcode_area,EC,2024-Q1,1815.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+North West London,postcode_area,NW,2024-Q1,1529.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+Central Scotland,region,,2024-Q1,871.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+Inner London,region,,2024-Q1,1501.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+Manchester / Merseyside,region,,2024-Q1,998.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2024/price-index-doc-q12024.pdf,confused_pdf
+Northern Ireland,region,,2024-Q1,968.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+South West,region,,2024-Q1,606.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+West Midlands,region,,2024-Q1,1157.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+Llandrindod Wells,town,LD,2024-Q1,557.0,confused,https://insurance-edge.net/2024/04/18/rate-of-car-insurance-premium-inflation-is-falling-says-confused-com/,press
+United Kingdom,national,,2024-Q2,882.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+West Central London,postcode_area,WC,2024-Q2,1735.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+Central Scotland,region,,2024-Q2,820.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
+Inner London,region,,2024-Q2,1404.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
+Leeds / Sheffield,region,,2024-Q2,1025.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Manchester / Merseyside,region,,2024-Q2,1064.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+North West,region,,2024-Q2,819.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+North of England,region,,2024-Q2,755.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
+Northern Ireland,region,,2024-Q2,925.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+Outer London,region,,2024-Q2,1168.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+South West,region,,2024-Q2,571.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+West Midlands,region,,2024-Q2,1082.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2024/q2-2024-car-price-index-report.pdf,confused_pdf
+Llandrindod Wells,town,LD,2024-Q2,525.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+Perth,town,PH,2024-Q2,585.0,confused,https://www.actuarialpost.co.uk/article/car-insurance-premiums-downward-trend-continues-23693.htm,press
+United Kingdom,national,,2024-Q3,861.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Liverpool,postcode_area,L,2024-Q3,1031.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+London City,postcode_area,EC,2024-Q3,1253.0,confused,https://www.confused.com/press/releases/2024/q3-2024-price-index,press
+Warrington,postcode_area,WA,2024-Q3,855.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+West Central London,postcode_area,WC,2024-Q3,1738.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Inner London,region,,2024-Q3,1357.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Leeds / Sheffield,region,,2024-Q3,977.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Manchester / Merseyside,region,,2024-Q3,1052.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+North West,region,,2024-Q3,830.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Northern Ireland,region,,2024-Q3,929.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Outer London,region,,2024-Q3,1104.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+South Central England,region,,2024-Q3,815.0,confused,https://www.confused.com/press/releases/2024/q3-2024-price-index,press
+South West,region,,2024-Q3,571.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+West Midlands,region,,2024-Q3,1068.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Isle of Man,town,IM,2024-Q3,469.0,confused,https://insurance-edge.net/2024/10/14/car-premiums-soften-slightly-says-confused-com-data/,press
+Wigan,town,WN,2024-Q3,830.0,confused,https://www.confused.com/press/releases/2024/q3-2024-price-index,press
+United Kingdom,national,,2024-Q4,834.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q4-2024/price-index-doc-q12024v2.pdf,confused_pdf
+Liverpool,postcode_area,L,2024-Q4,998.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+West Central London,postcode_area,WC,2024-Q4,1731.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
+Inner London,region,,2024-Q4,1308.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q4-2024/price-index-doc-q12024v2.pdf,confused_pdf
+Manchester / Merseyside,region,,2024-Q4,998.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q4-2024/price-index-doc-q12024v2.pdf,confused_pdf
+Northern Ireland,region,,2024-Q4,894.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Outer London,region,,2024-Q4,1081.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Scottish Borders,region,,2024-Q4,590.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
+South West,region,,2024-Q4,558.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
+West Midlands,region,,2024-Q4,1015.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
+Bolton,town,BL,2024-Q4,1049.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Oldham,town,OL,2024-Q4,1065.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-costs-plunge--biggest-drop-in-a-decade-520607.aspx,press
+United Kingdom,national,,2025-Q1,777.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
+South West London,postcode_area,SW,2025-Q1,1061.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
+West Central London,postcode_area,WC,2025-Q1,1430.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
+Central & North Wales,region,,2025-Q1,523.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
+Inner London,region,,2025-Q1,1208.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
+Outer London,region,,2025-Q1,996.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
+South West,region,,2025-Q1,532.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
+West Midlands,region,,2025-Q1,943.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2025/price-index-doc-q12025.pdf,confused_pdf
+Llandrindod Wells,town,LD,2025-Q1,455.0,confused,https://www.insurancebusinessmag.com/uk/news/auto-motor/uk-car-insurance-premiums-post-highest-annual-fall-since-2014-529519.aspx,press
+United Kingdom,national,,2025-Q2,757.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
+West Central London,postcode_area,WC,2025-Q2,1410.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Central & North Wales,region,,2025-Q2,524.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Inner London,region,,2025-Q2,1185.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
+Leeds / Sheffield,region,,2025-Q2,854.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Manchester / Merseyside,region,,2025-Q2,896.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
+Northern Ireland,region,,2025-Q2,852.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Outer London,region,,2025-Q2,967.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+South West,region,,2025-Q2,515.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+West Midlands,region,,2025-Q2,909.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q2-2025/price-index-q2-2025.pdf,confused_pdf
+Dorchester,town,DT,2025-Q2,496.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Exeter,town,EX,2025-Q2,496.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Llandrindod Wells,town,LD,2025-Q2,481.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+Torquay,town,TQ,2025-Q2,497.0,confused,https://insurance-edge.net/2025/06/20/latest-car-premiums-info-from-wtw-confused-com/,press
+United Kingdom,national,,2025-Q3,735.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Liverpool,postcode_area,L,2025-Q3,819.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Warrington,postcode_area,WA,2025-Q3,678.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+West Central London,postcode_area,WC,2025-Q3,1394.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Central & North Wales,region,,2025-Q3,514.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+Inner London,region,,2025-Q3,1149.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+Leeds / Sheffield,region,,2025-Q3,818.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+Manchester / Merseyside,region,,2025-Q3,859.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+North West,region,,2025-Q3,676.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Northern Ireland,region,,2025-Q3,849.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Outer London,region,,2025-Q3,939.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Scottish Borders,region,,2025-Q3,526.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+South West,region,,2025-Q3,499.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+West Midlands,region,,2025-Q3,896.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+West of England and South Wales,region,,2025-Q3,573.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q3-2025/q3-2025-car-price-index-report.pdf,confused_pdf
+Dorchester,town,DT,2025-Q3,481.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Exeter,town,EX,2025-Q3,484.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Llandrindod Wells,town,LD,2025-Q3,467.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+Torquay,town,TQ,2025-Q3,477.0,confused,https://insurance-edge.net/2025/09/17/latest-confused-com-index-says-motor-premiums-are-falling/,press
+United Kingdom,national,,2025-Q4,726.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Liverpool,postcode_area,L,2025-Q4,799.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+West Central London,postcode_area,WC,2025-Q4,1444.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Inner London,region,,2025-Q4,1119.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Manchester / Merseyside,region,,2025-Q4,836.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Northern Ireland,region,,2025-Q4,907.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Outer London,region,,2025-Q4,917.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+West Midlands,region,,2025-Q4,875.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Bolton,town,BL,2025-Q4,858.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Dorchester,town,DT,2025-Q4,487.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Exeter,town,EX,2025-Q4,486.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Llandrindod Wells,town,LD,2025-Q4,476.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Torquay,town,TQ,2025-Q4,482.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+Truro,town,TR,2025-Q4,484.0,confused,https://claimsmag.co.uk/2026/01/uk-car-insurance-premiums-continue-to-slide-with-13-annual-fall/,press
+United Kingdom,national,,2026-Q1,711.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
+Central & North Wales,region,,2026-Q1,502.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Central Scotland,region,,2026-Q1,698.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+East,region,,2026-Q1,615.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+East & North East Scotland,region,,2026-Q1,584.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Highlands & Islands,region,,2026-Q1,573.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Inner London,region,,2026-Q1,1093.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
+Leeds / Sheffield,region,,2026-Q1,795.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+London - Outer,region,,2026-Q1,893.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Manchester / Merseyside,region,,2026-Q1,804.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
+Midlands - East,region,,2026-Q1,705.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Midlands - North,region,,2026-Q1,657.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Midlands - West,region,,2026-Q1,859.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+North East,region,,2026-Q1,614.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+North West,region,,2026-Q1,661.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+North of England,region,,2026-Q1,602.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Northern Ireland,region,,2026-Q1,947.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+Scottish Borders,region,,2026-Q1,523.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+South Central England,region,,2026-Q1,683.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+South East,region,,2026-Q1,608.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+South Wales,region,,2026-Q1,547.0,confused,https://www.confused.com/-/media/confused/price-index/historic-price-index/price-index-q1-2026/confused-q1-2026-car-price-index-doc.pdf,confused_pdf
+South West,region,,2026-Q1,492.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+South of England,region,,2026-Q1,567.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+West of England,region,,2026-Q1,554.0,confused,https://www.confused.com/compare-car-insurance/average-car-insurance-cost-uk,press
+London,region,,2026-Q2,817.22,moneysupermarket,https://www.moneysupermarket.com/car-insurance/car-insurance-statistics/,press
+Scotland,region,,2026-Q2,451.48,moneysupermarket,https://www.moneysupermarket.com/car-insurance/car-insurance-statistics/,press
+Wales,region,,2026-Q2,406.95,moneysupermarket,https://www.moneysupermarket.com/car-insurance/car-insurance-statistics/,press

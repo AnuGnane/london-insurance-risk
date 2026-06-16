@@ -1,6 +1,6 @@
 # AGENTS.md — working agreement for AI coding agents
 
-You are building the London car-insurance risk map described in `PLAN.md`. Read `PLAN.md` first, then this.
+You are building a UK/GB car-insurance risk model - read the README.md for more context.
 
 ## Golden rules
 1. **Never commit data.** Everything under `data/` is git-ignored. Ingest scripts download into `data/raw`.
@@ -12,16 +12,6 @@ You are building the London car-insurance risk map described in `PLAN.md`. Read 
    ONS lookup and say so in code comments.
 5. **Config over constants.** Years, weights, region code, paths, normalisation method all live in
    `config/config.yaml` and are read via `src/common/config.py`. Don't hard-code them in modules.
-
-## How to run
-```bash
-uv sync                 # or: pip install -e .
-make ingest             # M1  -> data/interim/*.parquet
-make features           # M2  -> data/interim/lsoa_features.parquet
-make risk               # M3  -> data/processed/lsoa_risk.{parquet,geojson}
-make calibrate          # M4  -> reports/calibration.md + fitted weights
-make api                # M5  -> FastAPI on :8000 (after form factor chosen)
-make test
 ```
 
 ## Definition of done (per module)
@@ -36,7 +26,3 @@ make test
   for GeoJSON output / the map.
 - Prefer `duckdb` for big tabular joins; `geopandas` for spatial joins.
 - Log with `logging`, not `print`.
-
-## Build order
-Follow milestones M1 → M6 in `PLAN.md`. Don't start the API/map (M5) until the risk + calibration outputs
-(M3/M4) exist and the form factor is confirmed.

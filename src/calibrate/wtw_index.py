@@ -46,8 +46,12 @@ def _from_panel() -> pd.DataFrame | None:
     df = pd.read_csv(csv)
     df["area_name"] = df["area_name"].replace(NAME_ALIASES)
     keep = ["area_name", "grain", "postcode_area", "quarter", "avg_premium_gbp"]
-    if "source_type" in df.columns:
-        keep.append("source_type")
+    # `source` is the brand-level anchor (confused / moneysupermarket / …) used for
+    # the source fixed-effect when >1 source is pooled; `source_type` is provenance
+    # (press / pdf). Carry both through when present.
+    for opt in ("source", "source_type"):
+        if opt in df.columns:
+            keep.append(opt)
     log.info("Loaded %d panel rows across %d quarters",
              len(df), df["quarter"].nunique())
     return df[keep]

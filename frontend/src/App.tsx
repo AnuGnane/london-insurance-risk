@@ -56,9 +56,17 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const areaParam = params.get('area');
     const filterParam = params.get('filter') as ColorMode | null;
+    const validFilters = [
+      'vehicle_crime',
+      'road_casualties',
+      'deprivation',
+      'population_density',
+      'traffic_per_capita',
+      'ksi_collisions_per_billion_vehicle_miles',
+    ];
     if (
       filterParam &&
-      ['vehicle_crime', 'road_casualties', 'deprivation', 'population_density'].includes(filterParam)
+      validFilters.includes(filterParam)
     ) {
       setColorMode(filterParam);
     }

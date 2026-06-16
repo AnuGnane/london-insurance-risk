@@ -7,6 +7,8 @@ export const COMPONENT_KEYS = [
   'road_casualties',
   'deprivation',
   'population_density',
+  'traffic_per_capita',
+  'ksi_collisions_per_billion_vehicle_miles',
 ] as const;
 
 export const COMPONENT_LABELS: Record<string, string> = {
@@ -14,6 +16,8 @@ export const COMPONENT_LABELS: Record<string, string> = {
   road_casualties: 'Road casualties',
   deprivation: 'Deprivation (IMD)',
   population_density: 'Population density',
+  traffic_per_capita: 'Traffic exposure',
+  ksi_collisions_per_billion_vehicle_miles: 'KSI collisions / traffic',
 };
 
 /** Format a GBP figure with thousands separators, e.g. 1180 -> "£1,180". */
@@ -162,4 +166,3 @@ export function dominantDriver(
   }
   return best;
 }
-
