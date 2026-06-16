@@ -96,10 +96,11 @@ stays an ingested, displayed map layer.
 
 | Metric | Value |
 |--------|------:|
-| Panel R² | 0.889 |
-| CV-R² (ridge, 5-fold) | 0.872 |
-| Leave-one-area-out MAE | £112 |
-| Spearman (predicted vs actual premium) | 0.892 |
+| Panel R² | 0.909 |
+| CV-R² (ridge, 5-fold) | 0.889 |
+| Leave-one-area-out MAE | £108 |
+| Temporal hold-out MAE | £80 |
+| Spearman rank | 0.974 |
 | Premium range (all GB) | ~£113 – £1,687 |
 
 Feature importance (standardised): population density ≈ 0.76, deprivation ≈ 0.13, vehicle crime ≈

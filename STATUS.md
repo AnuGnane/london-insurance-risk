@@ -28,9 +28,10 @@ as a map layer. Scotland is fully priced (crime ingested from statistics.gov.sco
 | Module | Status | Notes |
 |--------|--------|-------|
 | `src/calibrate/wtw_index.py` | ✓ Done | Loads 137-row WTW panel; name aliases for variant column names |
-| `src/calibrate/calibrate.py` | ✓ Done | Percentile-basis OLS + quarter FE + ridge CV + LOAO + temporal back-test; config-driven feature set |
+| `src/calibrate/calibrate.py` | ✓ Done | Relative-index model + place/composition split + ridge CV + LOAO + temporal |
 
-**Results:** n=94 (22 areas, E+W), Panel R²=0.889, CV-R²=0.872, LOAO MAE £112, Spearman(pred,actual)=0.892.
+**Results:** n=95, Panel R²=0.909, CV-R²=0.889, LOAO MAE £108, temporal MAE £80, Spearman 0.974.
+**Variance Decomposition:** Place-only R²=0.871, Composition-only R²=0.876 (heavily collinear).
 Premium range all GB ≈ £113–£1,687, no nulls. Importance: density ≈0.76, deprivation ≈0.13, crime ≈0.11.
 
 ### API

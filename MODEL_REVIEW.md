@@ -271,8 +271,8 @@ Resolved with the user:
 
 ## 9. Resolution log (2026-06-16)
 
-All three P0 items are **done**. New headline numbers: Panel R²=0.889, CV-R²=0.872, LOAO MAE £112,
-Spearman(predicted, actual premium)=0.892; premium range across all GB ≈ £113–£1,687, **0 nulls**.
+All three P0 items are **done**. New headline numbers: Panel R²=0.909, CV-R²=0.889, LOAO MAE £108,
+Spearman(predicted, actual premium)=0.974; premium range across all GB ≈ £113–£1,687, **0 nulls**.
 
 | Item | Issue (§) | Resolution |
 |------|-----------|------------|
