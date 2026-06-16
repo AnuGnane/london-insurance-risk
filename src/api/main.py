@@ -95,16 +95,23 @@ def clean_postcode(pc: str) -> str:
     return re.sub(r"\s+", "", str(pc)).upper()
 
 
-def estimate_premium(row, coefs: dict) -> int:
+def estimate_premium(row, coefs: dict) -> int | None:
     """Linear premium estimate from calibration coefficients. Works for a
-    pandas Series or a dict row."""
+    pandas Series or a dict row.
+
+    Returns None if ANY model feature is missing for this row (e.g. Scotland has
+    no vehicle_crime). Skipping the term silently would invent a too-low premium
+    on an E+W-fit intercept; reporting "no estimate" is the honest behaviour and
+    matches the baked calibrated_premium (NaN). Once a feature is ingested for
+    that nation, the estimate appears automatically."""
     est = float(coefs.get("const", 0.0))
     for col, coef in coefs.items():
         if col == "const":
             continue
         val = row.get(col)
-        if val is not None and pd.notna(val):
-            est += float(coef) * float(val)
+        if val is None or pd.isna(val):
+            return None
+        est += float(coef) * float(val)
     return round(est)
 
 

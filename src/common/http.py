@@ -25,11 +25,13 @@ def get_with_retry(
     retries: int = 5,
     backoff: float = 2.0,
     stream: bool = False,
+    headers: dict | None = None,
 ) -> requests.Response:
     """GET with exponential backoff on transient HTTP/network errors."""
     for attempt in range(retries):
         try:
-            resp = requests.get(url, params=params, timeout=timeout, stream=stream)
+            resp = requests.get(url, params=params, timeout=timeout, stream=stream,
+                                 headers=headers)
             if resp.status_code in RETRY_STATUS:
                 raise requests.exceptions.HTTPError(str(resp.status_code), response=resp)
             resp.raise_for_status()

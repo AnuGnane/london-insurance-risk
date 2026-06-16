@@ -40,7 +40,27 @@ from src.common.io import LSOA_RISK_PARQUET, WTW_ANCHORS, interim, processed
 log = logging.getLogger(__name__)
 
 REPORTS_DIR = ROOT / "reports"
-FEATURE_COLS = list(settings["risk_index"]["weights"].keys())
+
+# Every risk-index component (used for the expert-vs-backfit weight comparison).
+ALL_FEATURES = list(settings["risk_index"]["weights"].keys())
+
+# The PREMIUM model fits on a configurable subset, measured on a configurable
+# basis. Percentile basis (the `{f}_pct` columns baked by build_risk_index) is
+# bounded to 0–100, so per-LSOA premiums can't blow up the way raw-unit features
+# do on outlier areas (MODEL_REVIEW.md §3.2). road_casualties is excluded by
+# config — it's insignificant and wrong-signed at the coarse panel grain — but is
+# still ingested and shown as a map driver. FEATURE_COLS is the list of actual
+# column names fed to the regression (e.g. "vehicle_crime_pct").
+_CALIB = settings.get("calibration", {})
+FEATURE_BASIS = _CALIB.get("feature_basis", "raw")
+_PREMIUM_BASE = _CALIB.get("premium_features", ALL_FEATURES)
+_BASIS_SUFFIX = "_pct" if FEATURE_BASIS == "percentile" else ""
+FEATURE_COLS = [f"{f}{_BASIS_SUFFIX}" for f in _PREMIUM_BASE]
+
+
+def _base_name(col: str) -> str:
+    """'vehicle_crime_pct' -> 'vehicle_crime' (strip the basis suffix for display)."""
+    return col[: -len(_BASIS_SUFFIX)] if _BASIS_SUFFIX and col.endswith(_BASIS_SUFFIX) else col
 
 # Curated WTW region -> GB postcode areas. Only regions we can define with
 # confidence and that have complete model features (E+W) are included. Scottish
@@ -241,6 +261,8 @@ def fit_calibration(matched: pd.DataFrame) -> dict:
         "n_matched": n,
         "n_areas": int(matched["area_name"].nunique()),
         "n_quarters": len(quarters),
+        "feature_basis": FEATURE_BASIS,
+        "premium_features": FEATURE_COLS,
         "grain_counts": {str(k): int(v) for k, v in matched["grain"].value_counts().items()},
         **_panel_ols(matched),
         "ridge_cv": _ridge_cv(matched, qidx),
@@ -292,6 +314,8 @@ def _write_report(results: dict) -> Path:
             f"(n={tb['n_predictions']})" if tb["mae_gbp"] is not None
             else "- Temporal back-test MAE: n/a",
             f"- Spearman(risk_index, premium): **{sp['rho']:.3f}** (p={sp['p_value']:.3g})",
+            f"- Premium feature basis: **{results.get('feature_basis', 'raw')}** "
+            f"(features: {', '.join(results.get('premium_features', []))})",
             "",
             "## Coefficient sign checks", "",
             "| Feature | Coefficient | p-value | Sensible (>0)? |",
@@ -305,12 +329,18 @@ def _write_report(results: dict) -> Path:
                   "| Feature | Expert | Back-fit |", "|---|---|---|"]
         expert = settings["risk_index"]["weights"]
         for c, bfw in results["backfit_weights"].items():
-            lines.append(f"| {c} | {expert.get(c, 0):.2f} | {bfw:.2f} |")
+            base = _base_name(c)
+            lines.append(f"| {base} | {expert.get(base, 0):.2f} | {bfw:.2f} |")
         lines += ["", "## Full OLS summary", "", "```", results["ols_summary"], "```", "",
                   "## Caveats", "",
                   "- WTW publishes at region / postcode-area / town grain — coarser than LSOA.",
-                  "- Scottish region/town rows are dropped (no Scottish vehicle_crime); NI and",
-                  "  ambiguous regions are skipped. See the log for exact counts.",
+                  f"- Premium fit on the **{results.get('feature_basis', 'raw')}** feature basis. "
+                  "Percentile (0–100) bounds per-LSOA extrapolation; raw units overshoot on outlier",
+                  "  areas (commercial LSOAs with tiny resident denominators, single-block density).",
+                  "- road_casualties is excluded from the premium (insignificant + wrong-signed at this",
+                  "  grain); it remains an ingested, displayed map driver.",
+                  "- Scottish rows are dropped while Scotland lacks vehicle_crime; NI and ambiguous",
+                  "  regions are skipped. See the log for exact counts.",
                   "- Coefficients feed a per-area premium estimate, not a precise quote."]
 
     md = REPORTS_DIR / "calibration.md"

@@ -136,7 +136,7 @@ function App() {
         lsoa11cd: data.lsoa11cd,
         risk_index: data.risk_index,
         quintile: data.quintile,
-        calibrated_premium: data.calibrated_premium_estimate,
+        calibrated_premium: data.calibrated_premium_estimate ?? undefined,
         wtw_anchor_premium: data.wtw_anchor_premium,
         postcode_area: data.postcode_area,
         components: Object.entries(data.components ?? {}).map(([key, c]) => ({

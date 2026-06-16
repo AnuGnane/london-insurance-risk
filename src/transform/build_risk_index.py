@@ -31,8 +31,15 @@ from src.common.io import LSOA_FEATURES, LSOA_RISK_PARQUET, interim, processed, 
 log = logging.getLogger(__name__)
 
 
-def normalise(s: pd.Series, method: str) -> pd.Series:
-    """Scale a feature to 0-100 by the chosen method."""
+def normalise(s: pd.Series, method: str, groups: pd.Series | None = None) -> pd.Series:
+    """Scale a feature to 0-100 by the chosen method.
+
+    If ``groups`` is given, normalise WITHIN each group (used for vehicle crime,
+    where England+Wales and Scotland come from different sources on
+    incomparable scales — only the within-nation ordering is meaningful, exactly
+    as for deprivation)."""
+    if groups is not None:
+        return s.groupby(groups).transform(lambda x: normalise(x, method))
     if method == "percentile":
         return s.rank(pct=True) * 100
     if method == "minmax":
@@ -40,6 +47,18 @@ def normalise(s: pd.Series, method: str) -> pd.Series:
     if method == "zscore":
         return (s - s.mean()) / s.std(ddof=0)
     raise ValueError(f"unknown normalisation: {method}")
+
+
+# Features measured by nation-specific sources on incomparable scales → ranked
+# within nation-group before use. Maps nation -> comparability group.
+_CRIME_SOURCE_GROUP = {"england": "ew", "wales": "ew", "scotland": "scotland"}
+
+
+def _crime_groups(features: pd.DataFrame) -> pd.Series | None:
+    """Comparability groups for vehicle_crime, or None if no nation column."""
+    if "nation" not in features.columns:
+        return None
+    return features["nation"].map(_CRIME_SOURCE_GROUP).fillna("other")
 
 
 def composite(features: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
@@ -52,7 +71,11 @@ def composite(features: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
     the weighted average sum(norm*w)/sum(w).
     """
     method = settings["risk_index"]["normalisation"]
-    norm = pd.DataFrame({col: normalise(features[col], method) for col in weights})
+    cg = _crime_groups(features)
+    norm = pd.DataFrame({
+        col: normalise(features[col], method, cg if col == "vehicle_crime" else None)
+        for col in weights
+    })
     w = pd.Series(weights, dtype=float)
     weighted_sum = (norm * w).sum(axis=1)            # NaNs skipped by pandas
     weight_total = (norm.notna() * w).sum(axis=1)    # only present features count
@@ -69,10 +92,13 @@ def enrich_components(features: pd.DataFrame, weights: dict[str, float]) -> list
     map click shows the same numbers as a postcode search)."""
     method = settings["risk_index"]["normalisation"]
     total_weight = sum(weights.values()) or 1.0
+    cg = _crime_groups(features)
     comps = [c for c in weights if c in features.columns]
     for c in comps:
         w = weights[c]
-        pct = features[c].rank(pct=True) * 100
+        # vehicle_crime is ranked within nation-group (E+W vs Scotland) — the two
+        # come from different sources on incomparable scales (see normalise()).
+        pct = normalise(features[c], "percentile", cg if c == "vehicle_crime" else None)
         features[f"{c}_val"] = features[c].round(2)
         features[f"{c}_pct"] = pct.round(1)
         # Contribution in points-of-the-index. These sum to risk_index under
