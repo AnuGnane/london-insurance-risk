@@ -30,7 +30,13 @@ as a map layer. Scotland is fully priced (crime ingested from statistics.gov.sco
 | `src/calibrate/wtw_index.py` | ✓ Done | Loads 137-row WTW panel; name aliases for variant column names |
 | `src/calibrate/calibrate.py` | ✓ Done | Relative-index model + place/composition split + ridge CV + LOAO + temporal |
 
-**Results:** n=95, Panel R²=0.909, CV-R²=0.889, LOAO MAE £108, temporal MAE £80, Spearman 0.974.
+**Results (Phase 1 — relative-index model):** n=95 (23 areas, E+W). Response = log(area premium ÷
+national avg). Panel R²=0.909, CV-R²=0.889, LOAO MAE £108, Spearman(pred,actual)=0.974. Place-only
+R²=0.87, composition-only R²=0.88 (heavily collinear). Per area: full premium, place-only (demographics
+at national mean), composition uplift. New ingest `src/ingest/census_demographics.py` (Census 2021
+age + car ownership, E+W; Scotland deferred to Phase 2). Significance: `reports/feature_analysis.md`
+(young-driver share strongest independent predictor; density mostly collinear, VIF 13). **Caveat:**
+validation holds at postcode-area grain; individual-LSOA predictions are noisier.
 **Variance Decomposition:** Place-only R²=0.871, Composition-only R²=0.876 (heavily collinear).
 Premium range all GB ≈ £113–£1,687, no nulls. Importance: density ≈0.76, deprivation ≈0.13, crime ≈0.11.
 
