@@ -1,13 +1,15 @@
-"""Ingest DfT STATS19 road collision data.
+"""Ingest DfT STATS19 road collision data for Great Britain.
 
 Source : DfT Road Safety Data (data.gov.uk)
          https://data.dft.gov.uk/road-accidents-safety-data/
-Grain  : collision points; the collision table includes
-         `lsoa_of_accident_location` so aggregation to LSOA works WITHOUT a
-         spatial join for most rows.
+Grain  : collision points. The collision table's `lsoa_of_accident_location` is
+         populated for England & Wales only; Scotland rows carry '-1'. We assign
+         those (and any other unassigned rows) an area_code via a point-in-polygon
+         spatial join to area_boundaries, so Scotland Data Zones get casualties.
+         (STATS19 excludes Northern Ireland — deferred.)
 Out    : data/interim/collisions.parquet
-         columns: accident_index, lsoa11cd, severity_label, severity_weight,
-                  year, latitude, longitude
+         columns: accident_index, area_code, lsoa11cd, severity_label,
+                  severity_weight, year, latitude, longitude
 Vintage: Years per config.data_years.stats19_years.
 
 Notes:
@@ -18,15 +20,20 @@ from __future__ import annotations
 
 import io
 import logging
-from pathlib import Path
 
+import geopandas as gpd
 import pandas as pd
 import requests
 
 from src.common.config import settings
+from src.common.geo import WORKING_CRS
 from src.common.io import interim, raw, write_parquet
 
 log = logging.getLogger(__name__)
+
+# Plausible GB lat/long bounds — used to drop protected/placeholder coordinates
+# (DfT uses -1 for missing) before the spatial join.
+GB_BOUNDS = {"lat": (49.0, 61.5), "long": (-9.0, 2.5)}
 
 # DfT publishes collision CSVs at predictable URLs per year.
 # The URL pattern changed over the years; these are the current ones.
@@ -141,17 +148,41 @@ def parse_collisions(df: pd.DataFrame, year: int) -> pd.DataFrame:
     return result
 
 
-def _filter_to_london(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep only collisions in London LSOAs."""
-    london_path = interim("london_lsoa_list.csv")
-    if london_path.exists() and "lsoa11cd" in df.columns:
-        london_lsoas = set(pd.read_csv(london_path)["lsoa11cd"])
-        before = len(df)
-        df = df[df["lsoa11cd"].isin(london_lsoas)].copy()
-        log.info("Filtered %d → %d London collisions", before, len(df))
-    else:
-        log.warning("Cannot filter to London — keeping all collisions")
-    return df
+def _assign_area_codes(df: pd.DataFrame) -> pd.DataFrame:
+    """Resolve each collision to an area_code in the configured footprint.
+
+    E+W rows use the DfT LSOA directly; rows without a valid E/W LSOA (Scotland,
+    or E+W with a missing code) are matched by point-in-polygon to area_boundaries.
+    """
+    boundaries = gpd.read_parquet(interim("area_boundaries.parquet"))[
+        ["area_code", "geometry"]
+    ]
+    valid_areas = set(boundaries["area_code"])
+
+    has_lsoa = df["lsoa11cd"].str.startswith(("E", "W"), na=False)
+    ew = df[has_lsoa].copy()
+    ew["area_code"] = ew["lsoa11cd"]
+    ew = ew[ew["area_code"].isin(valid_areas)]  # restrict E+W to footprint
+
+    rest = df[~has_lsoa].copy()
+    rest = rest[
+        rest["latitude"].between(*GB_BOUNDS["lat"])
+        & rest["longitude"].between(*GB_BOUNDS["long"])
+    ]
+    joined = pd.DataFrame()
+    if not rest.empty:
+        pts = gpd.GeoDataFrame(
+            rest,
+            geometry=gpd.points_from_xy(rest["longitude"], rest["latitude"]),
+            crs="EPSG:4326",
+        ).to_crs(WORKING_CRS)
+        joined = gpd.sjoin(pts, boundaries, how="inner", predicate="within")
+        joined = pd.DataFrame(joined.drop(columns=["geometry", "index_right"]))
+        log.info("Spatial-joined %d unassigned collisions to areas", len(joined))
+
+    out = pd.concat([ew, joined], ignore_index=True)
+    out["lsoa11cd"] = out["area_code"]  # unified alias (Scotland gets its DZ code)
+    return out
 
 
 def run() -> None:
@@ -172,10 +203,8 @@ def run() -> None:
         return
 
     combined = pd.concat(frames, ignore_index=True)
-    combined = _filter_to_london(combined)
-
-    # Drop rows without LSOA or severity
-    combined = combined.dropna(subset=["lsoa11cd", "severity_weight"])
+    combined = combined.dropna(subset=["severity_weight"])
+    combined = _assign_area_codes(combined)
 
     dest = interim("collisions.parquet")
     write_parquet(combined, dest)

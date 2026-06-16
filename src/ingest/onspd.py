@@ -1,22 +1,26 @@
-"""Ingest the ONS National Statistics Postcode Lookup (NSPL) → postcode → LSOA.
+"""Ingest the ONS Postcode Directory (ONSPD) → postcode → small area.
 
-Source : ONS Open Geography Portal — NSPL (lighter than full ONSPD)
+Source : ONS Open Geography Portal — ONSPD (carries the 2011 small-area code)
 Grain  : one row per postcode
 Out    : data/interim/postcode_lookup.parquet
-         columns: pcd7, lsoa11cd, lat, long, postcode_district, postcode_area
+         columns: pcd7, pcd8, area_code, lsoa11cd, lat, long,
+                  postcode_district, postcode_area
 
-Powers the postcode search in the API. Filtered to London LSOAs to keep it small.
+Powers the postcode search in the API. Filtered to the configured footprint by
+keeping only postcodes whose small area appears in area_boundaries.parquet.
 
 Notes:
-  - The NSPL is available as a ZIP (~70 MB) from the ONS geoportal.
-  - We only need pcd7, lsoa11, lat, long from the main data CSV.
-  - The NSPL ZIP may be very large; we download and extract only once.
+  - The ONSPD `lsoa11cd` column is a UNIFIED GB small-area code: it holds the
+    LSOA in England & Wales and the Data Zone ('S01…') in Scotland, so it maps
+    directly to area_boundaries.area_code. (NI SOAs '9…', Channel Islands 'L…'
+    and Isle of Man 'M…' also appear but fall outside GB and are dropped.)
+  - The ONSPD ZIP is large (~235 MB) and the extracted CSV ~1.4 GB / 2.7M rows;
+    we download/extract once and read only the columns we need.
 """
 from __future__ import annotations
 
 import logging
 import zipfile
-from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
@@ -93,52 +97,54 @@ def _download_nspl() -> Path:
 
 
 def parse_nspl(csv_path: Path) -> pd.DataFrame:
-    """Read the NSPL CSV, select key columns, and clean.
+    """Read the ONSPD CSV, select key columns, and clean.
 
-    Pure function for testability (operates on a file path).
+    Reads only the needed columns (the full file is ~1.4 GB / 2.7M rows). Pure
+    function for testability (operates on a file path).
     """
-    # Read with low_memory=False to avoid mixed-type warnings
-    df = pd.read_csv(csv_path, low_memory=False)
+    # Discover which source columns are present (header only).
+    header = pd.read_csv(csv_path, nrows=0)
+    present = {c.strip().lower() for c in header.columns}
+    wanted = [c for c in NSPL_KEEP_COLS if c in present]
+    if "lsoa11cd" not in wanted and "lsoa11" not in wanted:
+        # tolerate variant names like 'lsoa11nm'/'lsoa11_code'
+        wanted += [c for c in present if "lsoa11" in c][:1]
 
-    # Normalise column names to lowercase
+    df = pd.read_csv(
+        csv_path,
+        usecols=lambda c: c.strip().lower() in set(wanted),
+        low_memory=False,
+    )
     df.columns = [c.strip().lower() for c in df.columns]
+    df = df.rename(columns={k: v for k, v in NSPL_KEEP_COLS.items() if k in df.columns})
 
-    # Select the columns we need
-    available = {orig: new for orig, new in NSPL_KEEP_COLS.items() if orig in df.columns}
-    if "lsoa11" not in available:
-        # Try alternative column names
-        for col in df.columns:
-            if "lsoa11" in col:
-                available[col] = "lsoa11cd"
-                break
-
-    df = df[list(available.keys())].rename(columns=available)
-
-    # Drop rows without an LSOA code
+    # Drop rows without a small-area code, then expose it as area_code (the
+    # unified GB key) while keeping lsoa11cd for backward compatibility.
     df = df.dropna(subset=["lsoa11cd"])
+    df["area_code"] = df["lsoa11cd"]
 
-    # Convert lat/long to numeric
-    if "lat" in df.columns:
-        df["lat"] = pd.to_numeric(df["lat"], errors="coerce")
-    if "long" in df.columns:
-        df["long"] = pd.to_numeric(df["long"], errors="coerce")
+    for col in ("lat", "long"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     return df
 
 
-def _filter_to_london(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep only postcodes in London LSOAs."""
-    london_path = interim("london_lsoa_list.csv")
-    if london_path.exists():
-        london_lsoas = set(pd.read_csv(london_path)["lsoa11cd"])
-        before = len(df)
-        df = df[df["lsoa11cd"].isin(london_lsoas)].copy()
-        log.info("Filtered %d → %d London postcodes", before, len(df))
-    else:
-        log.warning(
-            "london_lsoa_list.csv not found — run boundaries ingest first. "
-            "Keeping all postcodes."
+def _filter_to_footprint(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep only postcodes whose small area is in the configured footprint.
+
+    Filters against area_boundaries.parquet (which already reflects the footprint),
+    which also drops out-of-GB postcodes (NI, Channel Islands, Isle of Man).
+    """
+    bpath = interim("area_boundaries.parquet")
+    if not bpath.exists():
+        raise FileNotFoundError(
+            "area_boundaries.parquet not found — run boundaries ingest first."
         )
+    areas = set(pd.read_parquet(bpath, columns=["area_code"])["area_code"])
+    before = len(df)
+    df = df[df["area_code"].isin(areas)].copy()
+    log.info("Filtered %d → %d postcodes within footprint", before, len(df))
     return df
 
 
@@ -156,7 +162,7 @@ def run() -> None:
 
     csv_path = _download_nspl()
     df = parse_nspl(csv_path)
-    df = _filter_to_london(df)
+    df = _filter_to_footprint(df)
     df = _add_postcode_helpers(df)
 
     dest = interim("postcode_lookup.parquet")

@@ -43,10 +43,20 @@ def normalise(s: pd.Series, method: str) -> pd.Series:
 
 
 def composite(features: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
-    """Weighted sum of normalised feature columns → risk_index."""
+    """Weighted mean of normalised feature columns → risk_index.
+
+    Reweights per row over the features that are present, so an area missing a
+    feature (e.g. Scotland has no vehicle_crime) is scored from its remaining
+    features with their weights renormalised — rather than scoring NaN or
+    silently treating the gap as zero. With all features present this is exactly
+    the weighted average sum(norm*w)/sum(w).
+    """
     method = settings["risk_index"]["normalisation"]
-    score = sum(normalise(features[col], method) * w for col, w in weights.items())
-    return score / sum(weights.values())
+    norm = pd.DataFrame({col: normalise(features[col], method) for col in weights})
+    w = pd.Series(weights, dtype=float)
+    weighted_sum = (norm * w).sum(axis=1)            # NaNs skipped by pandas
+    weight_total = (norm.notna() * w).sum(axis=1)    # only present features count
+    return weighted_sum / weight_total.replace(0, pd.NA)
 
 
 def bucket(score: pd.Series, n_buckets: int) -> pd.Series:
@@ -129,19 +139,20 @@ def run() -> None:
     comps = enrich_components(features, weights)
     add_calibrated_premium(features)
 
-    # 5. Boundaries: needed for geometry, and a source of LSOA names
-    boundary_path = interim("lsoa_boundaries.parquet")
+    # 5. Boundaries: needed for geometry, and a source of area names
+    boundary_path = interim("area_boundaries.parquet")
     boundaries = None
     if boundary_path.exists():
         boundaries = gpd.read_parquet(boundary_path)
         name_col = next(
-            (c for c in ["lsoa11nm", "LSOA11NM", "lsoa21nm", "name"] if c in boundaries.columns),
+            (c for c in ["area_name", "lsoa11nm", "LSOA11NM", "lsoa21nm", "name"]
+             if c in boundaries.columns),
             None,
         )
         if name_col:
             features = features.merge(
-                boundaries[["lsoa11cd", name_col]].rename(columns={name_col: "lsoa_name"}),
-                on="lsoa11cd",
+                boundaries[["area_code", name_col]].rename(columns={name_col: "lsoa_name"}),
+                on="area_code",
                 how="left",
             )
 
@@ -158,13 +169,13 @@ def run() -> None:
         )
         return
 
-    geo = boundaries[["lsoa11cd", "geometry"]].copy()
+    geo = boundaries[["area_code", "geometry"]].copy()
     # Simplify in EPSG:27700 (metres) to shrink the payload, then reproject.
     geo["geometry"] = geo["geometry"].simplify(15)
-    gdf = gpd.GeoDataFrame(geo.merge(features, on="lsoa11cd", how="inner"), geometry="geometry")
+    gdf = gpd.GeoDataFrame(geo.merge(features, on="area_code", how="inner"), geometry="geometry")
     gdf = gdf.to_crs("EPSG:4326")
 
-    keep = ["lsoa11cd", "risk_index", "quintile"]
+    keep = ["area_code", "lsoa11cd", "risk_index", "quintile"]
     if "lsoa_name" in gdf.columns:
         keep.append("lsoa_name")
     if "calibrated_premium" in gdf.columns:

@@ -1,25 +1,26 @@
-"""M2: combine all ingested sources into one LSOA feature table.
+"""M2: combine all ingested sources into one small-area feature table.
 
-In  : data/interim/{vehicle_crime,collisions,imd,lsoa_boundaries}.parquet
+In  : data/interim/{vehicle_crime,collisions,deprivation,area_boundaries}.parquet
 Out : data/interim/lsoa_features.parquet
-      columns (one row per LSOA):
-        lsoa11cd,
+      columns (one row per area):
+        area_code, lsoa11cd (alias), nation, population,
         vehicle_crime  — vehicle-crime incidents per 1k population per year
+                         (NaN for Scotland: data.police.uk has no Scottish crime)
         road_casualties — severity-weighted collisions per 1k population per year
-        deprivation — IMD overall score (higher = more deprived)
+        deprivation — within-nation deprivation percentile (0–1, higher = worse)
         population_density — persons per km²
 
-Approach:
-  - Counts that already carry `lsoa11cd` (crime via spatial snap, collisions via
-    lsoa_of_accident_location) → group-by.
-  - Rates need denominators (population from IMD, area from boundaries).
-  - Use duckdb for the group-by joins where beneficial.
+Missing-feature handling:
+  vehicle_crime is genuinely 0 for an E+W area with no recorded crime, but
+  MISSING (NaN) for Scotland where the source has no coverage. We distinguish the
+  two by nation so build_risk_index can reweight Scotland around the gap rather
+  than treating it as a crime-free area.
 """
 from __future__ import annotations
 
 import logging
 
-import duckdb
+import geopandas as gpd
 import pandas as pd
 
 from src.common.config import settings
@@ -27,176 +28,119 @@ from src.common.io import LSOA_FEATURES, interim, write_parquet
 
 log = logging.getLogger(__name__)
 
+# Nations covered by data.police.uk (vehicle crime). Others get NaN, not 0.
+CRIME_NATIONS = {"england", "wales"}
+
 
 def _load_parquet(name: str) -> pd.DataFrame:
-    """Load an interim parquet file, raising clearly if missing."""
     path = interim(name)
     if not path.exists():
-        raise FileNotFoundError(
-            f"Missing {path} — run the relevant ingest step first."
-        )
+        raise FileNotFoundError(f"Missing {path} — run the relevant ingest step first.")
     return pd.read_parquet(path)
 
 
 def _load_boundaries() -> pd.DataFrame:
-    """Load LSOA boundaries (tabular columns only, no geometry)."""
-    import geopandas as gpd
-
-    path = interim("lsoa_boundaries.parquet")
+    """Area code, nation and area_km2 (tabular only, no geometry)."""
+    path = interim("area_boundaries.parquet")
     if not path.exists():
         raise FileNotFoundError(
             f"Missing {path} — run `python -m src.ingest.boundaries` first."
         )
     gdf = gpd.read_parquet(path)
-    return gdf[["lsoa11cd", "area_km2"]].copy()
+    return pd.DataFrame(gdf[["area_code", "nation", "area_km2"]])
 
 
-def compute_vehicle_crime_rate(
-    crime: pd.DataFrame,
-    population: pd.DataFrame,
-    months_back: int,
-) -> pd.DataFrame:
-    """Compute vehicle-crime rate per 1k population per year.
-
-    Pure function for testability.
-
-    Parameters
-    ----------
-    crime : DataFrame with lsoa11cd column (one row per incident)
-    population : DataFrame with lsoa11cd, population columns
-    months_back : number of months of crime data
-    """
-    # Count incidents per LSOA
+def compute_vehicle_crime_rate(crime: pd.DataFrame, population: pd.DataFrame,
+                               months_back: int) -> pd.DataFrame:
+    """Vehicle-crime incidents per 1k population per year. Pure function."""
     counts = (
-        crime.groupby("lsoa11cd", as_index=False)
-        .size()
+        crime.groupby("area_code", as_index=False).size()
         .rename(columns={"size": "vehicle_crime_count"})
     )
-
-    # Join population
-    merged = counts.merge(population, on="lsoa11cd", how="left")
-
-    # Rate per 1k per year
+    merged = counts.merge(population, on="area_code", how="left")
     years_covered = months_back / 12
     merged["vehicle_crime"] = (
-        merged["vehicle_crime_count"]
-        / merged["population"].clip(lower=1)
-        * 1000
-        / years_covered
+        merged["vehicle_crime_count"] / merged["population"].clip(lower=1)
+        * 1000 / years_covered
     )
-    return merged[["lsoa11cd", "vehicle_crime_count", "vehicle_crime"]]
+    return merged[["area_code", "vehicle_crime_count", "vehicle_crime"]]
 
 
-def compute_casualty_rate(
-    collisions: pd.DataFrame,
-    population: pd.DataFrame,
-    years: list[int],
-) -> pd.DataFrame:
-    """Compute severity-weighted casualty rate per 1k population per year.
-
-    Pure function for testability.
-    """
-    # Weighted sum per LSOA
-    weighted = (
-        collisions.groupby("lsoa11cd", as_index=False)
-        .agg(
-            casualty_weighted=("severity_weight", "sum"),
-            collision_count=("severity_weight", "count"),
-        )
+def compute_casualty_rate(collisions: pd.DataFrame, population: pd.DataFrame,
+                          years: list[int]) -> pd.DataFrame:
+    """Severity-weighted casualties per 1k population per year. Pure function."""
+    weighted = collisions.groupby("area_code", as_index=False).agg(
+        casualty_weighted=("severity_weight", "sum"),
+        collision_count=("severity_weight", "count"),
     )
-
-    # Join population
-    merged = weighted.merge(population, on="lsoa11cd", how="left")
-
-    # Rate per 1k per year
-    n_years = len(years)
+    merged = weighted.merge(population, on="area_code", how="left")
     merged["road_casualties"] = (
-        merged["casualty_weighted"]
-        / merged["population"].clip(lower=1)
-        * 1000
-        / max(n_years, 1)
+        merged["casualty_weighted"] / merged["population"].clip(lower=1)
+        * 1000 / max(len(years), 1)
     )
-    return merged[["lsoa11cd", "casualty_weighted", "collision_count", "road_casualties"]]
+    return merged[["area_code", "casualty_weighted", "collision_count", "road_casualties"]]
 
 
-def compute_population_density(
-    population: pd.DataFrame,
-    boundaries: pd.DataFrame,
-) -> pd.DataFrame:
-    """Compute population density (persons per km²).
-
-    Pure function for testability.
-    """
-    merged = population.merge(boundaries, on="lsoa11cd", how="left")
+def compute_population_density(population: pd.DataFrame,
+                              boundaries: pd.DataFrame) -> pd.DataFrame:
+    """Persons per km². Pure function."""
+    merged = population.merge(boundaries, on="area_code", how="left")
     merged["population_density"] = (
         merged["population"] / merged["area_km2"].clip(lower=0.001)
     )
-    return merged[["lsoa11cd", "population_density"]]
+    return merged[["area_code", "population_density"]]
 
 
 def run() -> None:
     log.info("Aggregating sources → %s", interim(LSOA_FEATURES))
 
-    # Load sources
     boundaries = _load_boundaries()
-    imd = _load_parquet("imd.parquet")
+    dep = _load_parquet("deprivation.parquet")
     crime = _load_parquet("vehicle_crime.parquet")
     collisions = _load_parquet("collisions.parquet")
 
-    # Population from IMD File 7
-    pop = imd[["lsoa11cd", "population"]].copy()
+    pop = dep[["area_code", "population"]].copy()
 
-    # 1. Vehicle crime rate
     months_back = settings["data_years"]["crime_months_back"]
     crime_rate = compute_vehicle_crime_rate(crime, pop, months_back)
-
-    # 2. Casualty rate
-    years = settings["data_years"]["stats19_years"]
-    casualty_rate = compute_casualty_rate(collisions, pop, years)
-
-    # 3. Deprivation (already at LSOA grain)
-    deprivation = imd[["lsoa11cd", "imd_score"]].rename(
-        columns={"imd_score": "deprivation"}
+    casualty_rate = compute_casualty_rate(collisions, pop, settings["data_years"]["stats19_years"])
+    pop_density = compute_population_density(pop, boundaries)
+    deprivation = dep[["area_code", "deprivation_pct"]].rename(
+        columns={"deprivation_pct": "deprivation"}
     )
 
-    # 4. Population density
-    pop_density = compute_population_density(pop, boundaries)
+    # Master area list (one row per area, carries nation for the crime fill).
+    features = (
+        boundaries.merge(pop, on="area_code", how="left")
+        .merge(crime_rate, on="area_code", how="left")
+        .merge(casualty_rate, on="area_code", how="left")
+        .merge(deprivation, on="area_code", how="left")
+        .merge(pop_density, on="area_code", how="left")
+    )
 
-    # Join all features on lsoa11cd using duckdb for speed
-    conn = duckdb.connect()
-    conn.register("crime_rate", crime_rate)
-    conn.register("casualty_rate", casualty_rate)
-    conn.register("deprivation", deprivation)
-    conn.register("pop_density", pop_density)
-    conn.register("pop", pop)
+    # Collisions cover all GB, so a missing rate is a true zero everywhere.
+    for col in ("road_casualties", "casualty_weighted", "collision_count"):
+        features[col] = features[col].fillna(0)
+    # Vehicle crime: 0 for E+W areas with no recorded crime, but NaN (missing)
+    # for nations the source doesn't cover (Scotland) so they get reweighted.
+    covered = features["nation"].isin(CRIME_NATIONS)
+    features.loc[covered, "vehicle_crime"] = features.loc[covered, "vehicle_crime"].fillna(0)
+    features.loc[covered, "vehicle_crime_count"] = (
+        features.loc[covered, "vehicle_crime_count"].fillna(0)
+    )
 
-    features = conn.execute("""
-        SELECT
-            p.lsoa11cd,
-            p.population,
-            COALESCE(cr.vehicle_crime, 0) AS vehicle_crime,
-            COALESCE(cr.vehicle_crime_count, 0) AS vehicle_crime_count,
-            COALESCE(cas.road_casualties, 0) AS road_casualties,
-            COALESCE(cas.casualty_weighted, 0) AS casualty_weighted,
-            COALESCE(cas.collision_count, 0) AS collision_count,
-            COALESCE(dep.deprivation, 0) AS deprivation,
-            COALESCE(pd.population_density, 0) AS population_density
-        FROM pop p
-        LEFT JOIN crime_rate cr ON p.lsoa11cd = cr.lsoa11cd
-        LEFT JOIN casualty_rate cas ON p.lsoa11cd = cas.lsoa11cd
-        LEFT JOIN deprivation dep ON p.lsoa11cd = dep.lsoa11cd
-        LEFT JOIN pop_density pd ON p.lsoa11cd = pd.lsoa11cd
-        ORDER BY p.lsoa11cd
-    """).df()
-
-    conn.close()
+    features["lsoa11cd"] = features["area_code"]  # backward-compat alias
+    features = features.sort_values("area_code").reset_index(drop=True)
 
     log.info("Feature table: %d rows × %d cols", *features.shape)
-    log.info("Feature summary:\n%s", features.describe().to_string())
+    log.info("vehicle_crime NaN (expected = Scotland): %d",
+             int(features["vehicle_crime"].isna().sum()))
+    log.info("Feature summary:\n%s",
+             features[["vehicle_crime", "road_casualties", "deprivation",
+                       "population_density"]].describe().to_string())
 
-    dest = interim(LSOA_FEATURES)
-    write_parquet(features, dest)
-    log.info("Wrote feature table to %s", dest)
+    write_parquet(features, interim(LSOA_FEATURES))
+    log.info("Wrote feature table to %s", interim(LSOA_FEATURES))
 
 
 if __name__ == "__main__":
