@@ -27,4 +27,36 @@ def path(key: str) -> Path:
     return ROOT / cfg["paths"][key]
 
 
+def geography() -> dict:
+    """Shortcut to the geography block."""
+    return load_config()["geography"]
+
+
+# Footprint presets that imply a fixed nation set, overriding the explicit
+# `nations` list. Anything else ("gb", "uk", custom) falls back to that list.
+_FOOTPRINT_NATIONS = {
+    "london": ["england"],
+    "england": ["england"],
+    "england_wales": ["england", "wales"],
+}
+
+
+def active_nations() -> list[str]:
+    """Nations in scope for the current footprint.
+
+    "london"/"england"/"england_wales" imply a fixed subset; "gb"/"uk"/custom
+    use the explicit `geography.nations` list (NI deferred — see config.yaml).
+    """
+    geo = geography()
+    fp = geo.get("footprint", "gb")
+    if fp in _FOOTPRINT_NATIONS:
+        return list(_FOOTPRINT_NATIONS[fp])
+    return list(geo.get("nations", ["england", "wales", "scotland"]))
+
+
+def is_london_footprint() -> bool:
+    """True only for the legacy London-only path (filters + london_lsoa_list.csv)."""
+    return geography().get("footprint") == "london"
+
+
 settings = load_config()

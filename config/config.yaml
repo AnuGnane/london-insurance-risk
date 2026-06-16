@@ -4,16 +4,18 @@ project:
   crs_display: "EPSG:4326"      # WGS84 — use only for GeoJSON / map output
 
 geography:
-  footprint: "uk"               # "uk" | "england" | "england_wales" | "london"
+  footprint: "gb"               # "gb" | "uk" | "england" | "england_wales" | "london"
   region_code: "E12000007"      # London region (GSS code) — used when footprint=london
   unit: "LSOA"                  # modelling + display unit (LSOA in E+W, DZ in S, SOA in NI)
   lsoa_vintage: "2011"          # matches IMD 2019; Scotland DZ also 2011
   bbox_wgs84: [-8.65, 49.86, 1.77, 60.86]   # UK bbox (was London-only)
+  # NI deferred: data.police.uk has no NI crime and STATS19 excludes NI, so an NI
+  # area would carry only 2 of 4 features. Add northern_ireland here once an NI
+  # crime/collision source is wired (see implementation_plan.md "Defer NI").
   nations:
     - england
     - wales
     - scotland
-    - northern_ireland
 
 data_years:
   crime_months_back: 36         # was 12; 36 smooths seasonality (E+W only via data.police.uk)
