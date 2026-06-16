@@ -1,56 +1,61 @@
-"""Ingest 'vehicle-crime' incidents from data.police.uk bulk CSV archive.
+"""Ingest 'vehicle-crime' incidents from the data.police.uk bulk CSV archive.
 
-Source   : https://data.police.uk/data/  (bulk CSV download)
-           Forces: Metropolitan Police Service + City of London Police
-Grain    : point (anonymised/snapped lat,long); each CSV row has LSOA code
+Source   : https://policeuk-data.s3.amazonaws.com/archive/{latest}.zip
+           One archive holds the last ~36 months for ALL England & Wales forces
+           (plus BTP). data.police.uk does NOT cover Scotland or NI, so vehicle
+           crime is an England+Wales feature only — Scotland is left missing and
+           the risk index reweights around it (see build_risk_index).
+Grain    : point (anonymised/snapped lat,long); each CSV row carries an LSOA code
 Out      : data/interim/vehicle_crime.parquet
-           columns: month, lsoa11cd, lsoa_name, latitude, longitude, outcome
-Vintage  : Latest 24 months (configurable via crime_months_back)
+           columns: month, area_code, lsoa11cd, lsoa_name, latitude, longitude, outcome
+Vintage  : latest `crime_months_back` months (config; default 36).
 
 Notes:
-  - The bulk archive is a ZIP containing per-force/per-month CSVs.
-  - Each CSV already has 'LSOA code' and 'LSOA name' — no spatial join needed.
-  - We filter to Crime type == 'Vehicle crime'.
-  - Raw ZIPs are cached under data/raw/police/ so reruns don't re-download.
+  - Each per-month archive on S3 is itself a 36-month rolling window for every
+    force, so we download ONE archive (the latest) rather than one per month.
+  - Each CSV already has 'LSOA code'/'LSOA name' — no spatial join needed.
+  - We keep only E/W LSOAs: BTP rows can reference other nations, but police.uk
+    has no general Scottish/NI crime, so including stray transport-police rows
+    would give those nations a misleadingly tiny crime count.
+  - The raw archive ZIP is cached under data/raw/police/ so reruns don't redownload.
 """
 from __future__ import annotations
 
-import io
 import logging
-import time
 import zipfile
 from pathlib import Path
 
 import pandas as pd
-import requests
 
 from src.common.config import settings
+from src.common.http import get_with_retry
 from src.common.io import interim, raw, write_parquet
 
 log = logging.getLogger(__name__)
 
 CATEGORY = "vehicle-crime"
 POLICE_API = settings["sources"]["police_api"]
+ARCHIVE_URL = "https://policeuk-data.s3.amazonaws.com/archive/{month}.zip"
 
-# London police forces
-FORCES = ["metropolitan", "city-of-london"]
+CLEAN_RENAME = {
+    "LSOA code": "area_code",
+    "LSOA name": "lsoa_name",
+    "Month": "month",
+    "Latitude": "latitude",
+    "Longitude": "longitude",
+    "Last outcome category": "outcome",
+}
+OUT_COLS = ["month", "area_code", "lsoa11cd", "lsoa_name", "latitude", "longitude", "outcome"]
 
 
 def _get_latest_date() -> str:
-    """Ask the police.uk API for the latest available data month.
-
-    Returns YYYY-MM string.
-    """
-    resp = requests.get(f"{POLICE_API}/crime-last-updated", timeout=30)
-    resp.raise_for_status()
-    return resp.json()["date"]
+    """Latest available data month from the police.uk API, as 'YYYY-MM'."""
+    resp = get_with_retry(f"{POLICE_API}/crime-last-updated", timeout=30)
+    return resp.json()["date"][:7]
 
 
 def _month_range(latest: str, months_back: int) -> list[str]:
-    """Generate a list of YYYY-MM strings going back `months_back` months.
-
-    `latest` may be 'YYYY-MM' or 'YYYY-MM-DD' (the API returns the latter).
-    """
+    """List of YYYY-MM strings going back `months_back` months from `latest`."""
     parts = latest.split("-")
     year, month = int(parts[0]), int(parts[1])
     result = []
@@ -58,177 +63,73 @@ def _month_range(latest: str, months_back: int) -> list[str]:
         result.append(f"{year:04d}-{month:02d}")
         month -= 1
         if month == 0:
-            month = 12
-            year -= 1
+            month, year = 12, year - 1
     return result
 
 
-def _download_force_month(force: str, month: str) -> pd.DataFrame | None:
-    """Download a single force+month CSV from the police.uk API.
-
-    Uses the street-level crimes endpoint with force-wide data.
-    Caches raw JSON under data/raw/police/.
-    """
+def _load_archive(latest: str) -> Path:
+    """Download (once) and cache the latest bulk archive ZIP; return its path."""
     cache_dir = raw("police")
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / f"{force}_{month}_vehicle-crime.csv"
-
-    if cache_file.exists():
-        log.debug("Cache hit: %s", cache_file)
-        return pd.read_csv(cache_file)
-
-    # Use the crimes-no-location + crimes-at-location endpoints, or
-    # the simpler /crimes-street/vehicle-crime?force=&date= approach
-    url = f"{POLICE_API}/crimes-no-location"
-    params = {"category": "vehicle-crime", "force": force, "date": month}
-
-    try:
-        resp = requests.get(url, params=params, timeout=60)
-        if resp.status_code == 429:
-            log.warning("Rate limited on %s/%s — waiting 30s", force, month)
-            time.sleep(30)
-            resp = requests.get(url, params=params, timeout=60)
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        log.warning("Failed to fetch %s/%s: %s", force, month, e)
-        return None
-
-    data = resp.json()
-    if not data:
-        return None
-
-    df = pd.json_normalize(data)
-    df.to_csv(cache_file, index=False)
-    return df
+    zip_path = cache_dir / f"{latest}.zip"
+    if zip_path.exists():
+        log.info("Using cached police archive %s", zip_path)
+        return zip_path
+    url = ARCHIVE_URL.format(month=latest)
+    log.info("Downloading police archive %s", url)
+    resp = get_with_retry(url, timeout=600, stream=True)
+    zip_path.write_bytes(resp.content)
+    log.info("Cached archive to %s (%.0f MB)", zip_path, zip_path.stat().st_size / 1e6)
+    return zip_path
 
 
-def _download_all_crime_data(months: list[str]) -> pd.DataFrame:
-    """Download vehicle crime for all London forces across all months.
-
-    Downloads the bulk ZIP for each month, extracts the relevant force CSVs,
-    and caches them.
-    """
+def _extract_vehicle_crime(zip_path: Path, months: set[str]) -> pd.DataFrame:
+    """Read every force/month street CSV in `months` and keep vehicle crime."""
     frames: list[pd.DataFrame] = []
-    cache_dir = raw("police")
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    for month in months:
-        for force in FORCES:
-            cache_file = cache_dir / f"{force}_{month}.csv"
-            if cache_file.exists():
-                log.debug("Cache hit: %s", cache_file.name)
-                df = pd.read_csv(cache_file)
-                frames.append(df)
-                continue
-
-            # If cache is missing, we need to download the zip for the month
-            zip_url = f"https://policeuk-data.s3.amazonaws.com/archive/{month}.zip"
-            zip_cache = cache_dir / f"{month}.zip"
-            
-            if not zip_cache.exists():
-                log.info("Downloading bulk archive for %s", month)
-                try:
-                    resp = requests.get(zip_url, timeout=120, stream=True)
-                    resp.raise_for_status()
-                    zip_cache.write_bytes(resp.content)
-                except requests.RequestException as e:
-                    log.warning("Failed to fetch archive for %s: %s", month, e)
-                    continue
-            
-            # Extract the specific force CSV from the ZIP
-            try:
-                with zipfile.ZipFile(zip_cache) as zf:
-                    csv_name = f"{month}/{month}-{force}-street.csv"
-                    if csv_name in zf.namelist():
-                        with zf.open(csv_name) as f:
-                            df = pd.read_csv(f)
-                            # Filter to vehicle crime
-                            if "Crime type" in df.columns:
-                                df = df[df["Crime type"] == "Vehicle crime"]
-                            
-                            df["force"] = force
-                            df["query_month"] = month
-                            df.to_csv(cache_file, index=False)
-                            frames.append(df)
-                    else:
-                        log.warning("CSV %s not found in %s zip", csv_name, month)
-            except zipfile.BadZipFile:
-                log.warning("Bad ZIP file for %s", month)
-
+    with zipfile.ZipFile(zip_path) as zf:
+        street_csvs = [
+            n for n in zf.namelist()
+            if n.endswith("-street.csv") and n.split("/")[0] in months
+        ]
+        log.info("Reading %d street CSVs across %d months", len(street_csvs), len(months))
+        for name in street_csvs:
+            with zf.open(name) as f:
+                df = pd.read_csv(f, usecols=lambda c: c in CLEAN_RENAME or c == "Crime type")
+            df = df[df["Crime type"] == "Vehicle crime"]
+            if not df.empty:
+                frames.append(df.drop(columns=["Crime type"]))
     if not frames:
-        log.error("No crime data fetched at all!")
+        log.error("No vehicle-crime rows found in archive!")
         return pd.DataFrame()
-
     return pd.concat(frames, ignore_index=True)
 
 
 def clean_crime_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Standardise column names and filter to records with LSOA codes.
-
-    Pure function for testability.
-    """
-    # The API returns nested JSON; after json_normalize the columns vary.
-    # Standardise common patterns.
-    rename_map = {}
-    for col in df.columns:
-        lower = col.lower().replace(" ", "_")
-        if "lsoa_code" in lower or col == "location.street.lsoa_code":
-            rename_map[col] = "lsoa11cd"
-        elif "lsoa_name" in lower or col == "location.street.lsoa_name":
-            rename_map[col] = "lsoa_name"
-        elif col == "month":
-            rename_map[col] = "month"
-        elif col == "location.latitude":
-            rename_map[col] = "latitude"
-        elif col == "location.longitude":
-            rename_map[col] = "longitude"
-        elif "outcome_status.category" in col:
-            rename_map[col] = "outcome"
-
-    df = df.rename(columns=rename_map)
-
-    # Keep only rows with an LSOA code
-    if "lsoa11cd" in df.columns:
-        df = df.dropna(subset=["lsoa11cd"])
-        df = df[df["lsoa11cd"].str.startswith("E", na=False)]
-    else:
-        log.warning("No LSOA code column found in crime data")
-
-    # Select output columns
-    out_cols = ["month", "lsoa11cd", "lsoa_name", "latitude", "longitude", "outcome"]
-    available = [c for c in out_cols if c in df.columns]
-    return df[available].copy()
-
-
-def _filter_to_london(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep only crimes in London LSOAs."""
-    london_path = interim("london_lsoa_list.csv")
-    if london_path.exists() and "lsoa11cd" in df.columns:
-        london_lsoas = set(pd.read_csv(london_path)["lsoa11cd"])
-        before = len(df)
-        df = df[df["lsoa11cd"].isin(london_lsoas)].copy()
-        log.info("Filtered %d → %d London crimes", before, len(df))
-    return df
+    """Standardise columns and keep E/W rows with an LSOA code. Pure function."""
+    if df.empty:
+        return df
+    df = df.rename(columns=CLEAN_RENAME)
+    df = df.dropna(subset=["area_code"])
+    # police.uk covers England + Wales only; drop anything else (incl. BTP strays).
+    df = df[df["area_code"].str.startswith(("E", "W"))].copy()
+    df["lsoa11cd"] = df["area_code"]  # backward-compat alias
+    return df[[c for c in OUT_COLS if c in df.columns]]
 
 
 def run() -> None:
     months_back = settings["data_years"]["crime_months_back"]
-
-    # Discover latest available month
     latest = _get_latest_date()
-    log.info("Latest police.uk data: %s", latest)
+    months = set(_month_range(latest, months_back))
+    log.info("Latest police.uk month %s; fetching %d months of %s",
+             latest, len(months), CATEGORY)
 
-    months = _month_range(latest, months_back)
-    log.info("Fetching %d months of %s: %s .. %s", len(months), CATEGORY, months[-1], months[0])
-
-    df = _download_all_crime_data(months)
+    zip_path = _load_archive(latest)
+    df = _extract_vehicle_crime(zip_path, months)
     if df.empty:
         log.error("No crime data — aborting")
         return
 
     df = clean_crime_data(df)
-    df = _filter_to_london(df)
-
     dest = interim("vehicle_crime.parquet")
     write_parquet(df, dest)
     log.info("Wrote %d vehicle-crime rows to %s", len(df), dest)
