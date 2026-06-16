@@ -40,3 +40,5 @@ make test
 ## Build order
 Follow milestones M1 → M6 in `PLAN.md`. Don't start the API/map (M5) until the risk + calibration outputs
 (M3/M4) exist and the form factor is confirmed.
+
+## Imported Claude Cowork project instructions

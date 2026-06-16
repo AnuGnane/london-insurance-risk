@@ -8,16 +8,21 @@ effect "independent of age" (see NEXT_PHASE_DESIGN.md §2).
 Sources (England & Wales, Census 2021, via Nomis bulk CSV):
   - TS007A "Age by five-year age bands"   (NM_2020_1)  -> young_driver_share
   - TS045  "Car or van availability"      (NM_2063_1)  -> cars_per_household
-Scotland (Census 2022) is added in a follow-up (see _fetch_scotland).
+Sources (Scotland, Census 2022, via UK Data Service CSV — see _fetch_scotland):
+  - UV103 "Age by single year"            -> young_driver_share (exact 17-24)
+  - UV405 "Car or van availability"       -> cars_per_household
+  Crucially these Scottish tables are published on **2011 Data Zones** (the model's
+  keys), so NO 2022<->2011 crosswalk is needed; they merge directly.
 
-Grain : LSOA 2021 (E+W). NOTE the boundary vintage: Census 2021 is on 2021 LSOAs,
-        while the model keys on 2011 LSOAs (area_code). The ~93% of codes that are
-        unchanged merge directly; the remainder are left NaN and the index reweights
-        (a 2011<->2021 best-fit lookup is a documented refinement).
+Grain : LSOA 2021 (E+W) / Data Zone 2011 (Scotland). NOTE the E+W boundary vintage:
+        Census 2021 is on 2021 LSOAs while the model keys on 2011 LSOAs (area_code);
+        the ~93% of unchanged codes merge directly, the remainder are left NaN and
+        the index reweights (a 2011<->2021 best-fit lookup is a documented refinement).
 Out   : data/interim/demographics.parquet
         columns: area_code, nation, young_driver_share, cars_per_household
-Approx: 17-24 share uses a uniform-within-band split of the 15-19 band
-        (ages 17,18,19 ≈ 3/5 of 15-19). Robust enough for a percentile-ranked control.
+Approx: E+W 17-24 share uses a uniform-within-band split of the 15-19 band
+        (ages 17,18,19 ≈ 3/5 of 15-19); Scotland uses exact single-year counts.
+        Both robust for a percentile-ranked control. Cars cap at 3+ in both nations.
 """
 from __future__ import annotations
 
@@ -26,6 +31,7 @@ import logging
 
 import pandas as pd
 
+from src.common.config import settings
 from src.common.http import get_with_retry
 from src.common.io import interim, write_parquet
 
@@ -117,18 +123,120 @@ def _nation_of(area_code: str) -> str:
     return {"E": "england", "W": "wales", "S": "scotland"}.get(area_code[:1], "other")
 
 
+# --- Scotland (Census 2022, UK Data Service, on 2011 Data Zones) ---------------
+
+def _age_label_to_year(label: str) -> int | None:
+    """Parse a UV103 single-year age label to an int ('Under 1'->0, '100 and over'
+    ->100, 'All people'->None). Pure."""
+    s = str(label).strip()
+    if s == "All people":
+        return None
+    low = s.lower()
+    if low.startswith("under 1"):
+        return 0
+    if "100" in s:
+        return 100
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
+
+# Scotland UV405 car-band labels -> car count, capped at 3+ to match the E+W TS045
+# "3 or more" weighting (so cars_per_household is comparable across the border).
+_SCOT_CAR_WEIGHT = {
+    "No cars or vans": 0, "One car or van": 1, "Two cars or vans": 2,
+    "Three cars or vans": 3, "Four or more cars or vans": 3,
+}
+
+
+def scotland_young_driver_share(age_long: pd.DataFrame) -> pd.DataFrame:
+    """From the long UV103 table (dz, age, count) -> young_driver_share per Data Zone
+    (exact ages 17-24 over the 17+ adult population). Pure."""
+    df = age_long.copy()
+    df["yr"] = df["age"].map(_age_label_to_year)
+    df = df[df["yr"].notna()]
+    g = df.groupby("dz").apply(
+        lambda d: pd.Series({
+            "young": d.loc[d["yr"].between(17, 24), "count"].sum(),
+            "adult": d.loc[d["yr"] >= 17, "count"].sum(),
+        }),
+        include_groups=False,
+    ).reset_index()
+    g["young_driver_share"] = g["young"] / g["adult"].where(g["adult"] > 0)
+    return g.rename(columns={"dz": "area_code"})[["area_code", "young_driver_share"]]
+
+
+def scotland_cars_per_household(car_long: pd.DataFrame) -> pd.DataFrame:
+    """From the long UV405 table (dz, cars, count) -> cars_per_household per Data
+    Zone (3+ capped to match E+W). Pure."""
+    df = car_long.copy()
+    df["lab"] = df["cars"].str.replace(
+        "Number of cars or vans in household: ", "", regex=False)
+    df = df[df["lab"] != "All occupied households"].copy()
+    df["w"] = df["lab"].map(_SCOT_CAR_WEIGHT)
+    df = df.dropna(subset=["w"])
+    g = df.groupby("dz").apply(
+        lambda d: pd.Series({
+            "cars": (d["w"] * d["count"]).sum(), "hh": d["count"].sum()}),
+        include_groups=False,
+    ).reset_index()
+    g["cars_per_household"] = g["cars"] / g["hh"].where(g["hh"] > 0)
+    return g.rename(columns={"dz": "area_code"})[["area_code", "cars_per_household"]]
+
+
+def _load_superweb(url: str, value_name: str) -> pd.DataFrame:
+    """Fetch a SuperWEB2 long-format census CSV and return a tidy frame with
+    columns [counting, dz, value_name, count], keeping only Data Zone (S01) rows.
+
+    These exports carry a title preamble, the data table (header starting with
+    "Counting"), then a footer of INFO/copyright lines — so we slice from the
+    header and keep only rows whose geography code is a 2011 Data Zone."""
+    resp = get_with_retry(url, timeout=180)
+    lines = resp.text.splitlines()
+    hdr = next(i for i, ln in enumerate(lines) if ln.startswith('"Counting"'))
+    df = pd.read_csv(io.StringIO("\n".join(lines[hdr:])))
+    df = df.loc[:, ~df.columns.str.startswith("Unnamed")]   # drop trailing empty col
+    df.columns = ["counting", "dz", value_name, "count"]
+    df = df[df["dz"].astype(str).str.startswith("S01")].copy()
+    df["count"] = pd.to_numeric(df["count"], errors="coerce")
+    return df
+
+
+def _fetch_scotland() -> pd.DataFrame:
+    """Scotland demographic controls (Census 2022, on 2011 Data Zones)."""
+    age = _load_superweb(settings["sources"]["scotland_census_age_csv"], "age")
+    cars = _load_superweb(settings["sources"]["scotland_census_cars_csv"], "cars")
+    young = scotland_young_driver_share(age)
+    cph = scotland_cars_per_household(cars)
+    return young.merge(cph, on="area_code", how="outer")
+
+
 def run() -> None:
-    log.info("Ingesting Census demographic controls (E+W)")
-    age = _ew_age()
-    cars = _ew_cars()
-    df = age.merge(cars, on="area_code", how="outer")
-    df["nation"] = df["area_code"].map(_nation_of)
-    df = df[df["nation"].isin(["england", "wales"])].reset_index(drop=True)
-    log.info("Demographics: %d E+W areas | young_driver_share median=%.3f | cars/hh median=%.2f",
-             len(df), df["young_driver_share"].median(), df["cars_per_household"].median())
-    write_parquet(df[["area_code", "nation", "young_driver_share", "cars_per_household"]],
-                  interim("demographics.parquet"))
-    log.info("Wrote %s", interim("demographics.parquet"))
+    log.info("Ingesting Census demographic controls (E+W Census 2021 + Scotland Census 2022)")
+    ew = _ew_age().merge(_ew_cars(), on="area_code", how="outer")
+    ew["nation"] = ew["area_code"].map(_nation_of)
+    ew = ew[ew["nation"].isin(["england", "wales"])]
+
+    try:
+        scot = _fetch_scotland()
+        scot["nation"] = "scotland"
+        log.info("Scotland demographics: %d Data Zones (Census 2022 on 2011 DZ)", len(scot))
+    except Exception as exc:  # noqa: BLE001 — Scotland is additive; never fail E+W on it
+        log.warning("Scotland demographics unavailable (%s) — proceeding E+W only", exc)
+        scot = pd.DataFrame(columns=["area_code", "young_driver_share",
+                                     "cars_per_household", "nation"])
+
+    df = pd.concat([ew, scot], ignore_index=True)
+    cols = ["area_code", "nation", "young_driver_share", "cars_per_household"]
+    for nation in ("england", "wales", "scotland"):
+        sub = df[df["nation"] == nation]
+        if len(sub):
+            log.info("  %-8s %6d areas | young_driver_share median=%.3f | cars/hh median=%.2f",
+                     nation, len(sub), sub["young_driver_share"].median(),
+                     sub["cars_per_household"].median())
+    write_parquet(df[cols].reset_index(drop=True), interim("demographics.parquet"))
+    log.info("Wrote %d areas to %s", len(df), interim("demographics.parquet"))
 
 
 if __name__ == "__main__":

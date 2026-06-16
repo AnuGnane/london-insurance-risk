@@ -57,28 +57,45 @@ This is schema prep with no behavioural change until a second source is added.
 
 ---
 
-### Task 3 — MoneySuperMarket / ABI second source ⏸ DEFERRED (needs real data)
+### Task 3 — MoneySuperMarket second source ✅ DONE
 
-Adding a genuinely independent second anchor requires **transcribing real
-published regional figures** from MSM/ABI reports. The panel is governed by a
-strict **no-invented-figures** rule (`wtw_anchors_notes.md` §Data integrity), so
-this cannot be fabricated. When the published figures are sourced:
-1. Append rows with `source=moneysupermarket` (+ `source_url`, `source_type`).
-2. Extend `REGION_POSTCODE_AREAS` / `NAME_ALIASES` for any new region names.
-3. The OLS picks up `C(source)` automatically; report cross-source **rank
-   correlation** (do sources agree on the spatial pattern?) — levels differ by
-   methodology and are absorbed by the source FE.
+Added MoneySuperMarket as an independent second anchor. MSM publishes only **broad
+nation/region** figures (not a Confused-style granular index), so the honest scope
+is a small set of clean whole-territory anchors used for cross-source corroboration:
+
+- **Real published figures** (MSM statistics page, policies sold April 2026 →
+  `2026-Q2`): **London £817.22, Scotland £451.48, Wales £406.95**. Added with
+  `source=moneysupermarket` (the no-invented-figures rule is respected — these are
+  published values, cited). MSM's coarser English GORs don't nest cleanly into
+  postcode areas, so they're omitted rather than approximated.
+- New whole-territory `REGION_POSTCODE_AREAS` keys (`London`, `Scotland`, `Wales`)
+  as clean postcode-area unions, distinct from the Confused regions.
+- `to_relative_index` now normalises **per source × quarter**, so MSM's lower price
+  *level* doesn't distort the index; the OLS adds `C(source)` automatically.
+- New **cross-source agreement** report section: the Confused-anchored model
+  predicts MSM's Scotland nearly exactly (£451 actual vs ~£435) and London highest;
+  Scotland/Wales near-tie flips within ~£18 (noise at n=3). Indicative, not powered.
+
+Result: matched obs 103 → 106, areas 27 → 30.
 
 ---
 
-### Task 4 — Scotland demographic controls ⏸ DEFERRED (boundary crosswalk)
+### Task 4 — Scotland demographic controls ✅ DONE (no crosswalk needed)
 
-Scotland's Census 2022 age + car-ownership are published on **2022 Data Zones**,
-but the model keys on **2011 Data Zones** (boundaries, SIMD, crime all 2011 DZ).
-A 2011↔2022 DZ crosswalk (areal/population apportionment) is needed before
-Scottish composition controls can be merged. Until then Scotland is priced
-place-only (full == place-only), which is honest and documented. This is the
-remaining half of Phase 2 and the natural next coding step.
+The original blocker — "Census 2022 is on 2022 Data Zones, model keys on 2011" —
+**dissolved on inspection**: NRS publishes the 2022 Census on **2011 Data Zones**
+too, hosted as CSV by the UK Data Service. No crosswalk required.
+
+- `src/ingest/census_demographics.py` gained `_fetch_scotland()`: parses the
+  SuperWEB2 long-format CSVs **UV103** (age by single year → exact 17–24 share, no
+  band approximation) and **UV405** (car/van availability → cars/household, 3+
+  capped to match E+W). Both keyed on 2011 Data Zone (S01…), merging directly.
+- Scotland composition coverage **0% → 99.9%** (6,976 Data Zones). Scotland's full
+  premium now differs from place-only for 99.7% of areas — real composition uplift
+  (median −£28: Scotland's young-driver share 0.096 sits just below the national
+  mean, so composition slightly *lowers* the median Scottish premium).
+- Demographic merge overall **81% → 97%**. URLs in `config.sources`. The ingest
+  no-ops gracefully (logs a warning, E+W proceeds) if the CSVs are unreachable.
 
 ---
 
@@ -94,6 +111,12 @@ remaining half of Phase 2 and the natural next coding step.
 1. ✅ Scotland represented in the calibration panel (≥ a few anchors) — no longer
    extrapolation-only. (8 Scottish obs across 4 regions.)
 2. ✅ Multi-source schema in place (`source` column + source FE path).
-3. ⏸ Second independent source pooled — deferred pending real published figures.
-4. ⏸ Scotland demographic controls — deferred pending 2011↔2022 DZ crosswalk.
-5. ✅ Extrapolation stays bounded; all tests pass; ruff clean.
+3. ✅ Second independent source (MoneySuperMarket) pooled with source FE + a
+   cross-source agreement report. (Coarse — broad nation/region only.)
+4. ✅ Scotland demographic controls merged (Census 2022 on 2011 DZ — no crosswalk).
+   Scotland now priced full place + composition like E+W.
+5. ✅ Extrapolation stays bounded; all tests pass (24); ruff clean.
+
+**Phase 2 complete.** Remaining future work is Phase 3 (traffic + collisions) and
+Phase 4 (flood). Optional later: ABI as a third source (national-only — no regional
+breakdown published, so limited value); MSM richer history if they publish it.

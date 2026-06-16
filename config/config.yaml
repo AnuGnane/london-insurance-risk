@@ -77,6 +77,11 @@ sources:
   # a motor vehicle" by council area, latest year, disaggregated to Data Zone by
   # population. Linked-data cube queried over SPARQL.
   scotland_crime_sparql: "https://statistics.gov.scot/sparql"
+  # Scotland Census 2022 demographic controls, published on 2011 Data Zones (so no
+  # 2022->2011 crosswalk is needed) and hosted as CSV by the UK Data Service.
+  # UV103 = age by single year; UV405 = car or van availability.
+  scotland_census_age_csv: "https://s3-eu-west-1.amazonaws.com/statistics.digitalresources.jisc.ac.uk/dkan/files/2022/NRS/UV103/census_2022_UV103_age_Data_Zone_2011.csv"
+  scotland_census_cars_csv: "https://s3-eu-west-1.amazonaws.com/statistics.digitalresources.jisc.ac.uk/dkan/files/2022/NRS/UV405/Census_2022_UV405_Car_or_van_availability_Data_Zone_2011.csv"
 
 paths:
   raw: "data/raw"

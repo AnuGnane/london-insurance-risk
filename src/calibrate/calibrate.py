@@ -111,6 +111,16 @@ REGION_POSTCODE_AREAS = {
     "East & North East Scotland": ["EH", "KY", "DD", "AB", "PH"],
     "Highlands & Islands": ["IV", "KW", "ZE", "HS"],
     "Scottish Borders": ["TD", "DG"],
+    # Whole-territory unions for the MoneySuperMarket second source (Phase 2), whose
+    # published figures are broad nation/region snapshots, not a granular index. Only
+    # the territories with an unambiguous postcode-area union are used (MSM's coarser
+    # English GORs don't nest cleanly into postcode areas and are omitted). Distinct
+    # keys from the Confused regions above so the two sources never collide.
+    "London": ["EC", "WC", "E", "N", "NW", "SE", "SW", "W",
+               "BR", "CR", "DA", "EN", "HA", "IG", "KT", "RM", "SM", "TW", "UB", "WD"],
+    "Scotland": ["G", "ML", "PA", "KA", "FK", "EH", "KY", "DD", "AB", "PH",
+                 "IV", "KW", "ZE", "HS", "TD", "DG"],
+    "Wales": ["CF", "NP", "SA", "LL", "LD", "SY"],
 }
 
 
@@ -125,20 +135,26 @@ def to_relative_index(panel: pd.DataFrame) -> pd.DataFrame:
     """Add `national_avg` and `premium_index` (= premium ÷ national avg) per quarter.
 
     The national average uses the panel's own 'national'-grain rows where present
-    (the published national figure); otherwise it falls back to the cross-row mean
-    for that quarter. Modelling the index isolates the *spatial* effect and removes
-    the national level/time trend (NEXT_PHASE_DESIGN.md §2.1). Pure function."""
+    (the published national figure); otherwise it falls back to the cross-row mean.
+    Normalisation is **per source × quarter** when more than one anchor source is
+    present, so a source with a different price *level* (e.g. MoneySuperMarket sits
+    well below Confused) doesn't distort another source's relative index — each
+    source is divided by its own national figure. Modelling the index isolates the
+    *spatial* effect and removes the national level/time trend
+    (NEXT_PHASE_DESIGN.md §2.1). Pure function."""
     panel = panel.copy()
-    if "grain" in panel.columns and (panel["grain"] == "national").any():
-        natl = panel[panel["grain"] == "national"].groupby("quarter")["avg_premium_gbp"].mean()
-        panel["national_avg"] = panel["quarter"].map(natl)
-        fallback = panel.groupby("quarter")["avg_premium_gbp"].transform("mean")
-        panel["national_avg"] = panel["national_avg"].fillna(fallback)
-    else:
-        panel["national_avg"] = panel.groupby("quarter")["avg_premium_gbp"].transform("mean")
-    panel["premium_index"] = panel["avg_premium_gbp"] / panel["national_avg"]
     if "source" not in panel.columns:
         panel["source"] = "confused"
+    keys = ["source", "quarter"] if panel["source"].nunique() > 1 else ["quarter"]
+    if "grain" in panel.columns and (panel["grain"] == "national").any():
+        natl = (panel[panel["grain"] == "national"]
+                .groupby(keys)["avg_premium_gbp"].mean().rename("national_avg"))
+        panel = panel.merge(natl, left_on=keys, right_index=True, how="left")
+        fallback = panel.groupby(keys)["avg_premium_gbp"].transform("mean")
+        panel["national_avg"] = panel["national_avg"].fillna(fallback)
+    else:
+        panel["national_avg"] = panel.groupby(keys)["avg_premium_gbp"].transform("mean")
+    panel["premium_index"] = panel["avg_premium_gbp"] / panel["national_avg"]
     return panel
 
 
@@ -427,6 +443,27 @@ def fit_calibration(matched: pd.DataFrame) -> dict:
     rho, p = spearmanr(pred_premium, matched["avg_premium_gbp"])
     results["spearman_pred_vs_actual"] = {"rho": float(rho), "p_value": float(p)}
 
+    # Cross-source agreement (Phase 2): for each non-primary anchor source (e.g.
+    # MoneySuperMarket), does the model's spatial ordering match that source's own
+    # published ordering? Independent confirmation that the spatial pattern isn't a
+    # Confused artefact. Small n for a coarse second source — indicative, not powered.
+    matched = matched.assign(_pred_premium=np.asarray(pred_premium))
+    sources = [s for s in matched["source"].unique() if s != "confused"]
+    cross = {}
+    for src in sources:
+        sub = matched[matched["source"] == src]
+        rows = [{"area_name": r["area_name"], "quarter": r["quarter"],
+                 "actual_gbp": round(float(r["avg_premium_gbp"])),
+                 "predicted_gbp": round(float(r["_pred_premium"]))}
+                for _, r in sub.iterrows()]
+        entry = {"n": int(len(sub)), "rows": rows}
+        if len(sub) >= 3 and sub["avg_premium_gbp"].nunique() > 1:
+            srho, sp = spearmanr(sub["_pred_premium"], sub["avg_premium_gbp"])
+            entry["spearman_pred_vs_actual"] = {"rho": float(srho), "p_value": float(sp)}
+        cross[src] = entry
+    if cross:
+        results["cross_source_agreement"] = cross
+
     # Back-fit importances from standardised coefficients (log-index space).
     Xs = StandardScaler().fit_transform(matched[FEATURE_COLS])
     std_coefs = pd.Series(
@@ -493,6 +530,21 @@ def _write_report(results: dict) -> Path:
                       "| Pair | Predicted premium ratio |", "|---|---|"]
             for s in sm_checks:
                 lines.append(f"| {s['pair']} | {s['predicted_ratio']}× |")
+        cross = results.get("cross_source_agreement", {})
+        if cross:
+            lines += ["", "## Cross-source agreement (independent 2nd anchor)", "",
+                      "Does the Confused-anchored model reproduce another source's spatial",
+                      "ordering? Levels differ by methodology (absorbed by the source fixed",
+                      "effect); we compare the *pattern*. Coarse 2nd source — indicative.", ""]
+            for src, e in cross.items():
+                rho = e.get("spearman_pred_vs_actual", {}).get("rho")
+                rho_s = f" · Spearman(pred, actual) = **{rho:.2f}**" if rho is not None else ""
+                lines += [f"**{src}** (n={e['n']}){rho_s}", "",
+                          "| Area | Quarter | Actual £ | Predicted £ |", "|---|---|---|---|"]
+                for r in e["rows"]:
+                    lines.append(f"| {r['area_name']} | {r['quarter']} | "
+                                 f"{r['actual_gbp']} | {r['predicted_gbp']} |")
+                lines.append("")
         lines += ["", "## Expert vs back-fit weights", "",
                   "| Feature | Expert | Back-fit |", "|---|---|---|"]
         expert = settings["risk_index"]["weights"]
@@ -507,8 +559,12 @@ def _write_report(results: dict) -> Path:
                   "  areas (commercial LSOAs with tiny resident denominators, single-block density).",
                   "- road_casualties is excluded from the premium (insignificant + wrong-signed at this",
                   "  grain); it remains an ingested, displayed map driver.",
-                  "- Scottish rows are dropped while Scotland lacks vehicle_crime; NI and ambiguous",
-                  "  regions are skipped. See the log for exact counts.",
+                  "- Scotland is now validated (Phase 2): the four Confused Scottish regions are",
+                  "  mapped (place-only — Scottish demographics held at the national mean). NI and",
+                  "  ambiguous English/Welsh regions are still skipped. See the log for counts.",
+                  "- A second anchor source (MoneySuperMarket) is pooled with a source fixed effect;",
+                  "  it publishes only broad nation/region figures, so it adds cross-source spatial",
+                  "  corroboration, not granular coverage.",
                   "- Coefficients feed a per-area premium estimate, not a precise quote."]
 
     md = REPORTS_DIR / "calibration.md"

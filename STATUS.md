@@ -2,14 +2,19 @@
 
 Last updated: 2026-06-16. Branch: `phase2-anchor-expansion`.
 
-**Phase 2 (anchor expansion):** Scotland is now **validated, not extrapolated** — the
-four Confused Scottish regions (Central Scotland, East & North East Scotland,
-Highlands & Islands, Scottish Borders) are mapped to postcode-area geography and
-enter the panel (matched obs 95→103, areas 23→27; LOAO MAE £108→£99.7; Scottish
-anchors fit ~£39 mean abs error, below the £73 overall). A brand-level `source`
-column + source fixed-effect path is in place for a future 2nd anchor. Deferred:
-MoneySuperMarket/ABI 2nd source (needs real published figures) and Scotland
-demographic controls (2011↔2022 Data Zone crosswalk). See `PHASE2_PLAN.md`.
+**Phase 2 (anchor expansion) — COMPLETE.** Three things landed (see `PHASE2_PLAN.md`):
+1. **Scotland validated, not extrapolated** — the four Confused Scottish regions are
+   mapped to postcode-area geography and enter the panel (matched obs 95→106, areas
+   23→30 incl. MSM).
+2. **MoneySuperMarket second source** — real published broad-region figures (London
+   £817, Scotland £451, Wales £407, April 2026) pooled with a source fixed effect +
+   a cross-source agreement check (the Confused-trained model predicts MSM's
+   Scotland nearly exactly). `to_relative_index` normalises per source×quarter.
+3. **Scotland demographic controls** — Census 2022 ingested on **2011 Data Zones**
+   (UK Data Service UV103 age + UV405 cars; no crosswalk needed). Scotland
+   composition coverage 0%→99.9%; Scotland is now priced full place + composition
+   like E+W (no longer place-only). Demographic merge overall 81%→97%.
+Current fit: R²=0.909, CV-R²=0.876, LOAO MAE £104, Spearman 0.967.
 
 **Model:** premium estimator. The calibrated **expected annual premium (£)** is the headline; the
 0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on
