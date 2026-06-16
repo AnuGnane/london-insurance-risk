@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
     STATE.clear()
 
 
-app = FastAPI(title="London Insurance Risk Map API", lifespan=lifespan)
+app = FastAPI(title="GB Insurance Risk Map API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -137,7 +137,7 @@ def get_geojson():
 def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
     pc_clean = clean_postcode(postcode)
     if STATE["postcodes"].empty or pc_clean not in STATE["postcodes"].index:
-        raise HTTPException(status_code=404, detail="Postcode not found or outside London")
+        raise HTTPException(status_code=404, detail="Postcode not found or outside Great Britain")
 
     pc_data = STATE["postcodes"].loc[pc_clean]
     if isinstance(pc_data, pd.DataFrame):

@@ -121,7 +121,7 @@ function App() {
       if (!res.ok) {
         throw new Error(
           res.status === 404
-            ? 'No match — that postcode is outside London or not recognised.'
+            ? 'No match — that postcode is outside Great Britain or not recognised.'
             : 'Something went wrong fetching that postcode.'
         );
       }

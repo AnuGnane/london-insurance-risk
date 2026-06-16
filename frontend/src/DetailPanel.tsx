@@ -114,7 +114,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         <div className="distribution-context">
           <div className="distribution-statement">
             Higher risk than{' '}
-            <strong>{Math.round(riskDist.percentileRank)}%</strong> of London
+            <strong>{Math.round(riskDist.percentileRank)}%</strong> of GB
             areas
           </div>
           <Sparkline bins={riskDist.bins} selectedBin={riskDist.selectedBin} />
@@ -127,7 +127,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div className="distribution-statement">
             {COMPONENT_LABELS[colorMode]}:{' '}
             <strong>{Math.round(driverDist.percentileRank)}th</strong>{' '}
-            percentile across London
+            percentile across GB
           </div>
           <Sparkline
             bins={driverDist.bins}

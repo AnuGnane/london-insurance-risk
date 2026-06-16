@@ -7,7 +7,7 @@ const DATA_SOURCES = [
     key: 'vehicle_crime',
     source: 'police.uk',
     description:
-      'Street-level vehicle crime reports from the Metropolitan and City of London police forces, aggregated per LSOA and normalised per 1,000 residents.',
+      'Street-level vehicle crime reports from all England and Wales police forces (data.police.uk), aggregated per LSOA and normalised per 1,000 residents. Scotland is excluded from this data source; those areas show no data and the index reweights accordingly.',
   },
   {
     key: 'road_casualties',
@@ -17,9 +17,9 @@ const DATA_SOURCES = [
   },
   {
     key: 'deprivation',
-    source: 'MHCLG IMD 2019',
+    source: 'IoD / WIMD / SIMD',
     description:
-      'The English Index of Multiple Deprivation overall score — a composite of income, employment, health, crime, housing, and environment sub-domains.',
+      'Deprivation score from each nation\'s own index (England IoD2019 · Wales WIMD2019 · Scotland SIMD2020v2), ranked within each nation separately before combining so the scales are comparable.',
   },
   {
     key: 'population_density',
@@ -46,8 +46,9 @@ export const AboutPanel: React.FC<AboutPanelProps> = () => {
         <div className="about-body">
           <p className="about-intro">
             This index is a <strong>territorial risk proxy</strong> — it ranks
-            London's 4,881 Lower Super Output Areas by factors that correlate
-            with motor insurance claims, using only public data. It is{' '}
+            Great Britain's 41,729 small areas (LSOAs in England & Wales,
+            Data Zones in Scotland) by factors that correlate with motor
+            insurance claims, using only public data. It is{' '}
             <strong>not an insurance quote</strong> and does not use individual
             driver or vehicle information.
           </p>
