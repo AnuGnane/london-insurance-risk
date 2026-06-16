@@ -95,15 +95,16 @@ def clean_postcode(pc: str) -> str:
     return re.sub(r"\s+", "", str(pc)).upper()
 
 
-def estimate_premium(row, coefs: dict) -> int | None:
-    """Linear premium estimate from calibration coefficients. Works for a
-    pandas Series or a dict row.
+def _num(x):
+    """NaN/NA -> None so the JSON response stays compliant."""
+    return float(x) if pd.notna(x) else None
 
-    Returns None if ANY model feature is missing for this row (e.g. Scotland has
-    no vehicle_crime). Skipping the term silently would invent a too-low premium
-    on an E+W-fit intercept; reporting "no estimate" is the honest behaviour and
-    matches the baked calibrated_premium (NaN). Once a feature is ingested for
-    that nation, the estimate appears automatically."""
+
+def _legacy_estimate_premium(row, coefs: dict) -> int | None:
+    """Deprecated linear estimator (pre-Phase-1). The premium is now a log
+    relative-index model, baked per-area by build_risk_index; endpoints read the
+    baked `calibrated_premium` column instead (guarantees live == map). Retained
+    only for reference."""
     est = float(coefs.get("const", 0.0))
     for col, coef in coefs.items():
         if col == "const":
@@ -160,16 +161,9 @@ def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
         raise HTTPException(status_code=404, detail="LSOA not found in risk table")
     row = rows.iloc[0]
 
-    coefs = STATE["calibration"].get("coefficients", {})
-
-    def _num(x):
-        """NaN -> None so the response is JSON-compliant (e.g. Scotland has no
-        vehicle_crime in some rows)."""
-        return float(x) if pd.notna(x) else None
-
-    # Components mirror the baked parquet: percentile + the £ that each driver
-    # adds to the premium estimate ({c}_contrib). Features not in the premium
-    # model (road_casualties) carry a £0 contribution but still show a percentile.
+    # Components mirror the baked parquet: percentile + the £ each factor adds to
+    # the premium vs a national-average area ({c}_contrib). Features not in the
+    # premium model (road_casualties) carry £0 but still show a percentile.
     components = {}
     for col in COMPONENT_COLS:
         if col not in row:
@@ -180,13 +174,18 @@ def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
             "contribution": _num(row[f"{col}_contrib"]) if f"{col}_contrib" in row else None,
         }
 
+    full = _num(row.get("calibrated_premium"))
+    place_only = _num(row.get("premium_place_only"))
     return {
         "postcode": pc_data.get("pcd8", pc_clean),
         "lsoa11cd": lsoa,
         "risk_index": float(row["risk_index"]),
         "quintile": int(row.get("quintile", row.get("risk_bucket", 0))),
         "components": components,
-        "calibrated_premium_estimate": estimate_premium(row, coefs),
+        "calibrated_premium_estimate": full,           # full (place + composition)
+        "premium_place_only": place_only,              # at national-average demographics
+        "composition_uplift": (round(full - place_only) if full is not None
+                               and place_only is not None else None),
         "postcode_area": postcode_area,
         "wtw_anchor_premium": STATE["anchors"].get(postcode_area),
     }
@@ -203,7 +202,6 @@ def get_rankings(
 
     has_name = "lsoa_name" in df.columns
     top = df.sort_values("risk_index", ascending=(order == "asc")).head(n)
-    coefs = STATE["calibration"].get("coefficients", {})
 
     results = []
     for _, row in top.iterrows():
@@ -212,7 +210,7 @@ def get_rankings(
             "name": row["lsoa_name"] if has_name and pd.notna(row.get("lsoa_name")) else row["lsoa11cd"],
             "risk_index": float(row["risk_index"]),
             "quintile": int(row.get("quintile", row.get("risk_bucket", 0))),
-            "calibrated_premium": estimate_premium(row, coefs),
+            "calibrated_premium": _num(row.get("calibrated_premium")),
         })
     return results
 

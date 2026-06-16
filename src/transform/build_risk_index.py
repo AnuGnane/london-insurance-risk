@@ -23,6 +23,7 @@ import json
 import logging
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from src.common.config import settings, ROOT
@@ -113,37 +114,60 @@ def enrich_components(features: pd.DataFrame, weights: dict[str, float]) -> list
     return comps
 
 
-def bake_premium_and_contributions(features: pd.DataFrame, comps: list[str]) -> dict:
-    """Bake calibrated_premium and per-driver £ contributions from the calibration
-    coefficients. Returns the coefficient dict (empty if not calibrated yet).
+MEDIAN_PCT = 50.0   # percentile of a "national-average" area for a given factor
 
-    Each premium feature's contribution is coef × {feature}_pct — the £ that
-    feature adds to the estimate; with the constant they sum to calibrated_premium.
-    Features not in the premium model (e.g. road_casualties) contribute £0."""
+
+def bake_premium_and_contributions(features: pd.DataFrame, comps: list[str]) -> dict:
+    """Bake the three premium numbers + per-driver £ contributions from the
+    calibration (a log relative-index model). Returns the coefficient dict.
+
+    premium £ = national_avg × exp(const + Σ coef × {feature}_pct).
+      - calibrated_premium     — full prediction (place + composition).
+      - premium_place_only     — composition controls held at the national mean
+        (pct=50): "what the area costs at national-average demographics".
+    Missing controls (e.g. Scotland's uningested demographics, or 2011/2021 LSOA
+    mismatches) are held at the national mean, so those areas equal place-only.
+    Per-driver contribution £ = full − (that feature held at the national mean):
+    the £ this factor adds versus a median area (multiplicative model → these are
+    interpretable deltas, not an exact additive split)."""
     calib_path = ROOT / "reports" / "calibration.json"
-    coefs = json.loads(calib_path.read_text()).get("coefficients", {}) if calib_path.exists() else {}
-    if not coefs:
-        log.info("No calibration coefficients yet — skipping premium + £ contributions. "
+    calib = json.loads(calib_path.read_text()) if calib_path.exists() else {}
+    coefs = calib.get("coefficients", {})
+    national_avg = calib.get("national_avg_latest")
+    if not coefs or national_avg is None:
+        log.info("No calibration (coefficients/national_avg) yet — skipping premium. "
                  "Run `make calibrate` then rebuild; risk_index falls back to the composite.")
         for c in comps:
             features[f"{c}_contrib"] = 0.0
         return {}
 
-    est = pd.Series(float(coefs.get("const", 0.0)), index=features.index)
+    composition_cols = set(calib.get("composition_features", []))
+    const = float(coefs["const"])
+    model_cols = [c for c in coefs if c != "const" and c in features.columns]
+
+    def predict(hold_at_median: set[str]) -> pd.Series:
+        z = pd.Series(const, index=features.index)
+        for col in model_cols:
+            vals = MEDIAN_PCT if col in hold_at_median else features[col].fillna(MEDIAN_PCT)
+            z = z + float(coefs[col]) * vals
+        return float(national_avg) * np.exp(z)
+
+    premium_full = predict(hold_at_median=set())
+    premium_place_only = predict(hold_at_median=composition_cols)
+    features["calibrated_premium"] = premium_full.round().astype("Int64")
+    features["premium_place_only"] = premium_place_only.round().astype("Int64")
+
     priced: set[str] = set()
-    for col, coef in coefs.items():
-        if col == "const" or col not in features.columns:
-            continue
-        est = est + float(coef) * features[col]
-        base = col[:-4] if col.endswith("_pct") else col   # vehicle_crime_pct -> vehicle_crime
-        features[f"{base}_contrib"] = (float(coef) * features[col]).round(2)
+    for col in model_cols:
+        base = col[:-4] if col.endswith("_pct") else col
+        features[f"{base}_contrib"] = (premium_full - predict({col})).round(2)
         priced.add(base)
-    features["calibrated_premium"] = est.round().astype("Int64")
-    for c in comps:                                  # non-premium drivers contribute £0
+    for c in comps:                                  # features not in the model contribute £0
         if c not in priced:
             features[f"{c}_contrib"] = 0.0
-    log.info("Baked calibrated_premium + £ contributions from %d coefficients (priced: %s)",
-             len(coefs), ", ".join(sorted(priced)))
+    log.info("Baked premium (full £%.0f–£%.0f, place-only £%.0f–£%.0f) from %d coefficients",
+             premium_full.min(), premium_full.max(),
+             premium_place_only.min(), premium_place_only.max(), len(coefs))
     return coefs
 
 
@@ -226,6 +250,8 @@ def run() -> None:
         keep.append("lsoa_name")
     if "calibrated_premium" in gdf.columns:
         keep.append("calibrated_premium")
+    if "premium_place_only" in gdf.columns:
+        keep.append("premium_place_only")
     for c in comps:
         keep += [f"{c}_val", f"{c}_pct", f"{c}_contrib"]
 

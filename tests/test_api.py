@@ -38,6 +38,9 @@ def test_risk():
                 assert "quintile" in data
                 assert "components" in data
                 assert "calibrated_premium_estimate" in data
+                # Phase 1: place/composition split exposed
+                assert "premium_place_only" in data
+                assert "composition_uplift" in data
 
 def test_geojson():
     with TestClient(app) as client:
