@@ -1,6 +1,15 @@
 # Project Status
 
-Last updated: 2026-06-16. Branch: `uk-expansion`.
+Last updated: 2026-06-16. Branch: `phase2-anchor-expansion`.
+
+**Phase 2 (anchor expansion):** Scotland is now **validated, not extrapolated** — the
+four Confused Scottish regions (Central Scotland, East & North East Scotland,
+Highlands & Islands, Scottish Borders) are mapped to postcode-area geography and
+enter the panel (matched obs 95→103, areas 23→27; LOAO MAE £108→£99.7; Scottish
+anchors fit ~£39 mean abs error, below the £73 overall). A brand-level `source`
+column + source fixed-effect path is in place for a future 2nd anchor. Deferred:
+MoneySuperMarket/ABI 2nd source (needs real published figures) and Scotland
+demographic controls (2011↔2022 Data Zone crosswalk). See `PHASE2_PLAN.md`.
 
 **Model:** premium estimator. The calibrated **expected annual premium (£)** is the headline; the
 0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on

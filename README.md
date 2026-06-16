@@ -91,18 +91,20 @@ and the index reweights over the remaining three features per row.
 The model predicts a **relative territorial index** — `log(area premium ÷ national average)` — on
 **percentile** features (which bounds per-LSOA extrapolation, see MODEL_REVIEW.md §3.2), via panel OLS
 with area-clustered SEs, ridge CV, leave-one-area-out, and a temporal back-test against the WTW index
-(95 matched obs / 23 areas, E+W). It separates **place** drivers (crime, deprivation, density) from
+(103 matched obs / 27 areas — including four Scottish regions, validated place-only since Scottish
+demographic controls are deferred; Phase 2). It separates **place** drivers (crime, deprivation, density) from
 **demographic-composition controls** (young-driver share, cars/household) so the place effect is
 estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). `road_casualties` is excluded (Phase 3).
 
 | Metric | Value |
 |--------|------:|
-| Panel R² (log-index) | 0.909 |
-| CV-R² (ridge, 5-fold) | 0.889 |
-| Leave-one-area-out MAE | £108 |
-| Spearman (predicted vs actual premium) | 0.974 |
+| Panel R² (log-index) | 0.910 |
+| CV-R² (ridge, 5-fold) | 0.895 |
+| Leave-one-area-out MAE | £100 |
+| Spearman (predicted vs actual premium) | 0.969 |
 | Place-only R² · Composition-only R² | 0.87 · 0.88 |
 | Spatial multiplier (WC London ÷ Rugby) | ≈ 2.0× |
+| Matched anchor obs / areas | 103 / 27 (incl. 4 Scottish regions) |
 
 `reports/feature_analysis.md` reports per-feature partial correlation, VIF and a keep/drop verdict.
 Headline finding: **young-driver share is the strongest independent predictor** (partial r +0.52);

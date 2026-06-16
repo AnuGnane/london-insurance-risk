@@ -134,6 +134,47 @@ This means some quarterly entries may reflect a specific month rather than a tru
 
 ---
 
+## Scottish region definitions (Phase 2)
+
+The four Confused/WTW Scottish regions in the panel (`Central Scotland`,
+`East & North East Scotland`, `Highlands & Islands`, `Scottish Borders`) are now
+matched to the model (see `REGION_POSTCODE_AREAS` in `calibrate.py`). Confused
+does **not** publish the postcode-area composition of its regions, but the
+postcode geography of Scotland is fact, so each Scottish postcode area is
+assigned to exactly one region by standard geography (a clean partition — every
+Scottish postcode area used once, none shared; CA/Carlisle is an English area and
+excluded):
+
+| Region | Postcode areas | Rationale |
+|---|---|---|
+| Central Scotland | G, ML, PA, KA, FK | Greater Glasgow + central belt |
+| East & North East Scotland | EH, KY, DD, AB, PH | Edinburgh, Fife, Tayside, Aberdeen, Perth |
+| Highlands & Islands | IV, KW, ZE, HS | Inverness, Orkney, Shetland, Western Isles |
+| Scottish Borders | TD, DG | Borders + Dumfries & Galloway (southern Scotland) |
+
+These rows validate **place-only** (Scotland's demographic composition controls
+are deferred — held at the national mean): the figures are published premiums and
+the place features (crime via statistics.gov.scot, SIMD deprivation, density) are
+all present. Fit is good — Scottish anchors' mean abs error (~£39) is below the
+overall panel (~£73). Borders/Highlands are near-exact; Central Scotland is mildly
+over-predicted (~£75).
+
+**Ambiguous assignments** (documented, low-impact at percentile basis): `PH`
+(Perth) is east-central — grouped with the east/NE; `PA` (Paisley) includes some
+Clyde islands but is centred on the mainland central belt; `DG` (Dumfries) is
+south-west — grouped with Borders as "southern Scotland".
+
+## The `source` column
+
+The panel now carries a brand-level `source` column (distinct from `source_type`,
+which is press/pdf provenance). All current rows are `confused` (Confused.com/WTW
+Price Index). When a second anchor brand (e.g. MoneySuperMarket/ABI) is added, it
+gets its own `source` value and the calibration adds a per-source fixed effect
+(`C(source)` in the OLS) to absorb methodology-level differences — comparing the
+*spatial pattern* across sources, not absolute levels. No second source has been
+transcribed yet (it requires real published figures — see the no-invented-figures
+rule below).
+
 ## Data integrity
 - All figures are explicitly published in the cited sources.
 - No figures were estimated, interpolated, or inferred from percentage changes.

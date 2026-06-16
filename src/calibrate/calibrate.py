@@ -83,11 +83,20 @@ def _base_name(col: str) -> str:
     """'vehicle_crime_pct' -> 'vehicle_crime' (strip the basis suffix for display)."""
     return col[: -len(_BASIS_SUFFIX)] if _BASIS_SUFFIX and col.endswith(_BASIS_SUFFIX) else col
 
-# Curated WTW region -> GB postcode areas. Only regions we can define with
-# confidence and that have complete model features (E+W) are included. Scottish
-# regions are omitted (data.police.uk has no Scottish crime, so vehicle_crime is
-# NaN there); Northern Ireland is not modelled; vague regions ("North of
-# England", "South Central England", …) are skipped. All skips are logged.
+# Curated WTW/Confused region -> GB postcode areas. Only regions we can define
+# with confidence and that have complete PLACE features are included. Scottish
+# regions ARE now mapped (Phase 2): Scotland gained vehicle_crime in P0-b
+# (statistics.gov.scot) and already had SIMD deprivation + density, so all three
+# place features are present at 100% (composition controls are held at the
+# national mean — Scotland demographics are deferred). This finally lets the
+# Scottish anchor rows validate the model rather than being skipped. NI is not
+# modelled; vague regions ("North of England", "South Central England", …) are
+# skipped. All skips are logged.
+#
+# Scottish region definitions are by standard postcode-area geography (the
+# postcode composition isn't published by Confused, but the geography is fact;
+# each Scottish postcode area is assigned to exactly one region). See
+# wtw_anchors_notes.md "Scottish region definitions".
 REGION_POSTCODE_AREAS = {
     "Inner London": ["EC", "WC", "E", "N", "NW", "SE", "SW", "W"],
     "Outer London": ["BR", "CR", "DA", "EN", "HA", "IG", "KT", "RM", "SM", "TW", "UB", "WD"],
@@ -97,6 +106,11 @@ REGION_POSTCODE_AREAS = {
     "South West": ["BS", "BA", "TA", "EX", "PL", "TQ", "TR", "DT", "GL", "SN"],
     "South Wales": ["CF", "NP", "SA"],
     "Central & North Wales": ["LL", "LD", "SY"],
+    # Scotland (Phase 2) — central belt, east/north-east, highlands & islands, south.
+    "Central Scotland": ["G", "ML", "PA", "KA", "FK"],
+    "East & North East Scotland": ["EH", "KY", "DD", "AB", "PH"],
+    "Highlands & Islands": ["IV", "KW", "ZE", "HS"],
+    "Scottish Borders": ["TD", "DG"],
 }
 
 
