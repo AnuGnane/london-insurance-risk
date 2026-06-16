@@ -88,48 +88,53 @@ def bucket(score: pd.Series, n_buckets: int) -> pd.Series:
 
 
 def enrich_components(features: pd.DataFrame, weights: dict[str, float]) -> list[str]:
-    """Add {c}_val, {c}_pct, {c}_contrib per component (mirrors /api/risk so a
-    map click shows the same numbers as a postcode search)."""
-    method = settings["risk_index"]["normalisation"]
-    total_weight = sum(weights.values()) or 1.0
+    """Add {c}_val and {c}_pct per component (used by the premium model, the map's
+    single-driver colour filters, and the click breakdown). The per-driver £
+    contributions are added later from the calibration coefficients — see
+    bake_premium_and_contributions."""
     cg = _crime_groups(features)
     comps = [c for c in weights if c in features.columns]
     for c in comps:
-        w = weights[c]
         # vehicle_crime is ranked within nation-group (E+W vs Scotland) — the two
         # come from different sources on incomparable scales (see normalise()).
         pct = normalise(features[c], "percentile", cg if c == "vehicle_crime" else None)
         features[f"{c}_val"] = features[c].round(2)
         features[f"{c}_pct"] = pct.round(1)
-        # Contribution in points-of-the-index. These sum to risk_index under
-        # percentile normalisation; the API uses the same formula/fallback.
-        features[f"{c}_contrib"] = (
-            ((pct * w) / total_weight).round(2) if method == "percentile" else 0.0
-        )
     return comps
 
 
-def add_calibrated_premium(features: pd.DataFrame) -> bool:
-    """Bake a per-LSOA premium estimate from the calibration coefficients, if
-    they've been produced yet. Returns True if added."""
+def bake_premium_and_contributions(features: pd.DataFrame, comps: list[str]) -> dict:
+    """Bake calibrated_premium and per-driver £ contributions from the calibration
+    coefficients. Returns the coefficient dict (empty if not calibrated yet).
+
+    Each premium feature's contribution is coef × {feature}_pct — the £ that
+    feature adds to the estimate; with the constant they sum to calibrated_premium.
+    Features not in the premium model (e.g. road_casualties) contribute £0."""
     calib_path = ROOT / "reports" / "calibration.json"
-    if not calib_path.exists():
-        log.info(
-            "No reports/calibration.json yet — skipping calibrated_premium in the "
-            "GeoJSON. (Search still computes it live. Re-run `make risk` after "
-            "`make calibrate` to show it on click too.)"
-        )
-        return False
-    coefs = json.loads(calib_path.read_text()).get("coefficients", {})
+    coefs = json.loads(calib_path.read_text()).get("coefficients", {}) if calib_path.exists() else {}
     if not coefs:
-        return False
+        log.info("No calibration coefficients yet — skipping premium + £ contributions. "
+                 "Run `make calibrate` then rebuild; risk_index falls back to the composite.")
+        for c in comps:
+            features[f"{c}_contrib"] = 0.0
+        return {}
+
     est = pd.Series(float(coefs.get("const", 0.0)), index=features.index)
+    priced: set[str] = set()
     for col, coef in coefs.items():
-        if col != "const" and col in features.columns:
-            est = est + float(coef) * features[col]
+        if col == "const" or col not in features.columns:
+            continue
+        est = est + float(coef) * features[col]
+        base = col[:-4] if col.endswith("_pct") else col   # vehicle_crime_pct -> vehicle_crime
+        features[f"{base}_contrib"] = (float(coef) * features[col]).round(2)
+        priced.add(base)
     features["calibrated_premium"] = est.round().astype("Int64")
-    log.info("Baked calibrated_premium from %d coefficients", len(coefs))
-    return True
+    for c in comps:                                  # non-premium drivers contribute £0
+        if c not in priced:
+            features[f"{c}_contrib"] = 0.0
+    log.info("Baked calibrated_premium + £ contributions from %d coefficients (priced: %s)",
+             len(coefs), ", ".join(sorted(priced)))
+    return coefs
 
 
 def run() -> None:
@@ -142,30 +147,35 @@ def run() -> None:
     features = pd.read_parquet(feat_path)
     log.info("Loaded %d LSOA features", len(features))
 
-    # 2. Composite risk index
+    # 2. Per-component percentiles (needed by the premium model + map filters)
     weights = settings["risk_index"]["weights"]
-    features["risk_index"] = composite(features, weights)
-    log.info(
-        "Risk index: min=%.1f, median=%.1f, max=%.1f",
-        features["risk_index"].min(),
-        features["risk_index"].quantile(0.5),
-        features["risk_index"].max(),
-    )
+    comps = enrich_components(features, weights)
 
-    # 3. Quintile buckets (+ a `quintile` alias the frontend reads directly)
+    # 3. Calibrated premium + per-driver £ contributions
+    coefs = bake_premium_and_contributions(features, comps)
+
+    # 4. risk_index. Reconciled model: risk_index IS the calibrated premium on a
+    #    0–100 scale (its GB-wide percentile), so the map's colouring, the
+    #    quintiles and the headline £ are one construct. Falls back to the expert
+    #    composite only when calibration hasn't been run yet (first build).
+    if coefs and "calibrated_premium" in features:
+        features["risk_index"] = features["calibrated_premium"].rank(pct=True) * 100
+        log.info("risk_index = percentile of calibrated_premium (premium-reconciled): "
+                 "premium £%.0f–£%.0f",
+                 features["calibrated_premium"].min(), features["calibrated_premium"].max())
+    else:
+        features["risk_index"] = composite(features, weights)
+        log.info("risk_index = expert composite (no calibration yet): min=%.1f median=%.1f max=%.1f",
+                 features["risk_index"].min(), features["risk_index"].quantile(0.5),
+                 features["risk_index"].max())
+
+    # 5. Quintile buckets (+ a `quintile` alias the frontend reads directly)
     n_buckets = settings["risk_index"]["buckets"]
     features["risk_bucket"] = bucket(features["risk_index"], n_buckets)
     features["quintile"] = features["risk_bucket"].astype(int)
-    log.info(
-        "Bucket distribution:\n%s",
-        features["risk_bucket"].value_counts().sort_index(),
-    )
+    log.info("Bucket distribution:\n%s", features["risk_bucket"].value_counts().sort_index())
 
-    # 4. Enrich for the map (per-driver breakdown + colouring) and premium
-    comps = enrich_components(features, weights)
-    add_calibrated_premium(features)
-
-    # 5. Boundaries: needed for geometry, and a source of area names
+    # 6. Boundaries: needed for geometry, and a source of area names
     boundary_path = interim("area_boundaries.parquet")
     boundaries = None
     if boundary_path.exists():
@@ -182,12 +192,12 @@ def run() -> None:
                 how="left",
             )
 
-    # 6. Write the full, enriched tabular output (the API reads this)
+    # 7. Write the full, enriched tabular output (the API reads this)
     dest_parquet = processed(LSOA_RISK_PARQUET)
     write_parquet(features, dest_parquet)
     log.info("Wrote enriched risk parquet to %s", dest_parquet)
 
-    # 7. Build a SLIM, gzipped GeoJSON for the map (only the props the UI uses)
+    # 8. Build a SLIM, gzipped GeoJSON for the map (only the props the UI uses)
     if boundaries is None:
         log.warning(
             "No boundary parquet — cannot produce GeoJSON. "

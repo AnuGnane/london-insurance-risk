@@ -270,9 +270,16 @@ def fit_calibration(matched: pd.DataFrame) -> dict:
         "temporal_backtest": _temporal_backtest(matched, quarters),
     }
 
-    # Rank validation: does the rolled risk_index rank areas like premiums do?
-    rho, p = spearmanr(matched["risk_index"], matched["avg_premium_gbp"])
-    results["spearman_risk_vs_premium"] = {"rho": float(rho), "p_value": float(p)}
+    # Rank validation: does the model's PREDICTED premium rank areas like the
+    # actual premiums do? (Under the reconciled model risk_index *is* the premium
+    # percentile, so a risk_index-vs-premium Spearman would be circular; ranking
+    # the prediction vs actual is the honest, non-circular check.)
+    coefs = results["coefficients"]
+    pred = pd.Series(coefs.get("const", 0.0), index=matched.index)
+    for c in FEATURE_COLS:
+        pred = pred + coefs.get(c, 0.0) * matched[c]
+    rho, p = spearmanr(pred, matched["avg_premium_gbp"])
+    results["spearman_pred_vs_actual"] = {"rho": float(rho), "p_value": float(p)}
 
     # Back-fit weights from standardised feature coefficients.
     Xs = StandardScaler().fit_transform(matched[FEATURE_COLS])
@@ -298,7 +305,7 @@ def _write_report(results: dict) -> Path:
         rc = results["ridge_cv"]
         lo = results["leave_one_area_out"]
         tb = results["temporal_backtest"]
-        sp = results["spearman_risk_vs_premium"]
+        sp = results["spearman_pred_vs_actual"]
         lines += [
             "## Fit", "",
             f"- Matched observations: **{results['n_matched']}** "
@@ -313,7 +320,7 @@ def _write_report(results: dict) -> Path:
             f"- Temporal back-test MAE (predict next quarter): **£{tb['mae_gbp']:.0f}** "
             f"(n={tb['n_predictions']})" if tb["mae_gbp"] is not None
             else "- Temporal back-test MAE: n/a",
-            f"- Spearman(risk_index, premium): **{sp['rho']:.3f}** (p={sp['p_value']:.3g})",
+            f"- Spearman(predicted, actual premium): **{sp['rho']:.3f}** (p={sp['p_value']:.3g})",
             f"- Premium feature basis: **{results.get('feature_basis', 'raw')}** "
             f"(features: {', '.join(results.get('premium_features', []))})",
             "",
@@ -362,10 +369,10 @@ def run() -> None:
              len(matched), matched["area_name"].nunique() if not matched.empty else 0)
     results = fit_calibration(matched)
     if "error" not in results:
-        log.info("Panel R²=%.3f | CV-R²=%.3f | LOAO MAE=£%s | Spearman=%.3f",
+        log.info("Panel R²=%.3f | CV-R²=%.3f | LOAO MAE=£%s | Spearman(pred,actual)=%.3f",
                  results["r_squared"], results["ridge_cv"]["cv_r_squared_mean"],
                  results["leave_one_area_out"]["mae_gbp"],
-                 results["spearman_risk_vs_premium"]["rho"])
+                 results["spearman_pred_vs_actual"]["rho"])
     _write_report(results)
 
 

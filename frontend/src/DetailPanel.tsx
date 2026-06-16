@@ -99,13 +99,21 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         <div className="detail-subtitle">{data.subtitle}</div>
       )}
 
+      {/* Premium is the headline figure (the calibrated model output). */}
+      <div className="premium-hero">
+        <span className="premium-hero-value" style={{ color }}>
+          {data.calibrated_premium != null ? gbp(data.calibrated_premium) : '—'}
+        </span>
+        <span className="stat-label">Estimated annual premium</span>
+      </div>
+
       <div className="risk-score-display">
         <div className="risk-circle" style={{ backgroundColor: color }}>
-          {isFinite(data.risk_index) ? data.risk_index.toFixed(1) : '—'}
+          {isFinite(data.risk_index) ? data.risk_index.toFixed(0) : '—'}
         </div>
         <div className="risk-text">
           <span className="risk-label">Quintile {data.quintile} of 5</span>
-          <span className="stat-label">Risk index · 0 low → 100 high</span>
+          <span className="stat-label">Premium index · 0 cheapest → 100 dearest</span>
         </div>
       </div>
 
