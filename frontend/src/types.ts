@@ -11,7 +11,9 @@ export interface RiskData {
   risk_index: number;
   quintile: number;
   components: Record<string, ComponentRisk>;
-  calibrated_premium_estimate: number | null;   // null where a model feature is missing (e.g. Scotland crime)
+  calibrated_premium_estimate: number | null;   // full premium (place + composition)
+  premium_place_only?: number | null;            // at national-average demographics
+  composition_uplift?: number | null;            // full − place-only (demographic effect)
   postcode_area: string;
   wtw_anchor_premium?: number;
   // Optional — if the backend returns the postcode point we fly there exactly;

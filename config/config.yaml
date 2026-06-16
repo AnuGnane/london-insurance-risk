@@ -35,6 +35,20 @@ risk_index:
   buckets: 5                    # quintiles for the legend
   missing_feature_strategy: "reweight"   # reweight | zero — how to handle NaN features (S/NI crime)
 
+features:
+  # Which features are attributed to the PLACE vs the area's demographic COMPOSITION.
+  # PLACE features drive the territorial premium; COMPOSITION features are CONTROLS,
+  # included so the place coefficients are estimated net of who lives there, then
+  # reported separately (NEXT_PHASE_DESIGN.md §2). road_casualties re-enters `place`
+  # in Phase 3 (on a traffic-exposure denominator).
+  place:
+    - vehicle_crime
+    - deprivation
+    - population_density
+  composition:
+    - young_driver_share
+    - cars_per_household
+
 calibration:
   panel_csv: "data/manual/wtw_anchors_panel.csv"  # 137-row multi-quarter panel
   method: "ols"                # ols | ridge | lasso
@@ -44,9 +58,13 @@ calibration:
   cluster_by: "area_name"      # cluster SEs by area (repeated measures)
   feature_basis: "percentile"  # raw | percentile — percentile (0–100) bounds LSOA-grain
                                # extrapolation; raw units blow up on outlier LSOAs (see MODEL_REVIEW.md §3.2)
-  premium_features:            # features in the PREMIUM model. road_casualties excluded:
-    - vehicle_crime            # at postcode-area grain it's insignificant (p≈0.45) and wrong-signed;
-    - deprivation              # it stays ingested + shown as a map driver, just not in the £ estimate.
+  response: "relative_index"   # relative_index (area premium ÷ national avg, modelled in log) |
+                               # absolute_gbp. relative_index isolates the spatial effect (the project goal).
+  # The premium model fits features.place (drivers) + features.composition (controls). road_casualties
+  # stays excluded until Phase 3. (premium_features kept for backward-compat / fallback.)
+  premium_features:
+    - vehicle_crime
+    - deprivation
     - population_density
 
 sources:

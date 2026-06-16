@@ -88,22 +88,32 @@ and the index reweights over the remaining three features per row.
 
 ## Calibration results
 
-The premium is fit on **percentile-normalised** features (which bounds per-LSOA extrapolation — see
-MODEL_REVIEW.md §3.2), via panel OLS with quarter fixed-effects, area-clustered SEs, ridge CV,
-leave-one-area-out, and a temporal back-test against the WTW index (94 matched obs / 22 areas, E+W).
-`road_casualties` is excluded from the premium (insignificant + wrong-signed at panel grain) but
-stays an ingested, displayed map layer.
+The model predicts a **relative territorial index** — `log(area premium ÷ national average)` — on
+**percentile** features (which bounds per-LSOA extrapolation, see MODEL_REVIEW.md §3.2), via panel OLS
+with area-clustered SEs, ridge CV, leave-one-area-out, and a temporal back-test against the WTW index
+(95 matched obs / 23 areas, E+W). It separates **place** drivers (crime, deprivation, density) from
+**demographic-composition controls** (young-driver share, cars/household) so the place effect is
+estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). `road_casualties` is excluded (Phase 3).
 
 | Metric | Value |
 |--------|------:|
-| Panel R² | 0.889 |
-| CV-R² (ridge, 5-fold) | 0.872 |
-| Leave-one-area-out MAE | £112 |
-| Spearman (predicted vs actual premium) | 0.892 |
-| Premium range (all GB) | ~£113 – £1,687 |
+| Panel R² (log-index) | 0.909 |
+| CV-R² (ridge, 5-fold) | 0.889 |
+| Leave-one-area-out MAE | £108 |
+| Spearman (predicted vs actual premium) | 0.974 |
+| Place-only R² · Composition-only R² | 0.87 · 0.88 |
+| Spatial multiplier (WC London ÷ Rugby) | ≈ 2.0× |
 
-Feature importance (standardised): population density ≈ 0.76, deprivation ≈ 0.13, vehicle crime ≈
-0.11 — the premium is, by construction, heavily an urban-density signal.
+`reports/feature_analysis.md` reports per-feature partial correlation, VIF and a keep/drop verdict.
+Headline finding: **young-driver share is the strongest independent predictor** (partial r +0.52);
+**population density's apparent dominance is mostly collinearity** (univariate r +0.92 → partial +0.27,
+VIF 13). Per area we expose three numbers: full premium, **place-only** (at national-average
+demographics), and the **composition uplift**.
+
+> **Grain caveat:** validation holds at postcode-area grain. At individual-LSOA grain predictions are
+> noisier — e.g. wealthy-but-central LSOAs can be under-priced because deprivation (a dominant clean
+> signal) is low there while real premiums are driven by factors not yet modelled (vehicle value,
+> congestion, claims cost — Phases 3–4).
 
 ## What's deferred
 

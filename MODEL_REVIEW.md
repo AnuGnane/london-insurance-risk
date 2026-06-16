@@ -271,8 +271,8 @@ Resolved with the user:
 
 ## 9. Resolution log (2026-06-16)
 
-All three P0 items are **done**. New headline numbers: Panel R²=0.889, CV-R²=0.872, LOAO MAE £112,
-Spearman(predicted, actual premium)=0.892; premium range across all GB ≈ £113–£1,687, **0 nulls**.
+All three P0 items are **done**. New headline numbers: Panel R²=0.909, CV-R²=0.889, LOAO MAE £108,
+Spearman(predicted, actual premium)=0.974; premium range across all GB ≈ £113–£1,687, **0 nulls**.
 
 | Item | Issue (§) | Resolution |
 |------|-----------|------------|
@@ -280,6 +280,22 @@ Spearman(predicted, actual premium)=0.892; premium range across all GB ≈ £113
 | **P0-a** | `road_casualties` noise (§3.3) | **Dropped from the premium** (config `calibration.premium_features`); still ingested + shown as a map layer. |
 | **P0-b** | Scotland unpriced (§3.1) | New `src/ingest/scotland_crime.py` pulls "Theft of/from a motor vehicle" by council from statistics.gov.scot (SPARQL), disaggregated to Data Zone by population. Crime percentile now ranked **within nation-group** (E+W vs Scotland) since the measures aren't comparable. Scotland fully priced. |
 | **P0-c** | Two decoupled models (§3.5) | **Full reconcile**: `risk_index` is now the calibrated premium on a 0–100 (percentile) scale — one construct (corr 0.9995). Map colours by premium quintile, drivers shown as **£ contributions**, `/api/methodology` reports the calibration not expert weights, frontend leads with the £ premium. The old circular Spearman(risk_index, premium) was replaced with Spearman(predicted, actual). |
+
+### Phase 1 update (2026-06-16) — territorial reframe
+
+Implemented per `NEXT_PHASE_DESIGN.md` (branch `phase1-territorial-model`):
+- Response switched to a **relative territorial index** (log of area premium ÷ national average) —
+  isolates the spatial effect. Panel R²=0.909, LOAO MAE £108, Spearman(pred,actual)=0.974.
+- **Demographic controls** added (Census 2021 young-driver share + cars/household, E+W) so place
+  features are estimated **net of composition**; three numbers per area (full / place-only / uplift).
+- **Significance report** `reports/feature_analysis.md`: the density-dominance finding from §3.4 is now
+  quantified — density's univariate r +0.92 collapses to partial +0.27 (VIF 13, mostly collinear),
+  while **young-driver share is the strongest independent predictor** (partial +0.52) and deprivation
+  is clean (+0.36, VIF 1.8). So the old "76% density" importance was largely collinearity.
+- **New limitation surfaced:** at individual-LSOA grain, wealthy-but-central areas (e.g. WC1A) are
+  under-priced because deprivation — the dominant clean signal — is low there, while their real
+  premiums come from factors not yet modelled. Postcode-area-grain validation (≈2× London/Rugby) is
+  sound; LSOA-grain is noisier. Phases 3–4 (traffic, flood, claims-cost proxies) target this gap.
 
 **Still open (now the top caveats):**
 - **Density dominates (~0.76 importance).** Dropping casualties + the percentile basis pushed
