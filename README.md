@@ -1,12 +1,13 @@
 # GB Car-Insurance Risk Map
 
-Build a composite **territory-risk score** for every small area (LSOA / Data Zone) in Great Britain
-from open data, render it as an interactive choropleth, and look it up by postcode — then
-**calibrate** the score against the published WTW / Confused.com Car Insurance Price Index so it's
-anchored to real market premiums.
+Estimate an **expected annual motor-insurance premium** for every small area (LSOA / Data Zone) in
+Great Britain from open data, render it as an interactive choropleth, and look it up by postcode. The
+premium is **calibrated** against the published WTW / Confused.com Car Insurance Price Index, and the
+0–100 "risk index" is simply that premium on a percentile scale — one reconciled model, not two.
 
-This is a **risk proxy**, not a quote engine. See `AGENTS.md` for the coding agent's working
-agreement and `implementation_plan.md` for the full design.
+This is a **territorial risk proxy**, not a quote engine: it uses no individual driver or vehicle
+details. See `AGENTS.md` for the coding agent's working agreement, `MODEL_REVIEW.md` for the model
+audit + design decisions, and `implementation_plan.md` for the original design.
 
 ## Quickstart
 ```bash
@@ -50,12 +51,13 @@ tests/                  smoke tests (pytest)
 
 | Nation | Areas | Crime | Collisions | Deprivation | Calibrated premium |
 |--------|------:|:-----:|:----------:|:-----------:|:-----------------:|
-| England | 32,844 | ✓ | ✓ | IoD 2019 | ✓ |
-| Wales | 1,909 | ✓ | ✓ | WIMD 2019 | ✓ |
-| Scotland | 6,976 | — (NaN) | ✓ | SIMD 2020v2 | partial* |
+| England | 32,844 | ✓ data.police.uk | ✓ | IoD 2019 | ✓ |
+| Wales | 1,909 | ✓ data.police.uk | ✓ | WIMD 2019 | ✓ |
+| Scotland | 6,976 | ✓ Recorded Crime in Scotland † | ✓ | SIMD 2020v2 | ✓ |
 
-\* Scotland areas have a risk index but `calibrated_premium` may be null where the vehicle-crime
-feature is absent and the calibration intercept doesn't cover all postcode areas.
+† Scotland publishes vehicle crime only at council grain; it's disaggregated to Data Zone by
+population and ranked **within Scotland** (the E+W and Scottish crime measures aren't comparable on
+an absolute scale). All 41,729 GB areas now carry a calibrated premium — there are no null premiums.
 
 ## Data sources & licences
 
@@ -76,23 +78,32 @@ and the index reweights over the remaining three features per row.
   Scotland Data Zones 2011 https://spatialdata.gov.scot/ (gov.scot, OGL).
 - **Population** — England (IoD2019 mid-2015) · Scotland (Data Zone totpop2011) ·
   Wales (2011 Census KS101EW via NOMIS https://www.nomisweb.co.uk/).
+- **Vehicle crime (Scotland)** — "Recorded Crime in Scotland" (Theft of/from a motor vehicle) by
+  council area, https://statistics.gov.scot/data/recorded-crime (OGL), queried over SPARQL and
+  disaggregated to Data Zone by population.
 - **Price index (calibration anchor)** — https://www.confused.com/car-insurance/price-index
   (WTW/Confused.com; transcribed quarterly figures, cited per row in the panel).
 
 > Contains public sector information licensed under the Open Government Licence v3.0.
 
-## Calibration results (Phase C)
+## Calibration results
 
-Panel OLS with quarter fixed-effects, area-clustered SEs, ridge CV, leave-one-area-out, and
-temporal back-test against the WTW index (94 matched obs / 22 postcode areas):
+The premium is fit on **percentile-normalised** features (which bounds per-LSOA extrapolation — see
+MODEL_REVIEW.md §3.2), via panel OLS with quarter fixed-effects, area-clustered SEs, ridge CV,
+leave-one-area-out, and a temporal back-test against the WTW index (94 matched obs / 22 areas, E+W).
+`road_casualties` is excluded from the premium (insignificant + wrong-signed at panel grain) but
+stays an ingested, displayed map layer.
 
 | Metric | Value |
 |--------|------:|
-| Panel R² | 0.917 |
-| CV-R² (ridge, 5-fold) | 0.890 |
-| Leave-one-area-out MAE | £113 |
-| Temporal hold-out MAE | £149 |
-| Spearman rank | 0.757 |
+| Panel R² | 0.889 |
+| CV-R² (ridge, 5-fold) | 0.872 |
+| Leave-one-area-out MAE | £112 |
+| Spearman (predicted vs actual premium) | 0.892 |
+| Premium range (all GB) | ~£113 – £1,687 |
+
+Feature importance (standardised): population density ≈ 0.76, deprivation ≈ 0.13, vehicle crime ≈
+0.11 — the premium is, by construction, heavily an urban-density signal.
 
 ## What's deferred
 

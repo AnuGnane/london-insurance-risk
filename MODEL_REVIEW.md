@@ -266,3 +266,28 @@ Resolved with the user:
 - **P0-c — Reconcile + re-present.** Make premium the headline in API/frontend; risk index becomes the
   diagnostic/driver breakdown. Re-run the validation ladder including Scotland.
 - **P1 follow-ups** (road_casualties, ridge coefficients, population vintage) per §7.
+
+---
+
+## 9. Resolution log (2026-06-16)
+
+All three P0 items are **done**. New headline numbers: Panel R²=0.889, CV-R²=0.872, LOAO MAE £112,
+Spearman(predicted, actual premium)=0.892; premium range across all GB ≈ £113–£1,687, **0 nulls**.
+
+| Item | Issue (§) | Resolution |
+|------|-----------|------------|
+| **P0-a** | Extrapolation £82–£4,788 (§3.2) | Premium now fits on **percentile** features (config `calibration.feature_basis`), which hard-caps to 0–100 — range collapsed to a sane £113–£1,687, 0 LSOAs above the WTW ceiling. Chosen after an empirical bake-off of raw/standardised/percentile/log bases (percentile, casualties-dropped, won on MAE *and* boundedness). |
+| **P0-a** | `road_casualties` noise (§3.3) | **Dropped from the premium** (config `calibration.premium_features`); still ingested + shown as a map layer. |
+| **P0-b** | Scotland unpriced (§3.1) | New `src/ingest/scotland_crime.py` pulls "Theft of/from a motor vehicle" by council from statistics.gov.scot (SPARQL), disaggregated to Data Zone by population. Crime percentile now ranked **within nation-group** (E+W vs Scotland) since the measures aren't comparable. Scotland fully priced. |
+| **P0-c** | Two decoupled models (§3.5) | **Full reconcile**: `risk_index` is now the calibrated premium on a 0–100 (percentile) scale — one construct (corr 0.9995). Map colours by premium quintile, drivers shown as **£ contributions**, `/api/methodology` reports the calibration not expert weights, frontend leads with the £ premium. The old circular Spearman(risk_index, premium) was replaced with Spearman(predicted, actual). |
+
+**Still open (now the top caveats):**
+- **Density dominates (~0.76 importance).** Dropping casualties + the percentile basis pushed
+  population density to ~76% of standardised importance. The model is, candidly, mostly an
+  urban-density signal. Acceptable for a premium estimator (per the §8 decision) but not a strong
+  "claims/crime" model. Revisit if/when richer features land (§5: young-driver share, car ownership).
+- **Scotland coefficient transfer is unvalidated.** Scotland now has a premium, but it rests on
+  E+W-fit coefficients with no Scottish WTW anchor in the panel, and the crime feature is council-grain
+  (no within-council variation). P2: add Scottish/region anchors; consider SIMD-crime-domain weighting.
+- **P1 carried forward:** ridge (not OLS) coefficients for production; population vintage → Census
+  2021/2022; broaden calibration anchors (ABI tracker).

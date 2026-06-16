@@ -11,7 +11,7 @@ import type { FeatureCollection } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin } from 'lucide-react';
 import type { ColorMode, FocusTarget } from './types';
-import { COMPONENT_LABELS } from './utils';
+import { COMPONENT_LABELS, gbp } from './utils';
 
 interface MapViewProps {
   geojson: FeatureCollection | null;
@@ -108,10 +108,11 @@ export const MapView: React.FC<MapViewProps> = ({
   const formatActiveMetric = useCallback(
     (props: Record<string, any>): { label: string; value: string } => {
       if (colorMode === 'composite') {
+        // Headline view: show the calibrated premium (the colour is its quintile).
         return {
-          label: 'Risk index',
-          value: isFinite(Number(props.risk_index))
-            ? `${Number(props.risk_index).toFixed(1)}`
+          label: 'Est. premium',
+          value: props.calibrated_premium != null
+            ? gbp(Number(props.calibrated_premium))
             : '—',
         };
       }
@@ -174,7 +175,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const driverLabel =
     colorMode === 'composite'
-      ? 'Composite risk'
+      ? 'Estimated premium'
       : COMPONENT_LABELS[colorMode] || colorMode;
 
   return (

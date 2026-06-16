@@ -121,7 +121,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       {riskDist && (
         <div className="distribution-context">
           <div className="distribution-statement">
-            Higher risk than{' '}
+            More expensive than{' '}
             <strong>{Math.round(riskDist.percentileRank)}%</strong> of GB
             areas
           </div>
@@ -145,14 +145,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
       )}
 
-      {data.calibrated_premium != null && (
-        <div className="stat-row">
-          <span className="stat-label">Model expected premium</span>
-          <span className="premium-highlight">
-            {gbp(data.calibrated_premium)}
-          </span>
-        </div>
-      )}
       {data.wtw_anchor_premium != null && (
         <div className="stat-row">
           <span className="stat-label">
@@ -177,7 +169,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
       {components.length > 0 ? (
         <div style={{ marginTop: 24 }}>
-          <div className="card-title">Risk drivers</div>
+          <div className="card-title">Premium drivers</div>
           {components.map((c) => {
             const barPct =
               c.contribution != null
@@ -215,10 +207,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 </div>
                 <div className="component-meta">
                   {c.value != null && <>Value {c.value.toFixed(1)}</>}
-                  {c.value != null && c.contribution != null && ' · '}
-                  {c.contribution != null && (
-                    <>{c.contribution.toFixed(1)} pts to score</>
-                  )}
+                  {c.value != null && c.contribution ? ' · ' : null}
+                  {c.contribution ? (
+                    <>+{gbp(c.contribution)} of premium</>
+                  ) : null}
                 </div>
               </div>
             );

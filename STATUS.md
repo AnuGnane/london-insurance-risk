@@ -1,6 +1,12 @@
 # Project Status
 
-Last updated: 2026-06-16. Branch: `uk-expansion` (PR #1 open against `main`).
+Last updated: 2026-06-16. Branch: `uk-expansion`.
+
+**Model:** premium estimator. The calibrated **expected annual premium (£)** is the headline; the
+0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on
+percentile features (bounds extrapolation); `road_casualties` is excluded from the premium but kept
+as a map layer. Scotland is fully priced (crime ingested from statistics.gov.scot). See
+`MODEL_REVIEW.md` for the audit and the P0-a/b/c resolution log.
 
 ## What's complete
 
@@ -11,19 +17,21 @@ Last updated: 2026-06-16. Branch: `uk-expansion` (PR #1 open against `main`).
 | `src/ingest/boundaries.py` | ✓ Done | 34,753 E+W LSOAs + 6,976 Scotland Data Zones via Esri JSON |
 | `src/ingest/imd.py` | ✓ Done | England IoD2019 · Wales WIMD2019 · Scotland SIMD2020v2; within-nation percentile |
 | `src/ingest/onspd.py` | ✓ Done | 2.64 M postcodes → `area_code`; postcode-area bug fixed |
-| `src/ingest/police_crime.py` | ✓ Done | All E+W forces via S3 bulk download; Scotland = NaN by design |
+| `src/ingest/police_crime.py` | ✓ Done | All E+W forces via S3 bulk download |
+| `src/ingest/scotland_crime.py` | ✓ Done | Scotland vehicle crime via statistics.gov.scot SPARQL; council → Data Zone by population |
 | `src/ingest/stats19.py` | ✓ Done | All GB collisions; Scotland assigned Data Zone by spatial join |
-| `src/transform/aggregate_to_lsoa.py` | ✓ Done | Per-row missing-feature handling; `area_code` key |
-| `src/transform/build_risk_index.py` | ✓ Done | Missing-feature reweighting in `composite()`; bakes calibrated premium |
+| `src/transform/aggregate_to_lsoa.py` | ✓ Done | `area_code` key; merges E+W (points) + Scotland (council) crime |
+| `src/transform/build_risk_index.py` | ✓ Done | risk_index = premium percentile; £ contributions; within-nation crime ranking |
 
 ### Calibration
 
 | Module | Status | Notes |
 |--------|--------|-------|
 | `src/calibrate/wtw_index.py` | ✓ Done | Loads 137-row WTW panel; name aliases for variant column names |
-| `src/calibrate/calibrate.py` | ✓ Done | OLS + quarter FE + ridge CV + LOAO + temporal back-test + Spearman |
+| `src/calibrate/calibrate.py` | ✓ Done | Percentile-basis OLS + quarter FE + ridge CV + LOAO + temporal back-test; config-driven feature set |
 
-**Results:** n=94, Panel R²=0.917, CV-R²=0.890, LOAO MAE £113, temporal MAE £149, Spearman 0.757.
+**Results:** n=94 (22 areas, E+W), Panel R²=0.889, CV-R²=0.872, LOAO MAE £112, Spearman(pred,actual)=0.892.
+Premium range all GB ≈ £113–£1,687, no nulls. Importance: density ≈0.76, deprivation ≈0.13, crime ≈0.11.
 
 ### API
 
@@ -31,19 +39,18 @@ Last updated: 2026-06-16. Branch: `uk-expansion` (PR #1 open against `main`).
 |----------|--------|-------|
 | `GET /api/health` | ✓ | Liveness probe |
 | `GET /api/geojson` | ✓ | Serves gzipped GeoJSON (41,729 features) |
-| `GET /api/risk?postcode=` | ✓ | Full breakdown incl. components, quintile, calibrated premium |
-| `GET /api/rankings` | ✓ | Top-N areas by risk index |
-| `GET /api/methodology` | ✓ | Weights, normalisation, calibration coefficients |
+| `GET /api/risk?postcode=` | ✓ | Premium headline + per-driver £ contributions, quintile, risk index |
+| `GET /api/rankings` | ✓ | Top-N areas by premium percentile |
+| `GET /api/methodology` | ✓ | Feature basis, validation metrics, coefficients, data-driven importances |
 
-All endpoints are NaN-safe (Scotland's null `vehicle_crime` serialises as `null` not NaN).
+All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value) if a feature is missing.
 
 ### Frontend
 
 - React + MapLibre GL choropleth over all 41,729 GB small areas
-- Postcode search → LSOA/Data Zone detail panel
-- Filter by: composite risk · vehicle crime · collisions · deprivation · density
-- Quintile legend + per-area risk driver breakdown
-- Deep-linkable URLs (`?area=<code>&filter=<mode>`)
+- Postcode search → detail panel with **£ premium as the headline** + per-driver £ contributions
+- Filter map by: premium · vehicle crime · collisions · deprivation · density
+- Quintile legend + deep-linkable URLs (`?area=<code>&filter=<mode>`)
 - Initial view: Great Britain (zoomed out to show all nations)
 
 ### Infrastructure
@@ -55,10 +62,11 @@ All endpoints are NaN-safe (Scotland's null `vehicle_crime` serialises as `null`
 
 | Issue | Impact |
 |-------|--------|
-| Scotland `vehicle_crime` = NaN | Risk index present but reweighted (3 features); `calibrated_premium` may be null for some Scottish postcodes |
-| `road_casualties` coefficient p≈0.45 | Statistically insignificant at postcode-area grain; still included per design |
-| WTW panel is quarterly at postcode-area grain | No sub-district calibration; all LSOAs in a postcode area share the same anchor |
-| GeoJSON served as single 15 MB file | Works fine in Docker; for production consider PMTiles (Phase D) |
+| Premium importance is ~76% population density | The model is largely an urban-density proxy (accepted for a premium estimator, but it's not strongly "crime/claims" driven) |
+| Scotland crime is council-grain, disaggregated by population | No within-council variation in the crime feature; Scottish premium also rests on E+W-fit coefficients with no Scottish WTW anchor to validate against |
+| WTW panel is quarterly at postcode-area grain (E+W only) | No sub-district calibration; all LSOAs in a postcode area share the same anchor; Scotland not represented in the panel |
+| GeoJSON served as single ~15 MB file | Works fine in Docker; for production consider PMTiles (Phase D) |
+| Population vintage differs (England mid-2015 vs Wales/Scotland 2011) | Per-capita rates/density slightly off across the border (P1: move to Census 2021/2022) |
 
 ## What's deferred
 

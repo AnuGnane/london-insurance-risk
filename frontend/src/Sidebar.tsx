@@ -20,7 +20,7 @@ interface SidebarProps {
 }
 
 const COLOR_MODES: { mode: ColorMode; label: string }[] = [
-  { mode: 'composite', label: 'Risk' },
+  { mode: 'composite', label: 'Premium' },
   { mode: 'vehicle_crime', label: 'Crime' },
   { mode: 'road_casualties', label: 'Casualties' },
   { mode: 'deprivation', label: 'Deprivation' },
