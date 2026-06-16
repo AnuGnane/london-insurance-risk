@@ -17,7 +17,14 @@ log = logging.getLogger(__name__)
 # In-memory datasets, populated at startup.
 STATE: dict = {}
 
-COMPONENT_COLS = ["vehicle_crime", "road_casualties", "deprivation", "population_density"]
+COMPONENT_COLS = [
+    "vehicle_crime",
+    "road_casualties",
+    "deprivation",
+    "population_density",
+    "traffic_per_capita",
+    "ksi_collisions_per_billion_vehicle_miles",
+]
 
 
 def _load_data() -> None:

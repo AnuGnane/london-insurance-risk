@@ -16,6 +16,14 @@ Last updated: 2026-06-16. Branch: `phase2-anchor-expansion`.
    like E+W (no longer place-only). Demographic merge overall 81%→97%.
 Current fit: R²=0.909, CV-R²=0.876, LOAO MAE £104, Spearman 0.967.
 
+**Phase 3 (traffic exposure + collision revisit) — STARTED.** The first slice is
+implemented behind a rebuild: DfT local-authority traffic exposure is ingested via
+`src/ingest/traffic.py`, ONSPD now keeps `local_authority_code`, and
+`aggregate_to_lsoa.py` can derive `ksi_collisions_per_billion_vehicle_miles`.
+The new features are added to `features.place` so the next full rebuild and
+calibration will decide whether traffic and KSI collisions are keepers. See
+`PHASE3_PLAN.md`.
+
 **Model:** premium estimator. The calibrated **expected annual premium (£)** is the headline; the
 0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on
 percentile features (bounds extrapolation); `road_casualties` is excluded from the premium but kept
@@ -34,8 +42,9 @@ as a map layer. Scotland is fully priced (crime ingested from statistics.gov.sco
 | `src/ingest/police_crime.py` | ✓ Done | All E+W forces via S3 bulk download |
 | `src/ingest/scotland_crime.py` | ✓ Done | Scotland vehicle crime via statistics.gov.scot SPARQL; council → Data Zone by population |
 | `src/ingest/stats19.py` | ✓ Done | All GB collisions; Scotland assigned Data Zone by spatial join |
+| `src/ingest/traffic.py` | ◐ Started | DfT local-authority traffic volume → small-area exposure (Phase 3) |
 | `src/transform/aggregate_to_lsoa.py` | ✓ Done | `area_code` key; merges E+W (points) + Scotland (council) crime |
-| `src/transform/build_risk_index.py` | ✓ Done | risk_index = premium percentile; £ contributions; within-nation crime ranking |
+| `src/transform/build_risk_index.py` | ✓ Done | risk_index = premium percentile; £ contributions; within-nation crime ranking; Phase 3 fields flow through when present |
 
 ### Calibration
 
@@ -84,8 +93,9 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 | Issue | Impact |
 |-------|--------|
 | Premium importance is ~76% population density | The model is largely an urban-density proxy (accepted for a premium estimator, but it's not strongly "crime/claims" driven) |
-| Scotland crime is council-grain, disaggregated by population | No within-council variation in the crime feature; Scottish premium also rests on E+W-fit coefficients with no Scottish WTW anchor to validate against |
-| WTW panel is quarterly at postcode-area grain (E+W only) | No sub-district calibration; all LSOAs in a postcode area share the same anchor; Scotland not represented in the panel |
+| Scotland crime is council-grain, disaggregated by population | No within-council variation in the crime feature, even though Scottish regions now validate at anchor grain |
+| WTW/MSM panel is quarterly at postcode-area/region grain | No sub-district calibration; all LSOA-level values remain modelled predictions |
+| Phase 3 traffic exposure is LA-grain v1 | More stable than sparse count points, but it will not capture within-authority road exposure until a point-level refinement |
 | GeoJSON served as single ~15 MB file | Works fine in Docker; for production consider PMTiles (Phase D) |
 | Population vintage differs (England mid-2015 vs Wales/Scotland 2011) | Per-capita rates/density slightly off across the border (P1: move to Census 2021/2022) |
 
@@ -94,6 +104,7 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 | Item | Phase | Reason |
 |------|-------|--------|
 | Northern Ireland | D+ | data.police.uk + STATS19 both exclude NI → only 2/4 features |
+| Flood overlay | 4 | EA/NRW/SEPA polygon overlay after traffic/collision revisit |
 | PMTiles vector tiles | D | ~42k areas too heavy for a single GeoJSON at scale; needs tippecanoe |
 | Sub-district calibration | D+ | WTW panel is postcode-area grain only |
 | CI / automated re-ingest | D+ | Data sources update quarterly; no cron yet |
@@ -104,7 +115,7 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 # 1. install deps
 uv sync
 
-# 2. build data (takes ~20 min first time, downloads ~2 GB)
+# 2. build data (takes ~20+ min first time, downloads multiple GB)
 make ingest && make features && make risk
 
 # 3. start API + frontend
@@ -118,6 +129,6 @@ docker compose up --build
 ## Test suite
 
 ```bash
-pytest            # 10 tests, all passing
+UV_CACHE_DIR=.uv-cache uv run pytest
 ruff check src    # lint clean
 ```

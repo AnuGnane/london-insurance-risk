@@ -1,7 +1,7 @@
 [project]
 name = "london-insurance-risk"
 version = "0.1.0"
-description = "Composite open-data territory-risk score for London, calibrated to the WTW/Confused price index."
+description = "Open-data GB car-insurance territorial premium model calibrated to published price indices."
 requires-python = ">=3.11"
 dependencies = [
   "pandas>=2.2",

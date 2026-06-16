@@ -1,3 +1,13 @@
+# Archived Roadmap — superseded by GB model plans
+
+> This document was written for the original London-only prototype and is kept as
+> historical context. The current GB-wide status lives in `STATUS.md`; completed
+> Phase 2 work lives in `PHASE2_PLAN.md`; active traffic/collision work lives in
+> `PHASE3_PLAN.md`; the broader next-phase design lives in `NEXT_PHASE_DESIGN.md`.
+>
+> Anything below that says "London", "n=16", or "UK-wide expansion" reflects the
+> pre-GB roadmap, not the current codebase.
+
 # London Territory Risk Map — Improvement & Growth Roadmap
 
 > Planning document covering where to take the project next: better model output, more

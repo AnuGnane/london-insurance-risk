@@ -34,7 +34,10 @@ src/ingest/             one module per data source → data/interim/*.parquet
   imd.py                England IoD2019 · Wales WIMD2019 · Scotland SIMD2020v2
   onspd.py              ONSPD postcode → area_code lookup (2.6 M postcodes)
   police_crime.py       data.police.uk bulk download (E+W only; Scotland = NaN)
+  scotland_crime.py     Recorded Crime in Scotland council data → Data Zone
   stats19.py            DfT STATS19 GB collisions + Scotland spatial join
+  census_demographics.py  Census age + car ownership controls
+  traffic.py            DfT local-authority traffic exposure (Phase 3)
 src/transform/
   aggregate_to_lsoa.py  roll-up to area_code grain; per-row missing-feature handling
   build_risk_index.py   composite index + calibrated premium
@@ -62,14 +65,20 @@ an absolute scale). All 41,729 GB areas now carry a calibrated premium — there
 ## Data sources & licences
 
 Deprivation is incomparable across nations by construction, so each area is ranked **within its
-own nation** (percentile 0–1) before combining. Scotland's vehicle-crime feature is absent (NaN)
-and the index reweights over the remaining three features per row.
+own nation** (percentile 0–1) before combining. Scotland's vehicle-crime data comes from a
+different council-grain source, so vehicle crime is also ranked within source-comparable groups.
 
-- **Vehicle crime (E+W only)** — https://data.police.uk/  (Open Government Licence).
-  No Scottish/NI coverage; the feature is NaN there and the index reweights automatically.
+- **Vehicle crime (E+W)** — https://data.police.uk/  (Open Government Licence).
+  data.police.uk has no Scottish/NI coverage.
+- **Vehicle crime (Scotland)** — "Recorded Crime in Scotland" (Theft of/from a motor vehicle) by
+  council area, https://statistics.gov.scot/data/recorded-crime (OGL), queried over SPARQL and
+  disaggregated to Data Zone by population.
 - **Road collisions (STATS19, GB)** — https://www.data.gov.uk/dataset/cb7ae6f0-4be6-4935-9277-47e5ce24a11f/road-accidents-safety-data
   (OGL). Scotland's LSOA field is blank in STATS19, so Scottish collisions are assigned a
   Data Zone by spatial join.
+- **Traffic exposure (Phase 3)** — DfT Road traffic statistics https://roadtraffic.dft.gov.uk/downloads
+  (OGL). v1 uses local-authority annual traffic volume by vehicle class, allocated to small areas
+  by population share; point-level AADF is deferred until it is shown to add signal.
 - **Deprivation** — England IoD2019 https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019 ·
   Wales WIMD 2019 https://www.gov.wales/welsh-index-multiple-deprivation-full-index-update-ranks-2019 ·
   Scotland SIMD 2020v2 https://www.gov.scot/collections/scottish-index-of-multiple-deprivation-2020/
@@ -78,11 +87,11 @@ and the index reweights over the remaining three features per row.
   Scotland Data Zones 2011 https://spatialdata.gov.scot/ (gov.scot, OGL).
 - **Population** — England (IoD2019 mid-2015) · Scotland (Data Zone totpop2011) ·
   Wales (2011 Census KS101EW via NOMIS https://www.nomisweb.co.uk/).
-- **Vehicle crime (Scotland)** — "Recorded Crime in Scotland" (Theft of/from a motor vehicle) by
-  council area, https://statistics.gov.scot/data/recorded-crime (OGL), queried over SPARQL and
-  disaggregated to Data Zone by population.
+- **Demographic controls** — E+W Census 2021 age/car availability via Nomis; Scotland Census 2022
+  UV103/UV405 on 2011 Data Zones via UK Data Service CSV (OGL-compatible public statistics).
 - **Price index (calibration anchor)** — https://www.confused.com/car-insurance/price-index
-  (WTW/Confused.com; transcribed quarterly figures, cited per row in the panel).
+  (WTW/Confused.com; transcribed quarterly figures, cited per row in the panel) plus
+  MoneySuperMarket published regional figures for London, Scotland and Wales (April 2026).
 
 > Contains public sector information licensed under the Open Government Licence v3.0.
 
@@ -91,20 +100,21 @@ and the index reweights over the remaining three features per row.
 The model predicts a **relative territorial index** — `log(area premium ÷ national average)` — on
 **percentile** features (which bounds per-LSOA extrapolation, see MODEL_REVIEW.md §3.2), via panel OLS
 with area-clustered SEs, ridge CV, leave-one-area-out, and a temporal back-test against the WTW index
-(103 matched obs / 27 areas — including four Scottish regions, validated place-only since Scottish
-demographic controls are deferred; Phase 2). It separates **place** drivers (crime, deprivation, density) from
+(106 matched obs / 30 areas — including four Scottish regions and three MoneySuperMarket broad
+regions; Phase 2). It separates **place** drivers (crime, deprivation, density) from
 **demographic-composition controls** (young-driver share, cars/household) so the place effect is
-estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). `road_casualties` is excluded (Phase 3).
+estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). `road_casualties` is excluded from
+the premium; Phase 3 re-tests fatal/serious collisions on a traffic denominator.
 
 | Metric | Value |
 |--------|------:|
-| Panel R² (log-index) | 0.910 |
-| CV-R² (ridge, 5-fold) | 0.895 |
-| Leave-one-area-out MAE | £100 |
-| Spearman (predicted vs actual premium) | 0.969 |
+| Panel R² (log-index) | 0.909 |
+| CV-R² (ridge, 5-fold) | 0.876 |
+| Leave-one-area-out MAE | £104 |
+| Spearman (predicted vs actual premium) | 0.967 |
 | Place-only R² · Composition-only R² | 0.87 · 0.88 |
 | Spatial multiplier (WC London ÷ Rugby) | ≈ 2.0× |
-| Matched anchor obs / areas | 103 / 27 (incl. 4 Scottish regions) |
+| Matched anchor obs / areas | 106 / 30 (incl. MSM) |
 
 `reports/feature_analysis.md` reports per-feature partial correlation, VIF and a keep/drop verdict.
 Headline finding: **young-driver share is the strongest independent predictor** (partial r +0.52);
@@ -117,7 +127,10 @@ demographics), and the **composition uplift**.
 > signal) is low there while real premiums are driven by factors not yet modelled (vehicle value,
 > congestion, claims cost — Phases 3–4).
 
-## What's deferred
+## Current and deferred work
+
+- **Phase 3 in progress** — DfT traffic exposure + KSI collision revisit. See `PHASE3_PLAN.md`.
+- **Phase 4 next** — EA/NRW/SEPA flood overlay; final significance/variance decomposition.
 
 - **Northern Ireland** — data.police.uk and STATS19 both exclude NI, so an NI area would carry
   only 2 of 4 features. NI is deferred to a later phase.
