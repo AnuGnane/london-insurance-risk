@@ -184,7 +184,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <div className="skeleton-map">
           <div className="skeleton-pulse" />
           <div className="map-toast skeleton-toast">
-            <span className="loader" /> Loading London…
+            <span className="loader" /> Loading map data…
           </div>
         </div>
       )}
@@ -199,7 +199,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       <Map
         ref={mapRef}
-        initialViewState={{ longitude: -0.1276, latitude: 51.5072, zoom: 9.6 }}
+        initialViewState={{ longitude: -2.5, latitude: 54.5, zoom: 5.2 }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         interactiveLayerIds={geojson ? ['lsoa-fill'] : []}
         onMouseMove={onMouseMove}

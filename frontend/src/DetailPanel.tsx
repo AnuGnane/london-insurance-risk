@@ -99,13 +99,21 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         <div className="detail-subtitle">{data.subtitle}</div>
       )}
 
+      {/* Premium is the headline figure (the calibrated model output). */}
+      <div className="premium-hero">
+        <span className="premium-hero-value" style={{ color }}>
+          {data.calibrated_premium != null ? gbp(data.calibrated_premium) : '—'}
+        </span>
+        <span className="stat-label">Estimated annual premium</span>
+      </div>
+
       <div className="risk-score-display">
         <div className="risk-circle" style={{ backgroundColor: color }}>
-          {isFinite(data.risk_index) ? data.risk_index.toFixed(1) : '—'}
+          {isFinite(data.risk_index) ? data.risk_index.toFixed(0) : '—'}
         </div>
         <div className="risk-text">
           <span className="risk-label">Quintile {data.quintile} of 5</span>
-          <span className="stat-label">Risk index · 0 low → 100 high</span>
+          <span className="stat-label">Premium index · 0 cheapest → 100 dearest</span>
         </div>
       </div>
 
@@ -114,7 +122,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         <div className="distribution-context">
           <div className="distribution-statement">
             Higher risk than{' '}
-            <strong>{Math.round(riskDist.percentileRank)}%</strong> of London
+            <strong>{Math.round(riskDist.percentileRank)}%</strong> of GB
             areas
           </div>
           <Sparkline bins={riskDist.bins} selectedBin={riskDist.selectedBin} />
@@ -127,7 +135,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div className="distribution-statement">
             {COMPONENT_LABELS[colorMode]}:{' '}
             <strong>{Math.round(driverDist.percentileRank)}th</strong>{' '}
-            percentile across London
+            percentile across GB
           </div>
           <Sparkline
             bins={driverDist.bins}

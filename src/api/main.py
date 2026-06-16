@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
     STATE.clear()
 
 
-app = FastAPI(title="London Insurance Risk Map API", lifespan=lifespan)
+app = FastAPI(title="GB Insurance Risk Map API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,16 +95,23 @@ def clean_postcode(pc: str) -> str:
     return re.sub(r"\s+", "", str(pc)).upper()
 
 
-def estimate_premium(row, coefs: dict) -> int:
+def estimate_premium(row, coefs: dict) -> int | None:
     """Linear premium estimate from calibration coefficients. Works for a
-    pandas Series or a dict row."""
+    pandas Series or a dict row.
+
+    Returns None if ANY model feature is missing for this row (e.g. Scotland has
+    no vehicle_crime). Skipping the term silently would invent a too-low premium
+    on an E+W-fit intercept; reporting "no estimate" is the honest behaviour and
+    matches the baked calibrated_premium (NaN). Once a feature is ingested for
+    that nation, the estimate appears automatically."""
     est = float(coefs.get("const", 0.0))
     for col, coef in coefs.items():
         if col == "const":
             continue
         val = row.get(col)
-        if val is not None and pd.notna(val):
-            est += float(coef) * float(val)
+        if val is None or pd.isna(val):
+            return None
+        est += float(coef) * float(val)
     return round(est)
 
 
@@ -137,7 +144,7 @@ def get_geojson():
 def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
     pc_clean = clean_postcode(postcode)
     if STATE["postcodes"].empty or pc_clean not in STATE["postcodes"].index:
-        raise HTTPException(status_code=404, detail="Postcode not found or outside London")
+        raise HTTPException(status_code=404, detail="Postcode not found or outside Great Britain")
 
     pc_data = STATE["postcodes"].loc[pc_clean]
     if isinstance(pc_data, pd.DataFrame):
@@ -154,25 +161,23 @@ def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
     row = rows.iloc[0]
 
     coefs = STATE["calibration"].get("coefficients", {})
-    weights = settings["risk_index"]["weights"]
-    total_weight = sum(weights.values()) or 1.0
-    method = settings["risk_index"]["normalisation"]
 
     def _num(x):
         """NaN -> None so the response is JSON-compliant (e.g. Scotland has no
-        vehicle_crime, which the risk index reweights around)."""
+        vehicle_crime in some rows)."""
         return float(x) if pd.notna(x) else None
 
+    # Components mirror the baked parquet: percentile + the £ that each driver
+    # adds to the premium estimate ({c}_contrib). Features not in the premium
+    # model (road_casualties) carry a £0 contribution but still show a percentile.
     components = {}
-    for col, w in weights.items():
+    for col in COMPONENT_COLS:
         if col not in row:
             continue
-        pct = _num(row[f"{col}_pct"]) if f"{col}_pct" in row else 0.0
-        contrib = (pct * w) / total_weight if (method == "percentile" and pct is not None) else None
         components[col] = {
             "value": _num(row[col]),
-            "percentile": pct,
-            "contribution": contrib,
+            "percentile": _num(row[f"{col}_pct"]) if f"{col}_pct" in row else None,
+            "contribution": _num(row[f"{col}_contrib"]) if f"{col}_contrib" in row else None,
         }
 
     return {
@@ -214,14 +219,27 @@ def get_rankings(
 
 @app.get("/api/methodology")
 def get_methodology():
+    """Describe the reconciled model: risk_index is the calibrated premium on a
+    0–100 scale, so the 'weights' are the data-driven feature importances from the
+    premium regression (not the retired expert weights)."""
     calib = STATE["calibration"]
+
+    def _strip(d):  # "vehicle_crime_pct" -> "vehicle_crime" for display
+        return {(k[:-4] if k.endswith("_pct") else k): v for k, v in (d or {}).items()}
+
+    importance = _strip(calib.get("backfit_weights"))
     return {
-        "weights": settings["risk_index"]["weights"],
+        "weights": importance,                       # data-driven importances (sum→1)
         "normalisation": settings["risk_index"]["normalisation"],
+        "feature_basis": calib.get("feature_basis"),
+        "premium_features": [c[:-4] if c.endswith("_pct") else c
+                             for c in calib.get("premium_features", [])],
         "calibration": {
             "r_squared": calib.get("r_squared"),
-            "coefficients": calib.get("coefficients"),
-            "backfit_weights": calib.get("backfit_weights"),
+            "cv_r_squared": (calib.get("ridge_cv") or {}).get("cv_r_squared_mean"),
+            "leave_one_area_out_mae": (calib.get("leave_one_area_out") or {}).get("mae_gbp"),
+            "coefficients": _strip(calib.get("coefficients")),
+            "feature_importance": importance,
         },
     }
 

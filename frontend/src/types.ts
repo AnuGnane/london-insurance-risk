@@ -11,7 +11,7 @@ export interface RiskData {
   risk_index: number;
   quintile: number;
   components: Record<string, ComponentRisk>;
-  calibrated_premium_estimate: number;
+  calibrated_premium_estimate: number | null;   // null where a model feature is missing (e.g. Scotland crime)
   postcode_area: string;
   wtw_anchor_premium?: number;
   // Optional — if the backend returns the postcode point we fly there exactly;
@@ -26,7 +26,7 @@ export interface RankingArea {
   name: string;
   risk_index: number;
   quintile: number;
-  calibrated_premium: number;
+  calibrated_premium: number | null;
   lng?: number;           // only needed if rankings are district-level
   lat?: number;
 }

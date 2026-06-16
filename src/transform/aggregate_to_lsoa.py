@@ -28,8 +28,11 @@ from src.common.io import LSOA_FEATURES, interim, write_parquet
 
 log = logging.getLogger(__name__)
 
-# Nations covered by data.police.uk (vehicle crime). Others get NaN, not 0.
-CRIME_NATIONS = {"england", "wales"}
+# Nations with a vehicle-crime source: England+Wales via data.police.uk, Scotland
+# via the Recorded-Crime-in-Scotland cube (src/ingest/scotland_crime.py). A
+# covered nation's areas with no recorded crime are a true 0; uncovered nations
+# (e.g. NI, if ever added) stay NaN so the index reweights around the gap.
+CRIME_NATIONS = {"england", "wales", "scotland"}
 
 
 def _load_parquet(name: str) -> pd.DataFrame:
@@ -103,6 +106,16 @@ def run() -> None:
 
     months_back = settings["data_years"]["crime_months_back"]
     crime_rate = compute_vehicle_crime_rate(crime, pop, months_back)
+    # Scotland's vehicle crime comes pre-aggregated (council-level, annual rate)
+    # from a different source; append it so all of GB carries the feature.
+    scot_path = interim("scotland_vehicle_crime.parquet")
+    if scot_path.exists():
+        scot = pd.read_parquet(scot_path)[["area_code", "vehicle_crime_count", "vehicle_crime"]]
+        crime_rate = pd.concat([crime_rate, scot], ignore_index=True)
+        log.info("Added %d Scottish Data Zones to vehicle-crime table", len(scot))
+    else:
+        log.warning("No %s — Scotland vehicle_crime will be NaN. Run "
+                    "`python -m src.ingest.scotland_crime` first.", scot_path)
     casualty_rate = compute_casualty_rate(collisions, pop, settings["data_years"]["stats19_years"])
     pop_density = compute_population_density(pop, boundaries)
     deprivation = dep[["area_code", "deprivation_pct"]].rename(

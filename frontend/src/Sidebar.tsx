@@ -62,7 +62,7 @@ const MethodologyPanel: React.FC = () => {
             {m.calibration.r_squared != null
               ? (m.calibration.r_squared * 100).toFixed(0)
               : '—'}
-            % of the variance in real average premiums across London postcode
+            % of the variance in real average premiums across GB postcode
             areas (WTW/Confused). Index normalised by {m.normalisation}.
           </p>
           <div className="methodology-weights">
@@ -103,9 +103,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1>London Territory Risk</h1>
+        <h1>GB Territory Risk</h1>
         <p>
-          A composite open-data proxy for motor insurance risk across London.
+          A composite open-data proxy for motor insurance risk across Great Britain.
         </p>
       </div>
 

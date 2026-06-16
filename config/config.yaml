@@ -42,6 +42,12 @@ calibration:
   temporal_backtest: true      # fit on quarters ≤T, predict T+1
   quarter_fixed_effects: true  # control for national premium trend
   cluster_by: "area_name"      # cluster SEs by area (repeated measures)
+  feature_basis: "percentile"  # raw | percentile — percentile (0–100) bounds LSOA-grain
+                               # extrapolation; raw units blow up on outlier LSOAs (see MODEL_REVIEW.md §3.2)
+  premium_features:            # features in the PREMIUM model. road_casualties excluded:
+    - vehicle_crime            # at postcode-area grain it's insignificant (p≈0.45) and wrong-signed;
+    - deprivation              # it stays ingested + shown as a map driver, just not in the £ estimate.
+    - population_density
 
 sources:
   police_api: "https://data.police.uk/api"
@@ -49,6 +55,10 @@ sources:
   imd2019: "https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019"
   geoportal: "https://geoportal.statistics.gov.uk"
   wtw_index: "https://www.confused.com/car-insurance/price-index"
+  # Scotland recorded crime (data.police.uk has no Scottish coverage). "Theft of/from
+  # a motor vehicle" by council area, latest year, disaggregated to Data Zone by
+  # population. Linked-data cube queried over SPARQL.
+  scotland_crime_sparql: "https://statistics.gov.scot/sparql"
 
 paths:
   raw: "data/raw"
