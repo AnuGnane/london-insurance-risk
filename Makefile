@@ -18,9 +18,11 @@ features:      ## M2: build the LSOA feature table
 risk:          ## M3: compute composite risk index -> processed/lsoa_risk.{parquet,geojson}
 	python -m src.transform.build_risk_index
 
-calibrate:     ## M4: ingest WTW anchors + fit regression
+calibrate:     ## M4: ingest WTW anchors + fit regression, then re-bake risk index
 	python -m src.calibrate.wtw_index
 	python -m src.calibrate.calibrate
+	python -m src.transform.build_risk_index
+	$(MAKE) showcase-data
 
 api:           ## M5: serve FastAPI (local dev only — not used by the static site)
 	uvicorn src.api.main:app --reload --port 8000
