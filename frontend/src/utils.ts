@@ -2,25 +2,41 @@
 import type { Feature, FeatureCollection } from 'geojson';
 import type { AreaDetail, LsoaProps } from './types';
 
-export const COMPONENT_KEYS = [
+// Drivers that actually move the calibrated premium (place + composition) — these
+// carry a £ `_contrib`. Diagnostics are mapped layers the calibration evidence-gated
+// OUT of the premium; they carry only a percentile. Keeping them visually distinct is
+// a credibility requirement (the premium is not "just a density model").
+export const MODEL_DRIVERS = [
   'vehicle_crime',
-  'road_casualties',
   'deprivation',
-  'population_density',
   'aadf_intensity',
+  'young_driver_share',
+  'cars_per_household',
+] as const;
+
+export const DIAGNOSTIC_LAYERS = [
+  'road_casualties',
+  'population_density',
   'traffic_per_capita',
   'ksi_collisions_per_billion_vehicle_miles',
 ] as const;
 
+export const COMPONENT_KEYS = [...MODEL_DRIVERS, ...DIAGNOSTIC_LAYERS] as const;
+
 export const COMPONENT_LABELS: Record<string, string> = {
   vehicle_crime: 'Vehicle crime',
-  road_casualties: 'Road casualties',
   deprivation: 'Deprivation (IMD)',
-  population_density: 'Population density',
   aadf_intensity: 'Traffic intensity (AADF)',
+  young_driver_share: 'Young drivers (17–24)',
+  cars_per_household: 'Cars per household',
+  road_casualties: 'Road casualties',
+  population_density: 'Population density',
   traffic_per_capita: 'Traffic exposure',
   ksi_collisions_per_billion_vehicle_miles: 'KSI collisions / traffic',
 };
+
+const DRIVER_SET = new Set<string>(MODEL_DRIVERS);
+export const isModelDriver = (key: string): boolean => DRIVER_SET.has(key);
 
 /** Format a GBP figure with thousands separators, e.g. 1180 -> "£1,180". */
 export const gbp = (n?: number | null): string =>
@@ -69,16 +85,83 @@ export const boundsCentre = (
   b: [[number, number], [number, number]]
 ): [number, number] => [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2];
 
+/** Ray-casting point-in-ring test ([lng,lat] pairs). */
+function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > lat !== yj > lat &&
+        lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Point-in-(Multi)Polygon: inside the outer ring and outside any hole. */
+function pointInFeature(lng: number, lat: number, feature: Feature): boolean {
+  const g: any = feature.geometry;
+  if (!g) return false;
+  const polys: number[][][][] =
+    g.type === 'MultiPolygon' ? g.coordinates
+    : g.type === 'Polygon' ? [g.coordinates]
+    : [];
+  for (const poly of polys) {
+    if (!pointInRing(lng, lat, poly[0])) continue;       // outside outer ring
+    if (poly.slice(1).some((hole) => pointInRing(lng, lat, hole))) continue; // in a hole
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Find the area for a point. Postcode → LSOA via coordinates (postcodes.io now
+ * returns 2021/2022 census codes, which don't match our 2011 `area_code`s —
+ * coordinates are vintage-independent).
+ *
+ * Containment first (bbox pre-filter → ray-cast). Aggressive simplification leaves
+ * tiny gaps between dense-urban polygons where a point may fall in no polygon, so
+ * we fall back to the **nearest area** (by bbox-centre distance) — which is the
+ * correct LSOA in practice. Single O(n) pass over ~42k features (a few ms).
+ */
+export function featureAtPoint(
+  features: Feature[],
+  lng: number,
+  lat: number
+): Feature | null {
+  let nearest: Feature | null = null;
+  let nearestD = Infinity;
+  for (const f of features) {
+    const b = featureBounds(f);
+    if (!b) continue;
+    const inBox =
+      lng >= b[0][0] && lng <= b[1][0] && lat >= b[0][1] && lat <= b[1][1];
+    if (inBox && pointInFeature(lng, lat, f)) return f;
+    const [cx, cy] = boundsCentre(b);
+    const d = (cx - lng) ** 2 + (cy - lat) ** 2;
+    if (d < nearestD) {
+      nearestD = d;
+      nearest = f;
+    }
+  }
+  return nearest;
+}
+
 /** Normalise GeoJSON feature properties into the shape DetailPanel expects.
  *  Used when an area is reached by *clicking the map* or a ranking, so the
  *  panel is as rich as the geojson allows — no API call needed. */
 export function featureToDetail(props: LsoaProps): AreaDetail {
   const components = COMPONENT_KEYS.map((key) => ({
     key,
+    kind: (isModelDriver(key) ? 'driver' : 'diagnostic') as 'driver' | 'diagnostic',
     value: props[`${key}_val`] as number | undefined,
     percentile: props[`${key}_pct`] as number | undefined,
     contribution: props[`${key}_contrib`] as number | undefined,
   })).filter((c) => c.value != null || c.percentile != null);
+
+  const full = props.calibrated_premium as number | undefined;
+  const placeOnly = props.premium_place_only as number | undefined;
 
   return {
     title: props.lsoa_name ? String(props.lsoa_name) : String(props.lsoa11cd),
@@ -86,9 +169,65 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
     lsoa11cd: String(props.lsoa11cd),
     risk_index: Number(props.risk_index),
     quintile: readQuintile(props),
-    calibrated_premium: props.calibrated_premium as number | undefined,
+    calibrated_premium: full,
+    premium_place_only: placeOnly,
+    composition_uplift:
+      full != null && placeOnly != null ? full - placeOnly : undefined,
     components,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Editorial helpers
+// ---------------------------------------------------------------------------
+
+/** Quintile £ bands computed from the loaded GeoJSON — keeps the legend live. */
+export interface PremiumBand { q: number; min: number; max: number; }
+export function quintilePremiumBands(
+  lookup: Map<string, Feature>
+): PremiumBand[] {
+  const byQ = new Map<number, { min: number; max: number }>();
+  for (const f of lookup.values()) {
+    const p = f.properties as any;
+    const q = Number(p?.quintile);
+    const v = Number(p?.calibrated_premium);
+    if (!q || !isFinite(v)) continue;
+    const cur = byQ.get(q);
+    if (!cur) byQ.set(q, { min: v, max: v });
+    else { cur.min = Math.min(cur.min, v); cur.max = Math.max(cur.max, v); }
+  }
+  return [...byQ.entries()]
+    .map(([q, r]) => ({ q, ...r }))
+    .sort((a, b) => a.q - b.q);
+}
+
+/**
+ * Position (0–1 across the 5 equal quintile segments) of a £ value, used to
+ * place the "GB average" notch on the legend ramp.
+ */
+export function premiumToRampPos(value: number, bands: PremiumBand[]): number {
+  if (bands.length === 0) return 0;
+  for (let i = 0; i < bands.length; i++) {
+    const b = bands[i];
+    if (value <= b.max || i === bands.length - 1) {
+      const span = b.max - b.min || 1;
+      const within = Math.min(1, Math.max(0, (value - b.min) / span));
+      return (i + within) / bands.length;
+    }
+  }
+  return 1;
+}
+
+/** One quintile-aware plain-language sentence introducing the premium. */
+export function ledeForQuintile(q: number): string {
+  switch (q) {
+    case 5: return 'Among the most expensive places in Britain to insure a car.';
+    case 4: return 'More expensive than most of the country.';
+    case 3: return 'Around the middle of the national range.';
+    case 2: return 'Cheaper than most of the country.';
+    case 1: return 'Among the cheapest places in Britain to insure a car.';
+    default: return '';
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -159,7 +298,7 @@ export function dominantDriver(
 ): string | null {
   let best: string | null = null;
   let bestVal = -Infinity;
-  for (const key of COMPONENT_KEYS) {
+  for (const key of MODEL_DRIVERS) {
     const c = props[`${key}_contrib`];
     if (c != null && Number(c) > bestVal) {
       bestVal = Number(c);

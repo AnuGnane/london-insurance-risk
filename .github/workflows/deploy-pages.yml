@@ -1,0 +1,56 @@
+name: Deploy showcase to GitHub Pages
+
+# Builds the static frontend (which reads pre-baked data/areas.geojson +
+# methodology.json committed under frontend/public/data) and publishes it to
+# GitHub Pages. The Python backend is NOT deployed — the site is fully static
+# (see SHOWCASE_PLAN.md). Regenerate the baked data with `make showcase-data`.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel an in-progress run.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Build (GitHub Pages base path)
+        run: npm run build
+        env:
+          GITHUB_PAGES: '1'
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

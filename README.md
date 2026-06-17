@@ -25,6 +25,26 @@ docker compose up --build
 The compose file mounts `./data` and `./reports` as volumes so the pre-built data is served
 without baking it into the image. No re-ingest needed inside Docker.
 
+## Live showcase (GitHub Pages — static, no backend)
+
+The public demo is a **fully static** build: GitHub Pages can't run the FastAPI
+backend, so the frontend reads pre-baked data and resolves postcodes client-side
+(see `SHOWCASE_PLAN.md`). Nothing is lost — postcode search still works.
+
+```bash
+make showcase-data        # bake frontend/public/data/{areas.geojson,methodology.json}
+                          # (run after make risk + make calibrate)
+cd frontend && GITHUB_PAGES=1 npm run build   # base path /london-insurance-risk/
+```
+
+`.github/workflows/deploy-pages.yml` builds and deploys on every push to `main`.
+The four old endpoints are replaced by `frontend/src/api.ts`: the choropleth is a
+static GeoJSON; **postcode → area uses postcodes.io for coordinates + client-side
+point-in-polygon** (postcodes.io now returns 2021/2022 codes that don't match the
+model's 2011 areas, so we match on location, not code); rankings sort the loaded
+GeoJSON; methodology is a static JSON. The local FastAPI app (`make api`, Docker)
+still works for full-fidelity development.
+
 ## Layout
 ```
 config/config.yaml      weights, years, region code, paths — single source of truth

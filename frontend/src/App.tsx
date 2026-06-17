@@ -7,14 +7,15 @@ import type {
   ColorMode,
   FocusTarget,
   LsoaProps,
-  RiskData,
 } from './types';
 import {
   buildLookup,
   featureBounds,
   boundsCentre,
   featureToDetail,
+  featureAtPoint,
 } from './utils';
+import { getGeojson, lookupPostcode } from './api';
 import './index.css';
 
 function App() {
@@ -96,14 +97,10 @@ function App() {
     updateUrl(detail?.lsoa11cd ?? null, colorMode);
   }, [detail?.lsoa11cd, colorMode, updateUrl]);
 
-  // Load the choropleth once.
+  // Load the choropleth once (static file on Pages; see api.ts).
   useEffect(() => {
-    fetch('/api/geojson')
-      .then((r) => {
-        if (!r.ok) throw new Error('Could not load the map data');
-        return r.json();
-      })
-      .then((fc: FeatureCollection) => setGeojson(fc))
+    getGeojson()
+      .then((fc) => setGeojson(fc))
       .catch((e) => setGeoError(e.message));
   }, []);
 
@@ -124,48 +121,18 @@ function App() {
     setLoading(true);
     setSearchError(null);
     try {
-      const res = await fetch(
-        `/api/risk?postcode=${encodeURIComponent(postcode)}`
-      );
-      if (!res.ok) {
-        throw new Error(
-          res.status === 404
-            ? 'No match — that postcode is outside Great Britain or not recognised.'
-            : 'Something went wrong fetching that postcode.'
-        );
+      // postcodes.io → coordinate → the area whose polygon contains it (its props
+      // already carry the premium + drivers, baked into the GeoJSON).
+      const hit = await lookupPostcode(postcode);
+      const feature = geojson
+        ? featureAtPoint(geojson.features, hit.lng, hit.lat)
+        : null;
+      const props = feature?.properties as LsoaProps | undefined;
+      if (!props) {
+        throw new Error('That postcode is outside the modelled area (GB only).');
       }
-      const data: RiskData = await res.json();
-
-      // Prefer the rich /api/risk payload; fall back to feature props.
-      const fromFeature =
-        lookup.get(data.lsoa11cd)?.properties as LsoaProps | undefined;
-      const detailFromApi: AreaDetail = {
-        title: data.postcode,
-        subtitle: `LSOA ${data.lsoa11cd}`,
-        lsoa11cd: data.lsoa11cd,
-        risk_index: data.risk_index,
-        quintile: data.quintile,
-        calibrated_premium: data.calibrated_premium_estimate ?? undefined,
-        wtw_anchor_premium: data.wtw_anchor_premium,
-        postcode_area: data.postcode_area,
-        components: Object.entries(data.components ?? {}).map(([key, c]) => ({
-          key,
-          value: c.value,
-          percentile: c.percentile,
-          contribution: c.contribution,
-        })),
-      };
-      setDetail(
-        detailFromApi.components.length || !fromFeature
-          ? detailFromApi
-          : { ...featureToDetail(fromFeature), title: data.postcode }
-      );
-
-      const exact =
-        data.lng != null && data.lat != null
-          ? ([data.lng, data.lat] as [number, number])
-          : undefined;
-      focusLsoa(data.lsoa11cd, exact);
+      setDetail({ ...featureToDetail(props), title: hit.postcode });
+      focusLsoa(String(props.lsoa11cd), [hit.lng, hit.lat]);
     } catch (err: any) {
       setSearchError(err.message);
       setDetail(null);

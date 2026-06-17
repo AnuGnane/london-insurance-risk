@@ -1,4 +1,4 @@
-.PHONY: ingest features risk calibrate api test clean
+.PHONY: ingest features risk calibrate api test clean showcase-data
 
 ingest:        ## M1: download + parse all sources -> data/interim/*.parquet
 	python -m src.ingest.boundaries
@@ -9,6 +9,8 @@ ingest:        ## M1: download + parse all sources -> data/interim/*.parquet
 	python -m src.ingest.scotland_crime
 	python -m src.ingest.census_demographics
 	python -m src.ingest.traffic
+	python -m src.ingest.aadf
+	python -m src.ingest.flood
 
 features:      ## M2: build the LSOA feature table
 	python -m src.transform.aggregate_to_lsoa
@@ -20,8 +22,11 @@ calibrate:     ## M4: ingest WTW anchors + fit regression
 	python -m src.calibrate.wtw_index
 	python -m src.calibrate.calibrate
 
-api:           ## M5: serve FastAPI (after form factor chosen)
+api:           ## M5: serve FastAPI (local dev only — not used by the static site)
 	uvicorn src.api.main:app --reload --port 8000
+
+showcase-data: ## Bake static assets for GitHub Pages -> frontend/public/data/
+	python -m src.showcase.bake_static
 
 test:
 	pytest -q

@@ -33,15 +33,29 @@ export interface RankingArea {
   lat?: number;
 }
 
-// GET /api/methodology (optional endpoint — panel hides if it 404s)
+// Trimmed calibration summary (static methodology.json on Pages).
+export interface FeatureStat {
+  bucket: 'place' | 'composition';
+  partial_r: number;
+  vif: number;
+  verdict: string;
+}
 export interface Methodology {
-  weights: Record<string, number>;
   normalisation: string;
-  calibration: {
-    r_squared: number;
-    coefficients: Record<string, number>;
-    backfit_weights?: Record<string, number>;
-  };
+  r_squared: number;
+  cv_r_squared?: number;
+  loao_mae?: number;
+  spearman?: number;
+  n_matched?: number;
+  n_areas?: number;
+  n_quarters?: number;
+  national_avg?: number;
+  feature_analysis?: Record<string, FeatureStat>;
+  cross_source?: {
+    name: string;
+    rows: { area_name: string; actual_gbp: number; predicted_gbp: number }[];
+    spearman?: number;
+  } | null;
 }
 
 // Properties baked into each GeoJSON feature (see "backend contract" notes).
