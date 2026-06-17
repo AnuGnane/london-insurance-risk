@@ -73,6 +73,7 @@ export interface LsoaProps {
 // search (rich, via /api/risk) or a map/ranking click (via feature props).
 export interface AreaDetailComponent {
   key: string;
+  kind: 'driver' | 'diagnostic';
   value?: number;
   percentile?: number;
   contribution?: number;
@@ -85,6 +86,8 @@ export interface AreaDetail {
   risk_index: number;
   quintile: number;
   calibrated_premium?: number;
+  premium_place_only?: number;
+  composition_uplift?: number;
   wtw_anchor_premium?: number;
   postcode_area?: string;
   components: AreaDetailComponent[];
