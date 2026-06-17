@@ -92,7 +92,7 @@ carries the colour), hairline "ledger" panel structure, and a **£-keyed legend 
 
 ---
 
-## Sprint 3 — Showcase functionality
+## Sprint 3 — Showcase functionality next up
 
 1. **⭐ Compare two areas** — the project's origin story (London ~£7k vs Rugby ~£2k). A compare mode: two postcode inputs → side-by-side premium + driver breakdown + the spatial multiplier ("≈ N× more"). This is the single most compelling demo and maps straight onto the data we already expose.
 2. **Guided landing** — first load focuses on (or offers a one-click) London-vs-Rugby comparison, with a short "what am I looking at" callout.
