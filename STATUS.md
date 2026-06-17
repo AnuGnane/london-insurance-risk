@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-06-16. Branch: `phase2-anchor-expansion`.
+Last updated: 2026-06-17. Branch: `phase2-anchor-expansion`.
 
 **Phase 2 (anchor expansion) — COMPLETE.** Three things landed (see `PHASE2_PLAN.md`):
 1. **Scotland validated, not extrapolated** — the four Confused Scottish regions are
@@ -16,13 +16,17 @@ Last updated: 2026-06-16. Branch: `phase2-anchor-expansion`.
    like E+W (no longer place-only). Demographic merge overall 81%→97%.
 Current fit: R²=0.909, CV-R²=0.876, LOAO MAE £104, Spearman 0.967.
 
-**Phase 3 (traffic exposure + collision revisit) — STARTED.** The first slice is
-implemented behind a rebuild: DfT local-authority traffic exposure is ingested via
-`src/ingest/traffic.py`, ONSPD now keeps `local_authority_code`, and
-`aggregate_to_lsoa.py` can derive `ksi_collisions_per_billion_vehicle_miles`.
-The new features are added to `features.place` so the next full rebuild and
-calibration will decide whether traffic and KSI collisions are keepers. See
-`PHASE3_PLAN.md`.
+**Phase 3 (traffic exposure + collision revisit) — v1 COMPLETE.** DfT local-authority
+traffic exposure is ingested (`src/ingest/traffic.py`, 41,237 areas); ONSPD now
+derives `local_authority_code` at the DfT highway-authority grain (county for two-tier
+shire areas, else unitary/met/London/Scottish-council); `aggregate_to_lsoa.py` computes
+`ksi_collisions_per_billion_vehicle_miles`. Both were fed to calibration as
+`features.place` candidates and the **evidence gate excluded both**: KSI has no
+independent signal once crime/deprivation/density are controlled (partial p≈0.44), and
+`traffic_per_capita` is an inverse-density proxy (univariate r≈−0.92, VIF≈16, wrong-
+signed). They're retained as **map diagnostics** (new `features.diagnostics` config
+list); the premium model stays on 3 place + 2 composition features. Point-level AADF
+exposure is deferred. See `PHASE3_PLAN.md`.
 
 **Model:** premium estimator. The calibrated **expected annual premium (£)** is the headline; the
 0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on
