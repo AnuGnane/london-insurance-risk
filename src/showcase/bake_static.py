@@ -3,16 +3,24 @@
 GitHub Pages can't run the FastAPI backend, so the frontend reads pre-baked static
 files instead (see SHOWCASE_PLAN.md). This script produces:
 
-  frontend/public/data/areas.geojson    — simplified choropleth (target ≤ ~6 MB raw,
-                                           gzips small; Pages serves it compressed)
+  frontend/public/data/areas.geojson    — simplified choropleth (≈ 6–7 MB gzip; Pages
+                                           serves it compressed)
   frontend/public/data/methodology.json — trimmed reports/calibration.json
 
-The served GeoJSON is ~150 MB uncompressed, so we shrink hard: simplify geometry in
-metres (EPSG:27700), snap to a metric grid with `set_precision(valid_output)` to repair
-the self-intersections simplification leaves behind (otherwise small urban areas render
-as spikes/fans), round coordinates to 5 dp (~1 m, lets json write short floats), keep
-only the props the UI needs and coarsen them to integers, then reproject to WGS84.
-Result ≈ 45 MB raw / ≈ 6 MB gzip — and GitHub Pages serves it gzipped.
+The served GeoJSON is ~250 MB uncompressed, so we shrink hard. The geometry is
+simplified with **mapshaper** (Visvalingam) rather than Shapely's `.simplify()`:
+Shapely simplifies every polygon independently, so a border shared by two areas is
+simplified twice and the two copies pull apart — leaving white slivers/gaps and
+overlaps between neighbouring areas. mapshaper is *topology-aware*: it simplifies each
+shared arc once, so neighbours keep identical edges (no slivers). `-clean` then removes
+any residual overlap/gap and `precision` snaps coordinates so json writes short floats.
+
+Pipeline: load boundaries + risk features → trim/coarsen props → reproject to WGS84 →
+write a full-resolution intermediate GeoJSON → mapshaper (simplify + clean + precision)
+→ read back → repair the handful of residual self-intersections with `make_valid`.
+
+mapshaper is a dev dependency of the frontend (frontend/node_modules/.bin/mapshaper),
+so `npm --prefix frontend install` must have run first.
 
 Run: `make showcase-data` (after `make risk` + `make calibrate`).
 """
@@ -20,9 +28,11 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
+import tempfile
+from pathlib import Path
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import shapely
 
@@ -32,9 +42,11 @@ from src.common.io import LSOA_RISK_PARQUET, interim, processed
 log = logging.getLogger(__name__)
 
 OUT_DIR = ROOT / "frontend" / "public" / "data"
-SIMPLIFY_M = 120.0     # metres — national choropleth; coarse but legible per area
-GRID_M = 10.0          # metres — set_precision grid; repairs simplify self-intersections
-COORD_DP = 5           # ~1 m; rounding coords to 5 dp lets json write short floats
+MAPSHAPER = ROOT / "frontend" / "node_modules" / ".bin" / "mapshaper"
+# mapshaper Visvalingam: percentage of *removable* vertices to KEEP. Higher = more
+# detail + bigger file. 8% ≈ 6–7 MB gzip with clean, legible per-area boundaries.
+SIMPLIFY_PCT = 8
+COORD_PRECISION = 0.00001  # ~1 m; snaps output coords so json writes short floats
 
 # Props the frontend reads (see utils.featureToDetail + DetailPanel). To keep the
 # static payload small we drop raw `_val` columns and coarsen numbers; the map
@@ -75,32 +87,68 @@ def _round_props(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return out
 
 
-def build_geojson() -> gpd.GeoDataFrame:
-    """Simplified, prop-trimmed choropleth in WGS84."""
+def build_fullres_gdf() -> gpd.GeoDataFrame:
+    """Full-resolution, prop-trimmed choropleth in WGS84 (pre-simplification)."""
     boundaries = gpd.read_parquet(interim("area_boundaries.parquet"))
     features = pd.read_parquet(processed(LSOA_RISK_PARQUET))
 
     geo = boundaries[["area_code", "geometry"]].copy()
-    geo["geometry"] = geo["geometry"].simplify(SIMPLIFY_M)            # in metres (27700)
-    # Snap to a metric grid and repair: simplification + later coordinate rounding leave
-    # self-intersecting rings that MapLibre renders as spikes/fans on small urban areas.
-    # valid_output snaps to the grid AND returns valid geometry, killing the spikes.
-    geo["geometry"] = shapely.set_precision(
-        geo.geometry.values, grid_size=GRID_M, mode="valid_output"
-    )
     gdf = gpd.GeoDataFrame(geo.merge(features, on="area_code", how="inner"),
                            geometry="geometry", crs=boundaries.crs)
     gdf = gdf.to_crs("EPSG:4326")
-    # Round coordinates to COORD_DP places — as actual floats, so json.dumps writes
-    # the short repr ("-2.34561" not "-2.34560000001"). 5 dp (~1 m) is finer than the
-    # 10 m snap grid, so it trims float length without re-breaking validity.
-    gdf["geometry"] = shapely.transform(
-        gdf.geometry.values, lambda c: np.round(c, COORD_DP)
-    )
-    gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty & gdf.geometry.is_valid]
-
     cols = [c for c in _BASE_PROPS if c in gdf.columns] + _component_cols(gdf)
     return _round_props(gdf[cols + ["geometry"]])
+
+
+def _simplify_with_mapshaper(src: Path, dst: Path) -> None:
+    """Topology-aware simplify + clean via mapshaper. Shared arcs are simplified once,
+    so neighbouring areas keep matching edges — no slivers (unlike per-geometry
+    `.simplify()`). `keep-shapes` stops small areas collapsing; `-clean` removes any
+    residual gap/overlap; `precision` snaps coords so json writes short floats."""
+    if not MAPSHAPER.exists():
+        raise FileNotFoundError(
+            f"mapshaper not found at {MAPSHAPER}. Run `npm --prefix frontend install` "
+            "(it is a frontend dev dependency)."
+        )
+    subprocess.run(
+        [str(MAPSHAPER), str(src),
+         "-simplify", "visvalingam", f"percentage={SIMPLIFY_PCT}%", "keep-shapes",
+         "-clean",
+         "-o", f"precision={COORD_PRECISION}", str(dst)],
+        check=True,
+    )
+
+
+def build_geojson() -> gpd.GeoDataFrame:
+    """Simplified, prop-trimmed choropleth in WGS84, with clean shared boundaries."""
+    gdf = build_fullres_gdf()
+    with tempfile.TemporaryDirectory() as td:
+        full = Path(td) / "full.geojson"
+        simp = Path(td) / "simp.geojson"
+        gdf.to_file(full, driver="GeoJSON")
+        _simplify_with_mapshaper(full, simp)
+        out = gpd.read_file(simp)
+
+    # mapshaper already snapped coords to COORD_PRECISION (5 dp), so json floats stay
+    # short. It leaves a handful of self-intersecting rings, though; repair them in
+    # place as the *last* step — make_valid reuses existing vertices, so it doesn't
+    # move shared edges or reintroduce slivers. (Rounding *after* make_valid can
+    # re-collapse the repaired vertices and re-break validity, dropping the area — so
+    # don't.) Keep only polygonal parts in case make_valid yields a collection.
+    bad = ~out.geometry.is_valid
+    if bad.any():
+        out.loc[bad, "geometry"] = out.loc[bad, "geometry"].apply(_repair_polygonal)
+    return out[out.geometry.notna() & ~out.geometry.is_empty & out.geometry.is_valid]
+
+
+def _repair_polygonal(geom: shapely.Geometry) -> shapely.Geometry | None:
+    """make_valid a self-intersecting (Multi)Polygon, keeping only polygonal parts."""
+    fixed = shapely.make_valid(geom)
+    if fixed.geom_type in ("Polygon", "MultiPolygon"):
+        return fixed
+    parts = [p for p in shapely.get_parts(fixed)
+             if p.geom_type in ("Polygon", "MultiPolygon")]
+    return shapely.union_all(parts) if parts else None
 
 
 def build_methodology() -> dict:
@@ -124,7 +172,7 @@ def run() -> None:
     log.info("Wrote %d features to %s (%.1f MB raw; Pages serves it gzipped ~%.0f%% "
              "smaller)", len(gdf), dest, mb, 87)
     if mb > 70:
-        log.warning("areas.geojson is %.1f MB — consider a larger SIMPLIFY_M to keep "
+        log.warning("areas.geojson is %.1f MB — consider a lower SIMPLIFY_PCT to keep "
                     "the repo lean.", mb)
 
     meth = OUT_DIR / "methodology.json"
