@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Feature } from 'geojson';
 import type { RankingArea } from './types';
 import { gbp, dominantDriver } from './utils';
+import { getRankings } from './api';
 
 interface RankingsPanelProps {
   onSelectRanking: (code: string, coords?: [number, number]) => void;
@@ -25,14 +26,12 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<Order>('desc');
 
+  // Rankings are derived from the already-loaded GeoJSON (no API on Pages).
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/rankings?n=10&order=${order}`)
-      .then((r) => r.json())
-      .then((data: RankingArea[]) => setRankings(data))
-      .catch((e) => console.error('Failed to fetch rankings', e))
-      .finally(() => setLoading(false));
-  }, [order]);
+    setRankings(getRankings(lookup, order, 10));
+    setLoading(false);
+  }, [order, lookup]);
 
   return (
     <div className="card rankings-panel">

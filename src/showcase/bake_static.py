@@ -36,7 +36,8 @@ COORD_DP = 4           # ~11 m; rounding coords to 4 dp lets json write short fl
 # Props the frontend reads (see utils.featureToDetail + DetailPanel). To keep the
 # static payload small we drop raw `_val` columns and coarsen numbers; the map
 # colours by `_pct` and the detail panel shows percentile + £ `_contrib`.
-_BASE_PROPS = ["area_code", "lsoa_name", "calibrated_premium",
+# NB: the frontend keys on `lsoa11cd` (== area_code in our data), so emit that.
+_BASE_PROPS = ["lsoa11cd", "lsoa_name", "calibrated_premium",
                "premium_place_only", "risk_index", "quintile"]
 # Premium drivers + composition controls: keep _pct (map) AND _contrib (£ in panel).
 _DRIVERS = ["vehicle_crime", "deprivation", "aadf_intensity",

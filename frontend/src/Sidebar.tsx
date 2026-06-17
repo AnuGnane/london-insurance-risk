@@ -6,6 +6,7 @@ import { RankingsPanel } from './RankingsPanel';
 import { AboutPanel } from './AboutPanel';
 import type { AreaDetail, ColorMode, Methodology } from './types';
 import { COMPONENT_LABELS } from './utils';
+import { getMethodology } from './api';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -36,10 +37,7 @@ const MethodologyPanel: React.FC = () => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    fetch('/api/methodology')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => data && setM(data))
-      .catch(() => {});
+    getMethodology().then((data) => data && setM(data));
   }, []);
 
   if (!m) return null;

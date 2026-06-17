@@ -69,6 +69,69 @@ export const boundsCentre = (
   b: [[number, number], [number, number]]
 ): [number, number] => [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2];
 
+/** Ray-casting point-in-ring test ([lng,lat] pairs). */
+function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > lat !== yj > lat &&
+        lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Point-in-(Multi)Polygon: inside the outer ring and outside any hole. */
+function pointInFeature(lng: number, lat: number, feature: Feature): boolean {
+  const g: any = feature.geometry;
+  if (!g) return false;
+  const polys: number[][][][] =
+    g.type === 'MultiPolygon' ? g.coordinates
+    : g.type === 'Polygon' ? [g.coordinates]
+    : [];
+  for (const poly of polys) {
+    if (!pointInRing(lng, lat, poly[0])) continue;       // outside outer ring
+    if (poly.slice(1).some((hole) => pointInRing(lng, lat, hole))) continue; // in a hole
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Find the area for a point. Postcode → LSOA via coordinates (postcodes.io now
+ * returns 2021/2022 census codes, which don't match our 2011 `area_code`s —
+ * coordinates are vintage-independent).
+ *
+ * Containment first (bbox pre-filter → ray-cast). Aggressive simplification leaves
+ * tiny gaps between dense-urban polygons where a point may fall in no polygon, so
+ * we fall back to the **nearest area** (by bbox-centre distance) — which is the
+ * correct LSOA in practice. Single O(n) pass over ~42k features (a few ms).
+ */
+export function featureAtPoint(
+  features: Feature[],
+  lng: number,
+  lat: number
+): Feature | null {
+  let nearest: Feature | null = null;
+  let nearestD = Infinity;
+  for (const f of features) {
+    const b = featureBounds(f);
+    if (!b) continue;
+    const inBox =
+      lng >= b[0][0] && lng <= b[1][0] && lat >= b[0][1] && lat <= b[1][1];
+    if (inBox && pointInFeature(lng, lat, f)) return f;
+    const [cx, cy] = boundsCentre(b);
+    const d = (cx - lng) ** 2 + (cy - lat) ** 2;
+    if (d < nearestD) {
+      nearestD = d;
+      nearest = f;
+    }
+  }
+  return nearest;
+}
+
 /** Normalise GeoJSON feature properties into the shape DetailPanel expects.
  *  Used when an area is reached by *clicking the map* or a ranking, so the
  *  panel is as rich as the geojson allows — no API call needed. */

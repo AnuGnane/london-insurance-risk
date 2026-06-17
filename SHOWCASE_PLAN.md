@@ -25,7 +25,26 @@ A thin `src/api.ts` module exposes the same shapes (`getGeojson`, `lookupPostcod
 
 ---
 
-## Sprint 1 — Static-ready data layer + deploy pipeline (foundation)
+## Sprint 1 — Static-ready data layer + deploy pipeline ✅ DONE
+
+**Shipped:** `src/showcase/bake_static.py` (`make showcase-data`) bakes
+`frontend/public/data/areas.geojson` (simplified to ~37 MB raw / **~4.8 MB gzip** —
+simplify 180 m + 4 dp coords + lean integer props) and `methodology.json`.
+`frontend/src/api.ts` replaces the four endpoints client-side; `App.tsx`,
+`RankingsPanel.tsx`, `Sidebar.tsx` now call it (zero `/api/*` in the built JS,
+verified). Vite `base` is `/london-insurance-risk/` under `GITHUB_PAGES=1`.
+`.github/workflows/deploy-pages.yml` builds + deploys on push to `main`.
+
+**Key deviation from the original plan — postcode lookup uses coordinates, not the
+LSOA code.** postcodes.io's `codes.lsoa` is now the **2021/2022** census code, which
+does **not** match our **2011** `area_code`s (verified: Edinburgh/Cardiff codes were
+absent from our data). So `lookupPostcode` returns the postcode's **lat/long** and
+`featureAtPoint` (new, in `utils.ts`) finds the containing area by **point-in-polygon**
+— vintage-independent and uniform across nations. Aggressive simplification leaves
+tiny gaps between dense-urban polygons, so it falls back to the **nearest area** when
+no polygon contains the point (validated on WC1/EH1/EC1/SW1 — all resolve correctly).
+
+### Original task breakdown (for reference)
 
 1. **Bake static assets** (new `make showcase-data` target):
    - Simplify `data/processed/lsoa_risk.geojson.gz` geometries (geopandas
