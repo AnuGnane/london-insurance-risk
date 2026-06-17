@@ -1,7 +1,48 @@
 # Phase 3 Implementation Plan — Traffic Exposure + Collision Revisit
 
-> Status: **v1 complete** (LA-grain traffic; point-level AADF deferred). Follows
-> `NEXT_PHASE_DESIGN.md` §3 and §6.
+> Status: **COMPLETE.** v1 (LA-grain traffic + KSI) gated out as diagnostics; v2
+> (point-level AADF intensity) became a premium driver and replaced population
+> density. Follows `NEXT_PHASE_DESIGN.md` §3 and §6.
+
+## Phase 3 v2 — point-level AADF intensity (the rescue)
+
+v1's traffic feature failed because LA-traffic / residents is an inverse-density
+proxy. v2 measures **local road-traffic intensity** instead: the mean AADF (all
+motor vehicles) of DfT count points within 2 km of each area's centroid
+(`src/ingest/aadf.py`; count points and boundaries are both EPSG:27700, so it's a
+straight KD-tree radius query; 90% of areas have ≥1 point within 2 km, the rest use
+the nearest point). This separates "how busy are the roads near you" from "how many
+people live here" — the distinction v1 couldn't make.
+
+**Result — AADF is a genuine signal, and it replaced raw density:**
+
+| | partial r | partial p | VIF | verdict |
+|---|---|---|---|---|
+| `aadf_intensity` (added) | +0.38 | 7e-05 | 2.3 | ✅ keep |
+
+Adding AADF flipped `population_density` to a wrong sign at VIF 60 — they're
+collinear urban-intensity proxies and AADF is the better-behaved one. **Dropping
+density and keeping AADF** makes *every* premium feature an independent significant
+keeper (all VIF 2–6), and is the cleanest the model has been:
+
+| Metric | Before AADF | With AADF (density dropped) |
+|---|---|---|
+| Panel R² | 0.909 | **0.917** |
+| CV-R² | 0.876 | **0.887** |
+| Leave-one-area-out MAE | £104 | **£89** |
+| Spearman(pred, actual) | 0.967 | 0.968 |
+| MSM cross-source Spearman | 0.50 | **1.00** |
+| Feature VIFs | density 13–60 | all 2–6 |
+
+This directly answers the long-standing "the model is just an urban-density proxy"
+critique: density is now a **map diagnostic** (still baked via `risk_index.weights`),
+and the premium is driven by crime + deprivation + **direct traffic intensity** +
+demographic controls. Config: `aadf_intensity` in `features.place`,
+`population_density`/`traffic_per_capita`/KSI as diagnostics. Test: `tests/test_aadf.py`.
+
+---
+
+## Phase 3 v1 (LA-grain traffic + KSI) — gated out as diagnostics
 
 ## Outcome (the evidence gate fired)
 

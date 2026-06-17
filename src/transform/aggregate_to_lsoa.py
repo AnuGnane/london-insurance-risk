@@ -191,6 +191,25 @@ def run() -> None:
             traffic_path,
         )
 
+    # Point-level AADF traffic intensity (Phase 3 v2 — local road business near the
+    # area centroid, separating exposure from population density).
+    aadf = None
+    aadf_path = interim("aadf.parquet")
+    if aadf_path.exists():
+        aadf = pd.read_parquet(aadf_path)[["area_code", "aadf_intensity"]]
+        log.info("Merged point-level AADF intensity for %d areas", len(aadf))
+    else:
+        log.warning("No %s — AADF intensity absent. Run "
+                    "`python -m src.ingest.aadf` first.", aadf_path)
+
+    # Flood-risk exposure (Phase 4 — share of area in a High/Medium flood zone).
+    # Optional: only present once flood extents have been ingested.
+    flood = None
+    flood_path = interim("flood.parquet")
+    if flood_path.exists():
+        flood = pd.read_parquet(flood_path)[["area_code", "flood_risk"]]
+        log.info("Merged flood-risk exposure for %d areas", len(flood))
+
     # Master area list (one row per area, carries nation for the crime fill).
     features = (
         boundaries.merge(pop, on="area_code", how="left")
@@ -203,6 +222,10 @@ def run() -> None:
         features = features.merge(traffic, on="area_code", how="left")
     if ksi_rate is not None:
         features = features.merge(ksi_rate, on="area_code", how="left")
+    if aadf is not None:
+        features = features.merge(aadf, on="area_code", how="left")
+    if flood is not None:
+        features = features.merge(flood, on="area_code", how="left")
 
     # Collisions cover all GB, so a missing rate is a true zero everywhere.
     for col in ("road_casualties", "casualty_weighted", "collision_count"):

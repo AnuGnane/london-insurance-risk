@@ -41,10 +41,20 @@ features:
   # PLACE features drive the territorial premium; COMPOSITION features are CONTROLS,
   # included so the place coefficients are estimated net of who lives there, then
   # reported separately (NEXT_PHASE_DESIGN.md §2).
+  # Phase 3 v2 outcome: point-level AADF traffic intensity REPLACED population_density
+  # as a place driver. AADF is a direct measure of local road business (partial r
+  # +0.38, p<1e-4, VIF 2.3) whereas density was always a collinear urban-intensity
+  # proxy (VIF 13–60, the long-standing "it's just a density model" critique). With
+  # AADF in, every premium feature is an independent significant keeper and LOAO MAE
+  # fell to ~£89. population_density stays a map diagnostic (via risk_index.weights).
   place:
     - vehicle_crime
     - deprivation
-    - population_density
+    - aadf_intensity
+    # - flood_risk            # Phase 4 candidate — ACTIVATE once data/interim/flood.parquet
+    #                         # exists (run src/ingest/flood.py with extents dropped in
+    #                         # data/raw/flood/). Adding it before the data exists would make
+    #                         # the all-NaN place column drop every calibration row.
   composition:
     - young_driver_share
     - cars_per_household
@@ -71,17 +81,25 @@ calibration:
                                # extrapolation; raw units blow up on outlier LSOAs (see MODEL_REVIEW.md §3.2)
   response: "relative_index"   # relative_index (area premium ÷ national avg, modelled in log) |
                                # absolute_gbp. relative_index isolates the spatial effect (the project goal).
-  # The premium model fits features.place (drivers) + features.composition (controls). road_casualties
-  # stays excluded until Phase 3. (premium_features kept for backward-compat / fallback.)
+  # The premium model fits features.place (drivers) + features.composition (controls).
+  # premium_features is only a fallback if features.place is absent — kept in sync.
   premium_features:
     - vehicle_crime
     - deprivation
-    - population_density
+    - aadf_intensity
 
 sources:
   police_api: "https://data.police.uk/api"
   stats19_landing: "https://www.data.gov.uk/dataset/cb7ae6f0-4be6-4935-9277-47e5ce24a11f/road-accidents-safety-data"
   road_traffic_downloads: "https://roadtraffic.dft.gov.uk/downloads"
+  # Point-level count-point AADF (Phase 3 v2 — local traffic intensity near each area).
+  road_traffic_aadf: "https://storage.googleapis.com/dft-statistics/road-traffic/downloads/data-gov-uk/dft_traffic_counts_aadf.zip"
+  # Flood risk (Phase 4) — within-nation, High+Medium extents. Large layers / mixed
+  # access (some behind ESRI REST/WMS), so flood.py reads pre-fetched extents from
+  # data/raw/flood/<nation>/. See PHASE4_PLAN.md.
+  flood_england_rofrs: "https://environment.data.gov.uk/dataset/96ab4342-82c1-4095-87f1-0082e8d84ef1"
+  flood_scotland_sepa: "https://www2.sepa.scot/flooddata/"
+  flood_wales_nrw: "https://datamap.gov.wales/"
   imd2019: "https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019"
   geoportal: "https://geoportal.statistics.gov.uk"
   wtw_index: "https://www.confused.com/car-insurance/price-index"

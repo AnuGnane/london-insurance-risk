@@ -25,7 +25,8 @@ const COLOR_MODES: { mode: ColorMode; label: string }[] = [
   { mode: 'road_casualties', label: 'Casualties' },
   { mode: 'deprivation', label: 'Deprivation' },
   { mode: 'population_density', label: 'Density' },
-  { mode: 'traffic_per_capita', label: 'Traffic' },
+  { mode: 'aadf_intensity', label: 'Traffic (AADF)' },
+  { mode: 'traffic_per_capita', label: 'Traffic/capita' },
   { mode: 'ksi_collisions_per_billion_vehicle_miles', label: 'KSI rate' },
 ];
 

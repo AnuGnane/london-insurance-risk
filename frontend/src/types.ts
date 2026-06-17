@@ -83,6 +83,7 @@ export type ColorMode =
   | 'road_casualties'
   | 'deprivation'
   | 'population_density'
+  | 'aadf_intensity'
   | 'traffic_per_capita'
   | 'ksi_collisions_per_billion_vehicle_miles';
 

@@ -34,10 +34,16 @@ const DATA_SOURCES = [
       'Resident population per square kilometre, derived from the census and ONS mid-year population estimates.',
   },
   {
+    key: 'aadf_intensity',
+    source: 'DfT Road traffic statistics (AADF)',
+    description:
+      'Local road-traffic intensity: the mean Annual Average Daily Flow of DfT count points within 2km of the area centroid. A premium driver (Phase 3 v2) — it measures how busy nearby roads are independently of population density, and is the strongest place signal after demographics (partial r +0.38). It replaced raw density in the premium model.',
+  },
+  {
     key: 'traffic_per_capita',
     source: 'DfT Road traffic statistics',
     description:
-      'Local-authority annual vehicle miles allocated to small areas by population share. A map diagnostic: at this grain it behaves as an inverse-density proxy (rural through-roads score highest), so Phase 3 kept it off the premium model pending point-level traffic data.',
+      'Local-authority annual vehicle miles allocated to small areas by population share. A map diagnostic only: at this grain it behaves as an inverse-density proxy (rural through-roads score highest), so the premium uses point-level AADF intensity instead.',
   },
 ];
 

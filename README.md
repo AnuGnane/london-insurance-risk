@@ -37,7 +37,8 @@ src/ingest/             one module per data source → data/interim/*.parquet
   scotland_crime.py     Recorded Crime in Scotland council data → Data Zone
   stats19.py            DfT STATS19 GB collisions + Scotland spatial join
   census_demographics.py  Census age + car ownership controls
-  traffic.py            DfT local-authority traffic exposure (Phase 3)
+  traffic.py            DfT local-authority traffic exposure (Phase 3 v1, diagnostic)
+  aadf.py               DfT point-level AADF traffic intensity → centroid (Phase 3 v2, premium driver)
 src/transform/
   aggregate_to_lsoa.py  roll-up to area_code grain; per-row missing-feature handling
   build_risk_index.py   composite index + calibrated premium
@@ -77,8 +78,9 @@ different council-grain source, so vehicle crime is also ranked within source-co
   (OGL). Scotland's LSOA field is blank in STATS19, so Scottish collisions are assigned a
   Data Zone by spatial join.
 - **Traffic exposure (Phase 3)** — DfT Road traffic statistics https://roadtraffic.dft.gov.uk/downloads
-  (OGL). v1 uses local-authority annual traffic volume by vehicle class, allocated to small areas
-  by population share; point-level AADF is deferred until it is shown to add signal.
+  (OGL). v1 local-authority traffic / residents is a diagnostic; **v2 point-level AADF** (count-point
+  Annual Average Daily Flow, `dft_traffic_counts_aadf.zip`) is averaged within 2 km of each area
+  centroid and is the premium's traffic-intensity driver.
 - **Deprivation** — England IoD2019 https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019 ·
   Wales WIMD 2019 https://www.gov.wales/welsh-index-multiple-deprivation-full-index-update-ranks-2019 ·
   Scotland SIMD 2020v2 https://www.gov.scot/collections/scottish-index-of-multiple-deprivation-2020/
@@ -101,29 +103,31 @@ The model predicts a **relative territorial index** — `log(area premium ÷ nat
 **percentile** features (which bounds per-LSOA extrapolation, see MODEL_REVIEW.md §3.2), via panel OLS
 with area-clustered SEs, ridge CV, leave-one-area-out, and a temporal back-test against the WTW index
 (106 matched obs / 30 areas — including four Scottish regions and three MoneySuperMarket broad
-regions; Phase 2). It separates **place** drivers (crime, deprivation, density) from
-**demographic-composition controls** (young-driver share, cars/household) so the place effect is
-estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). `road_casualties` is excluded from
-the premium. Phase 3 ingested DfT traffic exposure and re-tested fatal/serious collisions on a
-per-billion-vehicle-miles denominator; the calibration found **no independent premium signal** for
-either (KSI partial p≈0.44; `traffic_per_capita` is an inverse-density proxy, VIF≈16), so both stay
-**map diagnostics**, not premium drivers (see `PHASE3_PLAN.md`).
+regions; Phase 2). It separates **place** drivers (vehicle crime, deprivation, **traffic intensity**)
+from **demographic-composition controls** (young-driver share, cars/household) so the place effect is
+estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). Phase 3 replaced raw population density
+with **point-level AADF traffic intensity** (mean Annual Average Daily Flow of DfT count points within
+2 km of each area) — a direct measure of local road business that, unlike density, is an independent
+significant predictor. LA-traffic-per-resident, KSI-per-vehicle-mile, `road_casualties` and
+`population_density` are retained as **map diagnostics**, not premium drivers (see `PHASE3_PLAN.md`).
 
 | Metric | Value |
 |--------|------:|
-| Panel R² (log-index) | 0.909 |
-| CV-R² (ridge, 5-fold) | 0.876 |
-| Leave-one-area-out MAE | £104 |
-| Spearman (predicted vs actual premium) | 0.967 |
-| Place-only R² · Composition-only R² | 0.87 · 0.88 |
-| Spatial multiplier (WC London ÷ Rugby) | ≈ 2.0× |
+| Panel R² (log-index) | 0.917 |
+| CV-R² (ridge, 5-fold) | 0.887 |
+| Leave-one-area-out MAE | £89 |
+| Spearman (predicted vs actual premium) | 0.968 |
+| Spatial multiplier (WC London ÷ Rugby) | ≈ 1.9× |
 | Matched anchor obs / areas | 106 / 30 (incl. MSM) |
+| Feature VIFs (all premium features) | 2–6 (no collinearity) |
 
 `reports/feature_analysis.md` reports per-feature partial correlation, VIF and a keep/drop verdict.
-Headline finding: **young-driver share is the strongest independent predictor** (partial r +0.52);
-**population density's apparent dominance is mostly collinearity** (univariate r +0.92 → partial +0.27,
-VIF 13). Per area we expose three numbers: full premium, **place-only** (at national-average
-demographics), and the **composition uplift**.
+Headline finding: **young-driver share is the strongest independent predictor** (partial r +0.57),
+followed by **traffic intensity** (+0.38). Replacing population density (always a collinear urban-
+intensity proxy, VIF 13–60) with point-level AADF resolved the long-standing "it's just a density
+model" critique — **every premium feature is now an independent significant keeper** (VIF 2–6). Per
+area we expose three numbers: full premium, **place-only** (at national-average demographics), and the
+**composition uplift**.
 
 > **Grain caveat:** validation holds at postcode-area grain. At individual-LSOA grain predictions are
 > noisier — e.g. wealthy-but-central LSOAs can be under-priced because deprivation (a dominant clean
@@ -132,10 +136,12 @@ demographics), and the **composition uplift**.
 
 ## Current and deferred work
 
-- **Phase 3 done (v1)** — DfT local-authority traffic exposure + KSI collision rate ingested and
-  evidence-gated: both are **map diagnostics**, not premium drivers (no independent signal at LA
-  grain). Point-level AADF exposure is deferred. See `PHASE3_PLAN.md`.
-- **Phase 4 next** — EA/NRW/SEPA flood overlay; final significance/variance decomposition.
+- **Phase 3 done** — point-level **AADF traffic intensity** is now a premium driver and replaced
+  population density (LOAO MAE £104→£89; all features VIF 2–6). LA-traffic-per-resident and the
+  KSI-per-vehicle-mile rate were evidence-gated to **map diagnostics**. See `PHASE3_PLAN.md`.
+- **Phase 4 started** — flood risk. Ingest scaffold (`src/ingest/flood.py`), areal-overlay
+  transform and plumbing are in place; `flood_risk` activates as a place candidate once the
+  EA/NRW/SEPA High+Medium extents are dropped under `data/raw/flood/`. See `PHASE4_PLAN.md`.
 
 - **Northern Ireland** — data.police.uk and STATS19 both exclude NI, so an NI area would carry
   only 2 of 4 features. NI is deferred to a later phase.

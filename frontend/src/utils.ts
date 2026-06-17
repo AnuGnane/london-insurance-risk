@@ -7,6 +7,7 @@ export const COMPONENT_KEYS = [
   'road_casualties',
   'deprivation',
   'population_density',
+  'aadf_intensity',
   'traffic_per_capita',
   'ksi_collisions_per_billion_vehicle_miles',
 ] as const;
@@ -16,6 +17,7 @@ export const COMPONENT_LABELS: Record<string, string> = {
   road_casualties: 'Road casualties',
   deprivation: 'Deprivation (IMD)',
   population_density: 'Population density',
+  aadf_intensity: 'Traffic intensity (AADF)',
   traffic_per_capita: 'Traffic exposure',
   ksi_collisions_per_billion_vehicle_miles: 'KSI collisions / traffic',
 };

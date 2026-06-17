@@ -16,17 +16,26 @@ Last updated: 2026-06-17. Branch: `phase2-anchor-expansion`.
    like E+W (no longer place-only). Demographic merge overall 81%→97%.
 Current fit: R²=0.909, CV-R²=0.876, LOAO MAE £104, Spearman 0.967.
 
-**Phase 3 (traffic exposure + collision revisit) — v1 COMPLETE.** DfT local-authority
-traffic exposure is ingested (`src/ingest/traffic.py`, 41,237 areas); ONSPD now
-derives `local_authority_code` at the DfT highway-authority grain (county for two-tier
-shire areas, else unitary/met/London/Scottish-council); `aggregate_to_lsoa.py` computes
-`ksi_collisions_per_billion_vehicle_miles`. Both were fed to calibration as
-`features.place` candidates and the **evidence gate excluded both**: KSI has no
-independent signal once crime/deprivation/density are controlled (partial p≈0.44), and
-`traffic_per_capita` is an inverse-density proxy (univariate r≈−0.92, VIF≈16, wrong-
-signed). They're retained as **map diagnostics** (new `features.diagnostics` config
-list); the premium model stays on 3 place + 2 composition features. Point-level AADF
-exposure is deferred. See `PHASE3_PLAN.md`.
+**Phase 3 (traffic exposure + collision revisit) — COMPLETE.**
+- **v1** (LA traffic / residents + KSI-per-vehicle-mile) was evidence-gated to **map
+  diagnostics**: KSI has no independent signal (partial p≈0.44) and LA-traffic/resident
+  is an inverse-density proxy (r≈−0.92, VIF≈16, wrong-signed).
+- **v2 — the win:** point-level **AADF traffic intensity** (`src/ingest/aadf.py`: mean
+  AADF of DfT count points within 2 km of each centroid) is a genuine premium driver
+  (partial r +0.38, p<1e-4, VIF 2.3) and **replaced population density** (always a
+  collinear urban-intensity proxy, VIF 13–60). With AADF in, every premium feature is an
+  independent significant keeper (VIF 2–6); LOAO MAE £104→**£89**, R² 0.909→**0.917**,
+  MSM cross-source Spearman 0.50→**1.00**. Density/traffic-per-capita/KSI/road_casualties
+  remain diagnostics. ONSPD now derives `local_authority_code` at the DfT highway-
+  authority grain. See `PHASE3_PLAN.md`.
+
+**Phase 4 (flood risk) — STARTED.** Plan (`PHASE4_PLAN.md`) + ingest scaffold
+(`src/ingest/flood.py`, areal-overlay `flood_area_share` transform + tests) + config
+sources + guarded aggregate merge are in. `flood_risk` is wired as a place *candidate*
+(commented) and activates once EA/NRW/SEPA High+Medium extents are dropped under
+`data/raw/flood/<nation>/` and `src/ingest/flood.py` is run — kept inactive until then
+so the all-NaN column can't drop calibration rows. Next: implement per-nation extent
+download/cache, then let the evidence gate decide keep vs diagnostic.
 
 **Model:** premium estimator. The calibrated **expected annual premium (£)** is the headline; the
 0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on
