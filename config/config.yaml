@@ -40,18 +40,25 @@ features:
   # Which features are attributed to the PLACE vs the area's demographic COMPOSITION.
   # PLACE features drive the territorial premium; COMPOSITION features are CONTROLS,
   # included so the place coefficients are estimated net of who lives there, then
-  # reported separately (NEXT_PHASE_DESIGN.md §2). Phase 3 adds traffic exposure
-  # and KSI collisions on a traffic denominator; legacy road_casualties remains a
-  # map layer/fallback composite feature rather than a premium driver.
+  # reported separately (NEXT_PHASE_DESIGN.md §2).
   place:
     - vehicle_crime
     - deprivation
     - population_density
-    - traffic_per_capita
-    - ksi_collisions_per_billion_vehicle_miles
   composition:
     - young_driver_share
     - cars_per_household
+  # DIAGNOSTICS: ingested + shown on the map, but NOT premium drivers. Phase 3 added
+  # DfT traffic exposure and a KSI-per-vehicle-mile collision rate as place
+  # CANDIDATES, then let reports/feature_analysis.md gate them (PHASE3_PLAN.md). The
+  # evidence excluded both: KSI adds no independent signal once crime/deprivation/
+  # density are controlled (partial p≈0.44); traffic_per_capita is an inverse-density
+  # proxy (univariate r≈-0.92, VIF≈16, wrong-signed as a "risk" driver — high traffic
+  # per resident = rural through-roads/motorways). They stay diagnostics, like the
+  # legacy road_casualties, pending point-level AADF exposure (deferred).
+  diagnostics:
+    - traffic_per_capita
+    - ksi_collisions_per_billion_vehicle_miles
 
 calibration:
   panel_csv: "data/manual/wtw_anchors_panel.csv"  # 137-row multi-quarter panel

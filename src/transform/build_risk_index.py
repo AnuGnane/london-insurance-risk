@@ -89,11 +89,14 @@ def bucket(score: pd.Series, n_buckets: int) -> pd.Series:
 
 
 def model_features() -> list[str]:
-    """All feature base-names the model touches: legacy risk-index weights plus the
-    declared place + composition features (de-duplicated, order-preserving)."""
+    """All feature base-names to bake per area: legacy risk-index weights plus the
+    declared place + composition + diagnostic features (de-duplicated,
+    order-preserving). Diagnostics (e.g. traffic, KSI rate) are shown on the map but
+    are not premium drivers — see config features.diagnostics."""
     feats = settings.get("features", {})
     ordered = (list(settings["risk_index"]["weights"].keys())
-               + feats.get("place", []) + feats.get("composition", []))
+               + feats.get("place", []) + feats.get("composition", [])
+               + feats.get("diagnostics", []))
     seen: set[str] = set()
     return [f for f in ordered if not (f in seen or seen.add(f))]
 

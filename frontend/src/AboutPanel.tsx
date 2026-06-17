@@ -19,7 +19,7 @@ const DATA_SOURCES = [
     key: 'ksi_collisions_per_billion_vehicle_miles',
     source: 'DfT STATS19 + Road traffic statistics',
     description:
-      'Fatal and serious collisions re-tested against DfT traffic exposure, measured per billion vehicle miles rather than per resident.',
+      'Fatal and serious collisions per billion vehicle miles (DfT traffic exposure as the denominator). A map diagnostic: the Phase 3 calibration found no independent premium signal once crime, deprivation and density are controlled, so it does not drive the premium.',
   },
   {
     key: 'deprivation',
@@ -37,7 +37,7 @@ const DATA_SOURCES = [
     key: 'traffic_per_capita',
     source: 'DfT Road traffic statistics',
     description:
-      'Local-authority annual vehicle miles allocated to small areas by population share for the Phase 3 traffic-exposure model.',
+      'Local-authority annual vehicle miles allocated to small areas by population share. A map diagnostic: at this grain it behaves as an inverse-density proxy (rural through-roads score highest), so Phase 3 kept it off the premium model pending point-level traffic data.',
   },
 ];
 

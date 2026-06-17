@@ -45,9 +45,19 @@ NSPL_KEEP_COLS = {
     "lsoa11cd": "lsoa11cd",
     "lat": "lat",
     "long": "long",
-    "oslaua": "local_authority_code",
-    "laua": "local_authority_code",
+    # Local-authority codes for the DfT traffic join. DfT publishes traffic at the
+    # *highway authority* grain: the county (E10…) for two-tier shire areas, else
+    # the unitary / metropolitan district / London borough / Scottish council. We
+    # read both tiers and derive the highway authority in _derive_highway_authority.
+    "cty25cd": "_county_code",       # E10 county (E99 = "none" for single-tier)
+    "lad25cd": "_district_code",     # E06/E07/E08 district · S12 Scottish council
+    # Older ONSPD vintages used these names — kept as fallbacks.
+    "oslaua": "_district_code",
+    "oscty": "_county_code",
 }
+
+# A real (two-tier) county the DfT keys traffic on; E99/S99/W99 mean "no county".
+_COUNTY_PREFIX = "E10"
 
 
 def _download_nspl() -> Path:
@@ -129,7 +139,19 @@ def parse_nspl(csv_path: Path) -> pd.DataFrame:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    df = _derive_highway_authority(df)
     return df
+
+
+def _derive_highway_authority(df: pd.DataFrame) -> pd.DataFrame:
+    """Add `local_authority_code` = the DfT highway authority for each postcode:
+    the county (E10…) where the area is two-tier, otherwise the lower-tier
+    unitary/metropolitan/London/Scottish-council code. Pure-ish (operates on df)."""
+    county = df["_county_code"] if "_county_code" in df.columns else pd.Series(index=df.index, dtype=object)
+    district = df["_district_code"] if "_district_code" in df.columns else pd.Series(index=df.index, dtype=object)
+    is_county = county.astype(str).str.startswith(_COUNTY_PREFIX)
+    df["local_authority_code"] = district.where(~is_county, county)
+    return df.drop(columns=[c for c in ("_county_code", "_district_code") if c in df.columns])
 
 
 def _filter_to_footprint(df: pd.DataFrame) -> pd.DataFrame:

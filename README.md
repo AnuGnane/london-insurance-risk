@@ -104,7 +104,10 @@ with area-clustered SEs, ridge CV, leave-one-area-out, and a temporal back-test 
 regions; Phase 2). It separates **place** drivers (crime, deprivation, density) from
 **demographic-composition controls** (young-driver share, cars/household) so the place effect is
 estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). `road_casualties` is excluded from
-the premium; Phase 3 re-tests fatal/serious collisions on a traffic denominator.
+the premium. Phase 3 ingested DfT traffic exposure and re-tested fatal/serious collisions on a
+per-billion-vehicle-miles denominator; the calibration found **no independent premium signal** for
+either (KSI partial p≈0.44; `traffic_per_capita` is an inverse-density proxy, VIF≈16), so both stay
+**map diagnostics**, not premium drivers (see `PHASE3_PLAN.md`).
 
 | Metric | Value |
 |--------|------:|
@@ -129,7 +132,9 @@ demographics), and the **composition uplift**.
 
 ## Current and deferred work
 
-- **Phase 3 in progress** — DfT traffic exposure + KSI collision revisit. See `PHASE3_PLAN.md`.
+- **Phase 3 done (v1)** — DfT local-authority traffic exposure + KSI collision rate ingested and
+  evidence-gated: both are **map diagnostics**, not premium drivers (no independent signal at LA
+  grain). Point-level AADF exposure is deferred. See `PHASE3_PLAN.md`.
 - **Phase 4 next** — EA/NRW/SEPA flood overlay; final significance/variance decomposition.
 
 - **Northern Ireland** — data.police.uk and STATS19 both exclude NI, so an NI area would carry

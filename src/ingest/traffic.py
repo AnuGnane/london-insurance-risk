@@ -70,9 +70,11 @@ def normalise_local_authority_traffic(
     df = raw_df.copy()
     df.columns = [_norm_col(c) for c in df.columns]
     year_col = _find_col(list(df.columns), ["year"])
+    # Prefer the ONS geography code (joins to ONSPD); the DfT `local_authority_id`
+    # is an internal integer that does NOT match ONS codes, so it comes last.
     la_col = _find_col(
         list(df.columns),
-        ["local_authority_id", "local_authority_code", "ons_code", "lad_code"],
+        ["local_authority_code", "ons_code", "lad_code", "local_authority_id"],
     )
     df[year_col] = pd.to_numeric(df[year_col], errors="coerce")
     if years:
