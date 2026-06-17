@@ -24,6 +24,8 @@ calibrate:     ## M4: ingest WTW anchors + fit regression, then re-bake risk ind
 	python -m src.transform.build_risk_index
 	$(MAKE) showcase-data
 
+build: calibrate risk showcase-data ## Run the full modelling pipeline and bake static assets
+
 api:           ## M5: serve FastAPI (local dev only — not used by the static site)
 	uvicorn src.api.main:app --reload --port 8000
 
