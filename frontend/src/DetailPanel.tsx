@@ -4,41 +4,39 @@ import type { AreaDetail, ColorMode } from './types';
 import {
   COMPONENT_LABELS,
   gbp,
+  ordinalPct,
   computeDistribution,
+  quintileColor,
+  ledeForQuintile,
 } from './utils';
 
 interface DetailPanelProps {
   data: AreaDetail | null;
   colorMode: ColorMode;
   lookup: Map<string, Feature>;
+  nationalAvg?: number;
 }
 
-const QUINTILE_COLORS = [
-  '#e5e5e5',
-  '#ffffb2',
-  '#fecc5c',
-  '#fd8d3c',
-  '#f03b20',
-  '#bd0026',
-];
-
-/** Tiny inline sparkline: 20 bars + a marker for the selected bin. */
+/** 20-bar histogram with the selected bin + an optional national-average notch. */
 const Sparkline: React.FC<{
   bins: number[];
   selectedBin: number;
-  accent?: string;
-}> = ({ bins, selectedBin, accent = 'var(--accent)' }) => (
+  avgBin?: number;
+}> = ({ bins, selectedBin, avgBin }) => (
   <div className="sparkline" aria-hidden="true">
     {bins.map((h, i) => (
       <div
         key={i}
         className={`sparkline-bar${i === selectedBin ? ' sparkline-selected' : ''}`}
-        style={{
-          height: `${Math.max(2, h * 100)}%`,
-          backgroundColor: i === selectedBin ? accent : undefined,
-        }}
+        style={{ height: `${Math.max(2, h * 100)}%` }}
       />
     ))}
+    {avgBin != null && (
+      <div
+        className="sparkline-avg"
+        style={{ left: `${((avgBin + 0.5) / bins.length) * 100}%` }}
+      />
+    )}
   </div>
 );
 
@@ -46,180 +44,183 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   data,
   colorMode,
   lookup,
+  nationalAvg,
 }) => {
+  const premium = data?.calibrated_premium;
+
+  // Premium distribution with the national-average notch (the signature device).
+  const dist = useMemo(
+    () =>
+      data && premium != null && lookup.size > 0
+        ? computeDistribution(lookup, 'calibrated_premium', premium, nationalAvg)
+        : null,
+    [lookup, data, premium, nationalAvg]
+  );
+
   if (!data) return null;
 
-  const color = QUINTILE_COLORS[data.quintile] || QUINTILE_COLORS[0];
-
-  // Sort by contribution (biggest driver first).
-  const components = [...data.components].sort(
-    (a, b) =>
-      (b.contribution ?? b.percentile ?? 0) -
-      (a.contribution ?? a.percentile ?? 0)
-  );
-  const maxContrib = Math.max(
-    0.0001,
-    ...components.map((c) => c.contribution ?? 0)
+  const color = quintileColor(data.quintile);
+  const drivers = data.components.filter((c) => c.kind === 'driver');
+  const diagnostics = data.components.filter((c) => c.kind === 'diagnostic');
+  // Biggest premium effect first (by absolute £ contribution).
+  drivers.sort(
+    (a, b) => Math.abs(b.contribution ?? 0) - Math.abs(a.contribution ?? 0)
   );
 
-  const delta =
-    data.calibrated_premium != null && data.wtw_anchor_premium != null
-      ? data.calibrated_premium - data.wtw_anchor_premium
-      : null;
-
-  // Distribution context: where does this area sit vs all of London?
-  const riskDist = useMemo(
-    () =>
-      lookup.size > 0
-        ? computeDistribution(lookup, 'risk_index', data.risk_index)
-        : null,
-    [lookup, data.risk_index]
-  );
-
-  // If a driver filter is active, also show distribution for that metric.
-  const activeDriverField =
-    colorMode !== 'composite' ? `${colorMode}_pct` : null;
-  const activeDriverValue = activeDriverField
-    ? data.components.find((c) => c.key === colorMode)?.percentile
-    : null;
-  const driverDist = useMemo(
-    () =>
-      activeDriverField != null &&
-      activeDriverValue != null &&
-      lookup.size > 0
-        ? computeDistribution(lookup, activeDriverField, activeDriverValue)
-        : null,
-    [lookup, activeDriverField, activeDriverValue]
-  );
+  const uplift = data.composition_uplift;
 
   return (
-    <div className="card detail-panel">
-      <div className="card-title">{data.title}</div>
-      {data.subtitle && (
-        <div className="detail-subtitle">{data.subtitle}</div>
-      )}
+    <div className="detail">
+      <div className="detail-area">{data.title}</div>
+      {data.subtitle && <div className="detail-code">{data.subtitle}</div>}
 
-      {/* Premium is the headline figure (the calibrated model output). */}
-      <div className="premium-hero">
-        <span className="premium-hero-value" style={{ color }}>
-          {data.calibrated_premium != null ? gbp(data.calibrated_premium) : '—'}
-        </span>
-        <span className="stat-label">Estimated annual premium</span>
+      <p className="lede">{ledeForQuintile(data.quintile)}</p>
+
+      {/* Hero £ — ink, with a small ramp swatch as the legend tie-in */}
+      <div className="hero">
+        <span className="hero-swatch" style={{ background: color }} />
+        <div>
+          <div className="hero-value">{premium != null ? gbp(premium) : '—'}</div>
+          <div className="hero-caption">Estimated annual premium</div>
+        </div>
       </div>
 
-      <div className="risk-score-display">
-        <div className="risk-circle" style={{ backgroundColor: color }}>
+      {/* Index + quintile */}
+      <div className="index-row">
+        <span className="index-figure">
           {isFinite(data.risk_index) ? data.risk_index.toFixed(0) : '—'}
-        </div>
-        <div className="risk-text">
-          <span className="risk-label">Quintile {data.quintile} of 5</span>
-          <span className="stat-label">Premium index · 0 cheapest → 100 dearest</span>
-        </div>
+          <span>/100</span>
+        </span>
+        <span className="qpill" style={{ background: color }}>
+          Q{data.quintile} of 5
+        </span>
+        <span className="index-caption">premium index · 0 cheapest → 100 dearest</span>
       </div>
 
-      {/* Distribution context */}
-      {riskDist && (
-        <div className="distribution-context">
-          <div className="distribution-statement">
-            More expensive than{' '}
-            <strong>{Math.round(riskDist.percentileRank)}%</strong> of GB
-            areas
-          </div>
-          <Sparkline bins={riskDist.bins} selectedBin={riskDist.selectedBin} />
-        </div>
-      )}
-
-      {/* Driver filter distribution (when a driver is active) */}
-      {driverDist && colorMode !== 'composite' && (
-        <div className="distribution-context distribution-driver">
-          <div className="distribution-statement">
-            {COMPONENT_LABELS[colorMode]}:{' '}
-            <strong>{Math.round(driverDist.percentileRank)}th</strong>{' '}
-            percentile across GB
+      {/* Distribution context with the national-average notch */}
+      {dist && (
+        <div className="dist">
+          <div className="dist-statement">
+            More expensive than <b>{Math.round(dist.percentileRank)}%</b> of GB areas
+            {nationalAvg != null && premium != null && (
+              <>
+                {' · '}
+                {premium >= nationalAvg ? '+' : '−'}
+                {gbp(Math.abs(premium - nationalAvg))} vs the GB average
+              </>
+            )}
           </div>
           <Sparkline
-            bins={driverDist.bins}
-            selectedBin={driverDist.selectedBin}
-            accent={QUINTILE_COLORS[data.quintile] || 'var(--accent)'}
+            bins={dist.bins}
+            selectedBin={dist.selectedBin}
+            avgBin={dist.avgBin}
           />
         </div>
       )}
 
-      {data.wtw_anchor_premium != null && (
-        <div className="stat-row">
-          <span className="stat-label">
-            WTW actual average
-            {data.postcode_area ? ` (${data.postcode_area})` : ''}
-          </span>
-          <span className="stat-value">{gbp(data.wtw_anchor_premium)}</span>
-        </div>
-      )}
-      {delta != null && (
-        <div className="stat-row">
-          <span className="stat-label">Model vs actual</span>
-          <span
-            className="stat-value"
-            style={{ color: delta >= 0 ? '#bd0026' : '#1a7a3c' }}
-          >
-            {delta >= 0 ? '+' : '−'}
-            {gbp(Math.abs(delta))}
-          </span>
+      {/* The three numbers */}
+      {data.premium_place_only != null && (
+        <div className="threenums">
+          <div className="threenum">
+            <span className="threenum-label">Full estimate</span>
+            <span className="threenum-value">{gbp(premium)}</span>
+          </div>
+          <div className="threenum">
+            <span className="threenum-label">Place only (avg demographics)</span>
+            <span className="threenum-value">{gbp(data.premium_place_only)}</span>
+          </div>
+          <div className="threenum">
+            <span className="threenum-label">Who lives there</span>
+            <span className="threenum-value uplift">
+              {uplift != null ? `${uplift >= 0 ? '+' : '−'}${gbp(Math.abs(uplift))}` : '—'}
+            </span>
+          </div>
         </div>
       )}
 
-      {components.length > 0 ? (
-        <div style={{ marginTop: 24 }}>
-          <div className="card-title">Premium drivers</div>
-          {components.map((c) => {
-            const barPct =
-              c.contribution != null
-                ? (c.contribution / maxContrib) * 100
-                : c.percentile ?? 0;
-            const isHighlighted =
-              colorMode !== 'composite' && c.key === colorMode;
-            return (
-              <div
-                key={c.key}
-                className={`component-item${isHighlighted ? ' component-highlight' : ''}`}
-              >
-                <div className="component-header">
-                  <span
-                    className={isHighlighted ? 'component-name-active' : ''}
-                  >
-                    {COMPONENT_LABELS[c.key] || c.key}
-                  </span>
-                  {c.percentile != null && (
-                    <span className="stat-value">
-                      {c.percentile.toFixed(0)}th pct
+      {data.wtw_anchor_premium != null && (
+        <div style={{ marginTop: 14 }}>
+          <div className="stat-row">
+            <span className="stat-label">
+              WTW actual average
+              {data.postcode_area ? ` (${data.postcode_area})` : ''}
+            </span>
+            <span className="stat-value">{gbp(data.wtw_anchor_premium)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Premium drivers */}
+      {drivers.length > 0 && (
+        <div className="section" style={{ borderTop: 'none', paddingBottom: 0 }}>
+          <span className="eyebrow">What moves the premium</span>
+          <div className="drivers">
+            {drivers.map((c) => {
+              const active = colorMode !== 'composite' && c.key === colorMode;
+              const pct = c.percentile ?? 0;
+              const contrib = c.contribution;
+              return (
+                <div
+                  key={c.key}
+                  className={`driver${active ? ' driver-active' : ''}`}
+                >
+                  <div className="driver-head">
+                    <span className="driver-name">
+                      {COMPONENT_LABELS[c.key] || c.key}
                     </span>
+                    {c.percentile != null && (
+                      <span className="driver-pct">{ordinalPct(pct)} pct</span>
+                    )}
+                  </div>
+                  <div className="bar">
+                    <div className="bar-fill" style={{ width: `${Math.min(100, pct)}%` }} />
+                  </div>
+                  {contrib != null && (
+                    <div className="driver-meta">
+                      <span className="pos">
+                        {contrib >= 0 ? '+' : '−'}{gbp(Math.abs(contrib))}
+                      </span>{' '}
+                      vs the GB-average area
+                    </div>
                   )}
                 </div>
-                <div className="bar-container">
-                  <div
-                    className="bar-fill"
-                    style={{
-                      width: `${Math.min(100, barPct)}%`,
-                      backgroundColor: isHighlighted
-                        ? 'var(--accent)'
-                        : undefined,
-                    }}
-                  />
-                </div>
-                <div className="component-meta">
-                  {c.value != null && <>Value {c.value.toFixed(1)}</>}
-                  {c.value != null && c.contribution ? ' · ' : null}
-                  {c.contribution ? (
-                    <>+{gbp(c.contribution)} of premium</>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        <div className="component-meta" style={{ marginTop: 16 }}>
-          Driver breakdown isn't in the map data yet — search a postcode for
-          the full profile, or enrich the GeoJSON to show it on click.
+      )}
+
+      {/* Diagnostic layers — mapped, but evidence-gated out of the premium */}
+      {diagnostics.length > 0 && (
+        <div className="section" style={{ paddingBottom: 0 }}>
+          <span className="eyebrow">Also mapped — diagnostics</span>
+          <div className="drivers">
+            {diagnostics.map((c) => {
+              const active = colorMode !== 'composite' && c.key === colorMode;
+              const pct = c.percentile ?? 0;
+              return (
+                <div
+                  key={c.key}
+                  className={`driver${active ? ' driver-active' : ''}`}
+                >
+                  <div className="driver-head">
+                    <span className="driver-name">
+                      {COMPONENT_LABELS[c.key] || c.key}
+                      <span className="diag-tag">diagnostic</span>
+                    </span>
+                    <span className="driver-pct">{ordinalPct(pct)} pct</span>
+                  </div>
+                  <div className="bar">
+                    <div className="bar-fill" style={{ width: `${Math.min(100, pct)}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="drivers-note">
+            Diagnostic layers are shown on the map but the calibration found no
+            independent premium signal once the drivers above are accounted for.
+          </p>
         </div>
       )}
     </div>

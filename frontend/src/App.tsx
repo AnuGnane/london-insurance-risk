@@ -7,6 +7,7 @@ import type {
   ColorMode,
   FocusTarget,
   LsoaProps,
+  Methodology,
 } from './types';
 import {
   buildLookup,
@@ -15,7 +16,7 @@ import {
   featureToDetail,
   featureAtPoint,
 } from './utils';
-import { getGeojson, lookupPostcode } from './api';
+import { getGeojson, lookupPostcode, getMethodology } from './api';
 import './index.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
   // instant click-details, and client-side fly-to (no per-click round-trips).
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [methodology, setMethodology] = useState<Methodology | null>(null);
   const lookup = useMemo(
     () => (geojson ? buildLookup(geojson) : new Map<string, Feature>()),
     [geojson]
@@ -102,6 +104,7 @@ function App() {
     getGeojson()
       .then((fc) => setGeojson(fc))
       .catch((e) => setGeoError(e.message));
+    getMethodology().then((m) => m && setMethodology(m));
   }, []);
 
   // Fly to an LSOA's geometry using bounds we already hold on the client.
@@ -183,6 +186,7 @@ function App() {
         colorMode={colorMode}
         onColorModeChange={setColorMode}
         lookup={lookup}
+        methodology={methodology}
       />
       <MapView
         geojson={geojson}
@@ -192,8 +196,10 @@ function App() {
         marker={marker}
         hoveredLsoa={hoveredLsoa}
         selectedLsoa={detail?.lsoa11cd ?? null}
+        nationalAvg={methodology?.national_avg}
         onHover={setHoveredLsoa}
         onClick={handleMapClick}
+        onResetFilter={() => setColorMode('composite')}
       />
     </div>
   );

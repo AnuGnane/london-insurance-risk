@@ -8,9 +8,11 @@ files instead (see SHOWCASE_PLAN.md). This script produces:
   frontend/public/data/methodology.json — trimmed reports/calibration.json
 
 The served GeoJSON is ~150 MB uncompressed, so we shrink hard: simplify geometry in
-metres (EPSG:27700), round coordinates to 4 dp (~11 m, lets json write short floats),
-keep only the props the UI needs and coarsen them to integers, then reproject to
-WGS84. Result ≈ 37 MB raw / ≈ 5 MB gzip — and GitHub Pages serves it gzipped.
+metres (EPSG:27700), snap to a metric grid with `set_precision(valid_output)` to repair
+the self-intersections simplification leaves behind (otherwise small urban areas render
+as spikes/fans), round coordinates to 5 dp (~1 m, lets json write short floats), keep
+only the props the UI needs and coarsen them to integers, then reproject to WGS84.
+Result ≈ 45 MB raw / ≈ 6 MB gzip — and GitHub Pages serves it gzipped.
 
 Run: `make showcase-data` (after `make risk` + `make calibrate`).
 """
@@ -30,8 +32,9 @@ from src.common.io import LSOA_RISK_PARQUET, interim, processed
 log = logging.getLogger(__name__)
 
 OUT_DIR = ROOT / "frontend" / "public" / "data"
-SIMPLIFY_M = 180.0     # metres — national choropleth; coarse but legible per area
-COORD_DP = 4           # ~11 m; rounding coords to 4 dp lets json write short floats
+SIMPLIFY_M = 120.0     # metres — national choropleth; coarse but legible per area
+GRID_M = 10.0          # metres — set_precision grid; repairs simplify self-intersections
+COORD_DP = 5           # ~1 m; rounding coords to 5 dp lets json write short floats
 
 # Props the frontend reads (see utils.featureToDetail + DetailPanel). To keep the
 # static payload small we drop raw `_val` columns and coarsen numbers; the map
@@ -79,15 +82,22 @@ def build_geojson() -> gpd.GeoDataFrame:
 
     geo = boundaries[["area_code", "geometry"]].copy()
     geo["geometry"] = geo["geometry"].simplify(SIMPLIFY_M)            # in metres (27700)
+    # Snap to a metric grid and repair: simplification + later coordinate rounding leave
+    # self-intersecting rings that MapLibre renders as spikes/fans on small urban areas.
+    # valid_output snaps to the grid AND returns valid geometry, killing the spikes.
+    geo["geometry"] = shapely.set_precision(
+        geo.geometry.values, grid_size=GRID_M, mode="valid_output"
+    )
     gdf = gpd.GeoDataFrame(geo.merge(features, on="area_code", how="inner"),
                            geometry="geometry", crs=boundaries.crs)
     gdf = gdf.to_crs("EPSG:4326")
     # Round coordinates to COORD_DP places — as actual floats, so json.dumps writes
-    # the short repr ("-2.3456" not "-2.34560000001"). This is the big size win.
+    # the short repr ("-2.34561" not "-2.34560000001"). 5 dp (~1 m) is finer than the
+    # 10 m snap grid, so it trims float length without re-breaking validity.
     gdf["geometry"] = shapely.transform(
         gdf.geometry.values, lambda c: np.round(c, COORD_DP)
     )
-    gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
+    gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty & gdf.geometry.is_valid]
 
     cols = [c for c in _BASE_PROPS if c in gdf.columns] + _component_cols(gdf)
     return _round_props(gdf[cols + ["geometry"]])
@@ -113,7 +123,7 @@ def run() -> None:
     mb = dest.stat().st_size / 1e6
     log.info("Wrote %d features to %s (%.1f MB raw; Pages serves it gzipped ~%.0f%% "
              "smaller)", len(gdf), dest, mb, 87)
-    if mb > 45:
+    if mb > 70:
         log.warning("areas.geojson is %.1f MB — consider a larger SIMPLIFY_M to keep "
                     "the repo lean.", mb)
 

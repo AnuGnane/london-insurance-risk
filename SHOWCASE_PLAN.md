@@ -60,19 +60,35 @@ no polygon contains the point (validated on WC1/EH1/EC1/SW1 — all resolve corr
 
 ---
 
-## Sprint 2 — Editorial visual redesign
+## Sprint 2 — Editorial visual redesign ✅ DONE
 
-**Design language:** light "paper" background, dark ink text, one restrained accent,
-a colourblind-safe **sequential premium ramp** (replacing ad-hoc quintile colours),
-serif display headings + clean sans (Inter/system) for UI and data.
+**Shipped — "The Price of Place".** Direction chosen via a 4-way editorial design panel
+(FT / Economist / NYT-Upshot / fintech lenses) judged on polish · intuitive UX · data
+integrity. Synthesised winner: **Fraunces display + Inter UI**, a warm **amber→crimson
+sequential £ ramp** (colourblind-safe, monotonic lightness), **ink hero £** (the map
+carries the colour), hairline "ledger" panel structure, and a **£-keyed legend with a
+"£558 GB-avg" notch** echoed through the detail sparkline.
 
-1. **Design tokens** — CSS variables for palette, type scale, spacing, radii, shadows; delete the leftover Vite-template CSS (`.hero/.vite/.base/.counter` in `App.css`).
-2. **Header** — slim title bar: project name (serif), one-line standfirst ("How much does *where you park* move your car-insurance premium?"), links to About/methodology + GitHub.
-3. **Map as hero** — quieter basemap (positron/light), the choropleth carries the colour; smooth hover with an editorial tooltip (area name + £ premium).
-4. **Legend** — proper sequential legend keyed to **£ values** (and per-filter legends for crime/AADF/etc.), with the "territorial proxy, not a quote" disclaimer nearby.
-5. **Detail panel as an editorial card** — big premium number as the headline, then the **three numbers** (full / place-only / composition uplift) explained in plain language, and per-driver **£ contributions as a small horizontal bar chart**. Cite sources.
-6. **States** — skeleton/spinner while the GeoJSON loads; clean "postcode not found / outside GB" message.
-7. **Responsive + a11y** — mobile layout (panels become bottom sheets), colour contrast, focus rings, aria labels, keyboard nav.
+- **Design tokens** rebuilt in `index.css` (paper/ink palette, ramp, type scale,
+  radius/shadow ladders, focus rings, reduced-motion, contrast). Dead `App.css` deleted.
+- **Masthead** — serif title + standfirst + an honest metric line (R² 0.917 · ±£89 ·
+  41,729 areas *mapped* — kept distinct from the calibration n=106).
+- **Map** — quiet positron basemap, warm choropleth, ink selected-outline, editorial
+  hover popup, filter pill with reset.
+- **Legend** — £-keyed quintile ramp with live boundary ticks + the GB-average notch;
+  continuous percentile ramp for driver views.
+- **Detail card** — quintile-aware lede, ink hero £, index `/100` + quintile pill, the
+  **three numbers** strip (full / place-only / composition uplift), distribution with
+  the avg notch, and a per-driver £ breakdown that **separates the 5 model drivers from
+  the 4 map diagnostics** (tagged) for credibility.
+- **Methodology panel** rebuilt to surface the real metrics (R² · LOAO £ · Spearman),
+  the per-feature partial-r/VIF table, and the MoneySuperMarket cross-source check.
+- **States** — map + sidebar skeletons, clean inline search errors.
+- **Responsive + a11y** — desktop split / mobile stacked, focus-visible rings, aria
+  labels + roles, `prefers-reduced-motion` and `prefers-contrast`.
+- **Geometry** — re-baked with `set_precision(valid_output)` (120 m simplify, 10 m snap,
+  5 dp) to repair the simplification self-intersections that rendered small urban areas
+  as spikes (174 → 0 invalid polygons); ≈ 42 MB raw / **6.1 MB gzip**. Fly-to zoom capped.
 
 ---
 

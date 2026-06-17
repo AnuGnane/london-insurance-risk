@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // @ts-ignore - react-map-gl maplibre entrypoint ships without bundled types
-import Map, {
+import MapGL, {
   Source,
   Layer,
   Popup,
@@ -9,9 +9,19 @@ import Map, {
 } from 'react-map-gl/maplibre';
 import type { FeatureCollection } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { MapPin } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 import type { ColorMode, FocusTarget } from './types';
-import { COMPONENT_LABELS, gbp } from './utils';
+import {
+  COMPONENT_LABELS,
+  gbp,
+  ordinalPct,
+  RAMP,
+  QUINTILE_FILL,
+  NO_DATA_COLOR,
+  quintileColor,
+  quintilePremiumBands,
+  premiumToRampPos,
+} from './utils';
 
 interface MapViewProps {
   geojson: FeatureCollection | null;
@@ -21,26 +31,25 @@ interface MapViewProps {
   marker: [number, number] | null;
   hoveredLsoa: string | null;
   selectedLsoa: string | null;
+  nationalAvg?: number;
   onHover: (lsoa: string | null) => void;
   onClick: (lsoa: string) => void;
+  onResetFilter: () => void;
 }
 
-const RAMP = ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20', '#bd0026'];
-const NO_DATA_COLOR = '#d9d9d9';
+const SELECTED_OUTLINE = '#24211c';
 
-// Fill colour: discrete quintiles for the composite, a continuous percentile
-// ramp for a single driver. `coalesce` tolerates `quintile` OR `risk_bucket`.
-// Features with null/0 values map to a distinct no-data grey.
+// Discrete quintiles for the composite; a continuous percentile ramp per driver.
 function fillColor(mode: ColorMode): any {
   if (mode === 'composite') {
     return [
       'match',
       ['to-number', ['coalesce', ['get', 'quintile'], ['get', 'risk_bucket'], 0]],
-      1, RAMP[0],
-      2, RAMP[1],
-      3, RAMP[2],
-      4, RAMP[3],
-      5, RAMP[4],
+      1, QUINTILE_FILL[0],
+      2, QUINTILE_FILL[1],
+      3, QUINTILE_FILL[2],
+      4, QUINTILE_FILL[3],
+      5, QUINTILE_FILL[4],
       NO_DATA_COLOR,
     ];
   }
@@ -54,10 +63,10 @@ function fillColor(mode: ColorMode): any {
       ['linear'],
       ['to-number', ['coalesce', ['get', pctField], 0]],
       0, RAMP[0],
-      25, RAMP[1],
-      50, RAMP[2],
-      75, RAMP[3],
-      100, RAMP[4],
+      33, RAMP[2],
+      50, RAMP[3],
+      67, RAMP[4],
+      100, RAMP[6],
     ],
   ];
 }
@@ -67,9 +76,11 @@ interface HoverInfo {
   lat: number;
   lsoa: string;
   lsoaName: string;
-  risk: number;
-  activeMetricLabel: string;
-  activeMetricValue: string;
+  quintile: number;
+  metricLabel: string;
+  metricValue: string;
+  swatch: string;
+  extra: string | null;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -79,24 +90,30 @@ export const MapView: React.FC<MapViewProps> = ({
   focus,
   marker,
   selectedLsoa,
+  nationalAvg,
   onHover,
   onClick,
+  onResetFilter,
 }) => {
   const mapRef = useRef<any>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
 
-  // Imperative fly-to driven by the focus nonce.
+  const lookup = useMemo(() => {
+    const m = new Map<string, any>();
+    if (geojson) for (const f of geojson.features) m.set(String((f.properties as any)?.lsoa11cd), f);
+    return m;
+  }, [geojson]);
+  const bands = useMemo(() => quintilePremiumBands(lookup), [lookup]);
+
   useEffect(() => {
     if (!focus || !mapRef.current) return;
     if (focus.bounds) {
-      mapRef.current.fitBounds(focus.bounds, {
-        padding: 80,
-        maxZoom: 14,
-        duration: 1200,
-      });
+      // Cap the zoom: the static geometry is simplified to ~180 m, so zooming in
+      // tight on one small area exposes coarse polygons — keep some context.
+      mapRef.current.fitBounds(focus.bounds, { padding: 120, maxZoom: 11, duration: 1100 });
     } else if (focus.center) {
-      mapRef.current.flyTo({ center: focus.center, zoom: 13, duration: 1200 });
+      mapRef.current.flyTo({ center: focus.center, zoom: 11, duration: 1100 });
     }
   }, [focus?.nonce]);
 
@@ -105,25 +122,23 @@ export const MapView: React.FC<MapViewProps> = ({
     mapRef.current.setFeatureState({ source: 'lsoa', id }, { hover: on });
   };
 
-  const formatActiveMetric = useCallback(
-    (props: Record<string, any>): { label: string; value: string } => {
+  const readHover = useCallback(
+    (props: Record<string, any>): { label: string; value: string; extra: string | null } => {
       if (colorMode === 'composite') {
-        // Headline view: show the calibrated premium (the colour is its quintile).
         return {
           label: 'Est. premium',
-          value: props.calibrated_premium != null
-            ? gbp(Number(props.calibrated_premium))
-            : '—',
+          value: props.calibrated_premium != null ? gbp(Number(props.calibrated_premium)) : '—',
+          extra: null,
         };
       }
       const pct = props[`${colorMode}_pct`];
-      const val = props[`${colorMode}_val`];
       const label = COMPONENT_LABELS[colorMode] || colorMode;
-      if (pct == null && val == null) return { label, value: 'no data' };
-      const parts: string[] = [];
-      if (val != null) parts.push(Number(val).toFixed(1));
-      if (pct != null) parts.push(`${Number(pct).toFixed(0)}th pct`);
-      return { label, value: parts.join(' · ') };
+      if (pct == null) return { label, value: 'no data', extra: null };
+      return {
+        label,
+        value: `${ordinalPct(Number(pct))} pct`,
+        extra: props.calibrated_premium != null ? `${gbp(Number(props.calibrated_premium))} premium` : null,
+      };
     },
     [colorMode]
   );
@@ -138,15 +153,18 @@ export const MapView: React.FC<MapViewProps> = ({
           setHoveredId(f.id);
           onHover(f.properties.lsoa11cd);
         }
-        const { label, value } = formatActiveMetric(f.properties);
+        const { label, value, extra } = readHover(f.properties);
+        const q = Number(f.properties.quintile);
         setHoverInfo({
           lng: e.lngLat.lng,
           lat: e.lngLat.lat,
           lsoa: f.properties.lsoa11cd,
           lsoaName: f.properties.lsoa_name || f.properties.lsoa11cd,
-          risk: Number(f.properties.risk_index),
-          activeMetricLabel: label,
-          activeMetricValue: value,
+          quintile: q,
+          metricLabel: label,
+          metricValue: value,
+          swatch: quintileColor(q),
+          extra,
         });
       } else if (hoveredId !== null) {
         setHover(hoveredId, false);
@@ -155,7 +173,7 @@ export const MapView: React.FC<MapViewProps> = ({
         onHover(null);
       }
     },
-    [hoveredId, onHover, formatActiveMetric]
+    [hoveredId, onHover, readHover]
   );
 
   const onMouseLeave = useCallback(() => {
@@ -174,31 +192,34 @@ export const MapView: React.FC<MapViewProps> = ({
   );
 
   const driverLabel =
-    colorMode === 'composite'
-      ? 'Estimated premium'
-      : COMPONENT_LABELS[colorMode] || colorMode;
+    colorMode === 'composite' ? 'Estimated annual premium' : COMPONENT_LABELS[colorMode] || colorMode;
+
+  // Legend ticks for the composite £ scale.
+  const avgPos = nationalAvg != null && bands.length ? premiumToRampPos(nationalAvg, bands) : null;
 
   return (
     <div className="map-container">
-      {/* Loading skeleton */}
       {!geojson && !loadError && (
         <div className="skeleton-map">
           <div className="skeleton-pulse" />
           <div className="map-toast skeleton-toast">
-            <span className="loader" /> Loading map data…
+            <span className="loader" /> Plotting 41,729 areas…
           </div>
         </div>
       )}
       {loadError && <div className="map-toast map-toast-error">{loadError}</div>}
 
-      {/* On-map filter indicator */}
       {colorMode !== 'composite' && (
         <div className="filter-indicator">
-          Showing: {driverLabel} (percentile)
+          <span className="dot" />
+          Colouring by {driverLabel} (percentile)
+          <button onClick={onResetFilter} title="Back to premium" aria-label="Back to premium">
+            <X size={13} />
+          </button>
         </div>
       )}
 
-      <Map
+      <MapGL
         ref={mapRef}
         initialViewState={{ longitude: -2.5, latitude: 54.5, zoom: 5.2 }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
@@ -221,26 +242,22 @@ export const MapView: React.FC<MapViewProps> = ({
                   'case',
                   ['boolean', ['feature-state', 'hover'], false],
                   0.95,
-                  0.68,
+                  0.72,
                 ],
                 // @ts-ignore — maplibre supports this property
-                'fill-color-transition': { duration: 400, delay: 0 },
+                'fill-color-transition': { duration: 350, delay: 0 },
               }}
             />
             <Layer
               id="lsoa-lines"
               type="line"
-              paint={{
-                'line-color': '#ffffff',
-                'line-width': 0.4,
-                'line-opacity': 0.5,
-              }}
+              paint={{ 'line-color': '#fbf7f0', 'line-width': 0.4, 'line-opacity': 0.45 }}
             />
             <Layer
               id="lsoa-selected"
               type="line"
               filter={['==', ['get', 'lsoa11cd'], selectedLsoa ?? '__none__']}
-              paint={{ 'line-color': '#111111', 'line-width': 2.5 }}
+              paint={{ 'line-color': SELECTED_OUTLINE, 'line-width': 2.5 }}
             />
           </Source>
         )}
@@ -265,66 +282,66 @@ export const MapView: React.FC<MapViewProps> = ({
             <div className="hover-popup-name">{hoverInfo.lsoaName}</div>
             <div className="hover-popup-code">{hoverInfo.lsoa}</div>
             <div className="hover-popup-metric">
-              <span className="hover-popup-metric-label">
-                {hoverInfo.activeMetricLabel}
-              </span>
-              <span className="hover-popup-metric-value">
-                {hoverInfo.activeMetricValue}
+              <span className="hover-popup-label">{hoverInfo.metricLabel}</span>
+              <span className="hover-popup-value">
+                <span className="hover-popup-dot" style={{ background: hoverInfo.swatch }} />
+                {hoverInfo.metricValue}
               </span>
             </div>
-            {colorMode !== 'composite' && (
-              <div className="hover-popup-score">
-                Risk {isFinite(hoverInfo.risk) ? hoverInfo.risk.toFixed(1) : '—'}
-              </div>
-            )}
+            {hoverInfo.extra && <div className="hover-popup-extra">{hoverInfo.extra}</div>}
           </Popup>
         )}
-      </Map>
+      </MapGL>
 
-      {/* Redesigned legend */}
+      {/* £-keyed legend */}
       <div className="legend">
         <div className="legend-title">{driverLabel}</div>
 
         {colorMode === 'composite' ? (
-          <div className="legend-swatches">
-            {RAMP.map((c, i) => (
-              <div key={i} className="legend-row">
-                <span className="legend-swatch" style={{ backgroundColor: c }} />
-                <span className="legend-row-label">
-                  Q{i + 1} · {i * 20}–{(i + 1) * 20}
-                </span>
-              </div>
-            ))}
-            <div className="legend-row">
-              <span
-                className="legend-swatch legend-swatch-nodata"
-                style={{ backgroundColor: NO_DATA_COLOR }}
-              />
-              <span className="legend-row-label">No data</span>
+          <>
+            <div className="legend-ramp-bar">
+              {QUINTILE_FILL.map((c, i) => (
+                <span key={i} className="seg-fill" style={{ background: c }} />
+              ))}
             </div>
-          </div>
+            <div className="legend-scale">
+              {avgPos != null && (
+                <>
+                  <span className="legend-avg" style={{ left: `${avgPos * 100}%` }} />
+                  <span className="legend-avg-label" style={{ left: `${avgPos * 100}%` }}>
+                    {nationalAvg != null ? `${gbp(nationalAvg)} avg` : 'avg'}
+                  </span>
+                </>
+              )}
+              {bands.slice(0, 4).map((b, i) => (
+                <span
+                  key={b.q}
+                  className="legend-tick"
+                  style={{ left: `${((i + 1) / 5) * 100}%` }}
+                >
+                  {gbp(b.max)}
+                </span>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <div
-              className="legend-gradient"
-              style={{
-                background: `linear-gradient(to right, ${RAMP.join(',')})`,
-              }}
+              className="legend-ramp-bar"
+              style={{ background: `linear-gradient(to right, ${RAMP.join(',')})` }}
             />
-            <div className="legend-labels legend-labels-3">
-              <span>0th</span>
-              <span>50th</span>
-              <span>100th pct</span>
-            </div>
-            <div className="legend-row" style={{ marginTop: 8 }}>
-              <span
-                className="legend-swatch legend-swatch-nodata"
-                style={{ backgroundColor: NO_DATA_COLOR }}
-              />
-              <span className="legend-row-label">No data</span>
+            <div className="legend-scale">
+              <span className="legend-tick edge-l" style={{ left: 0 }}>0th</span>
+              <span className="legend-tick" style={{ left: '50%' }}>50th</span>
+              <span className="legend-tick edge-r" style={{ left: '100%' }}>100th pct</span>
             </div>
           </>
         )}
+
+        <div className="legend-nodata">
+          <span className="legend-nodata-swatch" />
+          <span className="legend-nodata-label">No data</span>
+        </div>
       </div>
     </div>
   );

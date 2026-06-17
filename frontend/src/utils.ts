@@ -38,9 +38,32 @@ export const COMPONENT_LABELS: Record<string, string> = {
 const DRIVER_SET = new Set<string>(MODEL_DRIVERS);
 export const isModelDriver = (key: string): boolean => DRIVER_SET.has(key);
 
+// Sequential premium ramp (mirrors the CSS --ramp-* / --q* tokens). Source of
+// truth for the map fill, legend and detail swatches so they always agree.
+export const RAMP = [
+  '#f6e8c8', '#efc982', '#e0a93f', '#d88c3a', '#c44536', '#9e2a2b', '#6e1e22',
+];
+export const QUINTILE_FILL = ['#efc982', '#e0a93f', '#d88c3a', '#c44536', '#6e1e22'];
+export const NO_DATA_COLOR = '#d9d9d9';
+export const quintileColor = (q: number): string =>
+  QUINTILE_FILL[Math.min(5, Math.max(1, Math.round(q))) - 1] ?? NO_DATA_COLOR;
+
 /** Format a GBP figure with thousands separators, e.g. 1180 -> "£1,180". */
 export const gbp = (n?: number | null): string =>
   n == null ? '—' : `£${Math.round(n).toLocaleString('en-GB')}`;
+
+/** Ordinal percentile label, e.g. 91 -> "91st", 22 -> "22nd", 86 -> "86th". */
+export const ordinalPct = (n?: number | null): string => {
+  if (n == null || !isFinite(n)) return '—';
+  const v = Math.round(n);
+  const t = v % 100;
+  const s = t >= 11 && t <= 13 ? 'th'
+    : v % 10 === 1 ? 'st'
+    : v % 10 === 2 ? 'nd'
+    : v % 10 === 3 ? 'rd'
+    : 'th';
+  return `${v}${s}`;
+};
 
 /** Read the quintile from a feature regardless of whether the backend
  *  named it `quintile` or `risk_bucket`. */
@@ -241,6 +264,8 @@ export interface DistributionResult {
   selectedBin: number;
   /** Percentage of areas this value exceeds (0–100). */
   percentileRank: number;
+  /** Bin (0–19) of an optional reference value (e.g. the national average). */
+  avgBin?: number;
 }
 
 /**
@@ -250,7 +275,8 @@ export interface DistributionResult {
 export function computeDistribution(
   lookup: Map<string, Feature>,
   fieldName: string,
-  selectedValue: number
+  selectedValue: number,
+  avgValue?: number
 ): DistributionResult | null {
   const values: number[] = [];
   for (const f of lookup.values()) {
@@ -287,7 +313,12 @@ export function computeDistribution(
   }
   const percentileRank = (below / values.length) * 100;
 
-  return { bins: normBins, selectedBin, percentileRank };
+  const avgBin =
+    avgValue != null && isFinite(avgValue)
+      ? Math.min(N_BINS - 1, Math.max(0, Math.floor((avgValue - min) / binWidth)))
+      : undefined;
+
+  return { bins: normBins, selectedBin, percentileRank, avgBin };
 }
 
 /**

@@ -89,13 +89,38 @@ export async function getMethodology(): Promise<Methodology | null> {
     const res = await fetch(dataUrl('methodology.json'));
     if (!res.ok) return null;
     const m = await res.json();
+    const fa: Methodology['feature_analysis'] = {};
+    for (const [k, v] of Object.entries((m.feature_analysis ?? {}) as Record<string, any>)) {
+      fa![k] = {
+        bucket: v.bucket,
+        partial_r: v.partial_r,
+        vif: v.vif,
+        verdict: v.verdict,
+      };
+    }
+    const xs = m.cross_source_agreement?.moneysupermarket;
     return {
-      weights: {},
       normalisation: m.feature_basis ?? 'percentile',
-      calibration: {
-        r_squared: m.r_squared,
-        coefficients: m.coefficients ?? {},
-      },
+      r_squared: m.r_squared,
+      cv_r_squared: m.ridge_cv?.cv_r_squared_mean,
+      loao_mae: m.leave_one_area_out?.mae_gbp,
+      spearman: m.spearman_pred_vs_actual?.rho,
+      n_matched: m.n_matched,
+      n_areas: m.n_areas,
+      n_quarters: m.n_quarters,
+      national_avg: m.national_avg_latest,
+      feature_analysis: fa,
+      cross_source: xs
+        ? {
+            name: 'MoneySuperMarket',
+            rows: (xs.rows ?? []).map((r: any) => ({
+              area_name: r.area_name,
+              actual_gbp: r.actual_gbp,
+              predicted_gbp: r.predicted_gbp,
+            })),
+            spearman: xs.spearman_pred_vs_actual?.rho,
+          }
+        : null,
     };
   } catch {
     return null;
