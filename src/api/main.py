@@ -19,10 +19,12 @@ STATE: dict = {}
 
 COMPONENT_COLS = [
     "vehicle_crime",
-    "road_casualties",
     "deprivation",
-    "population_density",
     "aadf_intensity",
+    "young_driver_share",
+    "cars_per_household",
+    "road_casualties",
+    "population_density",
     "traffic_per_capita",
     "ksi_collisions_per_billion_vehicle_miles",
 ]
@@ -169,9 +171,9 @@ def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
         raise HTTPException(status_code=404, detail="LSOA not found in risk table")
     row = rows.iloc[0]
 
-    # Components mirror the baked parquet: percentile + the £ each factor adds to
-    # the premium vs a national-average area ({c}_contrib). Features not in the
-    # premium model (road_casualties) carry £0 but still show a percentile.
+    # Components mirror the baked parquet: percentile + the LMDI £ step each factor
+    # contributes to the premium ({c}_contrib), an exact share of the gap from the
+    # median-area baseline. Features not in the premium model carry £0.
     components = {}
     for col in COMPONENT_COLS:
         if col not in row:
@@ -192,6 +194,7 @@ def get_risk(postcode: str = Query(..., min_length=2, max_length=10)):
         "components": components,
         "calibrated_premium_estimate": full,           # full (place + composition)
         "premium_place_only": place_only,              # at national-average demographics
+        "premium_baseline": _num(row.get("premium_baseline")),   # median-area anchor
         "composition_uplift": (round(full - place_only) if full is not None
                                and place_only is not None else None),
         "postcode_area": postcode_area,
