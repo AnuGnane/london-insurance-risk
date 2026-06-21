@@ -153,8 +153,8 @@ distribution should be read as directionally correct rankings, not precise £ fi
 
 | Metric | Value | Notes |
 |---|---|---|
-| Panel R² (quarter FE, area-clustered SE) | **0.917** | 94 obs, 22 postcode-area/region combinations |
-| Ridge 5-fold CV-R² | **0.890** | Out-of-fold |
+| Panel R² (quarter FE, area-clustered SE) | **0.917** | 106 obs, 30 areas |
+| Ridge 5-fold CV-R² | **0.887** | Out-of-fold |
 | Leave-one-area-out MAE | **£89** | Generalisation to held-out postcode areas |
 | Spearman (predicted, actual premium) | **0.97** | Rank agreement across all observations |
 | Coefficient sign checks | **5 / 5** | All sensible (see §5) |
