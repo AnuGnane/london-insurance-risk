@@ -79,4 +79,3 @@ calibration or coefficients, always re-run `calibrate` (which re-runs `risk` and
   git-ignored, derived).
 - The user reviews and creates PRs themselves — use `gh` only for small, requested pushes,
   not unprompted.
-- police.uk requests must be throttled — no scraping or hammering.
