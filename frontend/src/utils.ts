@@ -23,6 +23,14 @@ export const DIAGNOSTIC_LAYERS = [
 
 export const COMPONENT_KEYS = [...MODEL_DRIVERS, ...DIAGNOSTIC_LAYERS] as const;
 
+// Canonical DISPLAY order (place drivers first, then composition controls). LMDI
+// step magnitudes are order-invariant, so this only sets the on-screen sequence.
+export const WATERFALL_ORDER = [
+  'vehicle_crime', 'deprivation', 'aadf_intensity',     // place
+  'young_driver_share', 'cars_per_household',            // composition
+] as const;
+const PLACE_KEYS = new Set<string>(['vehicle_crime', 'deprivation', 'aadf_intensity']);
+
 export const COMPONENT_LABELS: Record<string, string> = {
   vehicle_crime: 'Vehicle crime',
   deprivation: 'Deprivation (IMD)',
@@ -186,6 +194,18 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
   const full = props.calibrated_premium as number | undefined;
   const placeOnly = props.premium_place_only as number | undefined;
 
+  const baseline = props.premium_baseline as number | undefined;
+  const steps = baseline == null
+    ? undefined
+    : WATERFALL_ORDER.map((key) => ({
+        key,
+        label: COMPONENT_LABELS[key] ?? key,
+        percentile: props[`${key}_pct`] as number | undefined,
+        step: Number(props[`${key}_contrib`] ?? 0),
+        kind: (PLACE_KEYS.has(key) ? 'place' : 'composition') as 'place' | 'composition',
+        withinScotland: key === 'vehicle_crime' && String(props.lsoa11cd).startsWith('S'),
+      }));
+
   return {
     title: props.lsoa_name ? String(props.lsoa_name) : String(props.lsoa11cd),
     subtitle: `LSOA ${props.lsoa11cd}`,
@@ -196,6 +216,8 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
     premium_place_only: placeOnly,
     composition_uplift:
       full != null && placeOnly != null ? full - placeOnly : undefined,
+    premium_baseline: baseline,
+    steps,
     components,
   };
 }
@@ -321,20 +343,25 @@ export function computeDistribution(
   return { bins: normBins, selectedBin, percentileRank, avgBin };
 }
 
-/**
- * Return the component key with the highest *_contrib for a feature, or null.
- */
+export interface DominantDriver { key: string; dir: 'up' | 'down'; }
+
+// The factor that moves THIS area's premium most, in either direction, with its sign:
+// 'up' = pushes the premium up, 'down' = pulls it down.
 export function dominantDriver(
   props: Record<string, any>
-): string | null {
-  let best: string | null = null;
-  let bestVal = -Infinity;
+): DominantDriver | null {
+  let bestKey: string | null = null;
+  let bestMag = -Infinity;
+  let bestSigned = 0;
   for (const key of MODEL_DRIVERS) {
     const c = props[`${key}_contrib`];
-    if (c != null && Number(c) > bestVal) {
-      bestVal = Number(c);
-      best = key;
+    if (c == null) continue;
+    const v = Number(c);
+    if (Math.abs(v) > bestMag) {
+      bestMag = Math.abs(v);
+      bestKey = key;
+      bestSigned = v;
     }
   }
-  return best;
+  return bestKey == null ? null : { key: bestKey, dir: bestSigned >= 0 ? 'up' : 'down' };
 }
