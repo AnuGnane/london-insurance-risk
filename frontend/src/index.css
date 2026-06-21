@@ -596,3 +596,33 @@ body {
 @media (prefers-contrast: more) {
   :root { --rule: #c9bda6; --ink-faint: #6c6256; }
 }
+
+/* ---- Premium waterfall ---------------------------------------------------- */
+.waterfall { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.wf-row { display: grid; grid-template-columns: 1fr 64px auto; align-items: center;
+  gap: 8px; padding: 4px 0; font-size: 13px; }
+.wf-label { display: flex; align-items: center; gap: 6px; color: var(--ink, #24211c);
+  flex-wrap: wrap; }
+.wf-pct { font-size: 11px; color: var(--ink-faint); opacity: .85; }
+.wf-track { position: relative; height: 8px; }
+.wf-bar { position: absolute; top: 0; height: 8px; border-radius: 2px; }
+.wf-up { right: 50%; background: #c44536; }       /* dearer → grows left from centre */
+.wf-down { left: 50%; background: #4f9d7f; }       /* cheaper → grows right from centre */
+.wf-track::before { content: ''; position: absolute; left: 50%; top: -2px; height: 12px;
+  width: 1px; background: rgba(0,0,0,.18); }
+.wf-delta { font-variant-numeric: tabular-nums; font-weight: 600; }
+.wf-delta.pos { color: #9e2a2b; }
+.wf-delta.neg { color: #2f6f57; }
+.wf-anchor, .wf-total { grid-template-columns: 1fr auto; font-weight: 700; }
+.wf-anchor { color: #6b675f; border-bottom: 1px dashed rgba(0,0,0,.12); }
+.wf-total { border-top: 1px solid rgba(0,0,0,.18); margin-top: 2px; padding-top: 8px;
+  font-size: 15px; }
+.wf-amount { font-variant-numeric: tabular-nums; }
+.wf-active .wf-label { font-weight: 700; }
+.chip-up { color: #9e2a2b; }
+.chip-down { color: #2f6f57; }
+
+@media (max-width: 560px) {
+  .wf-row { grid-template-columns: 1fr auto; }
+  .wf-track { display: none; }            /* keep the signed £ + percentile, drop the bar */
+}

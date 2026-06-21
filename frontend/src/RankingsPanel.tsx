@@ -72,8 +72,8 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
                 <span className="rank-name">{r.name}</span>
                 <span className="rank-meta">
                   {driver && (
-                    <span className="driver-chip">
-                      {COMPONENT_LABELS[driver] ?? driver}
+                    <span className={`driver-chip ${driver.dir === 'up' ? 'chip-up' : 'chip-down'}`}>
+                      {driver.dir === 'up' ? '▲' : '▼'} {COMPONENT_LABELS[driver.key] ?? driver.key}
                     </span>
                   )}
                 </span>

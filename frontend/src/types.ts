@@ -66,7 +66,17 @@ export interface LsoaProps {
   quintile?: number;
   risk_bucket?: number;          // legacy name — read defensively
   calibrated_premium?: number;
+  premium_baseline?: number;     // £ premium with every factor at the median percentile
   [key: string]: any;            // *_val, *_pct, *_contrib per component
+}
+
+export interface WaterfallStep {
+  key: string;
+  label: string;
+  percentile?: number;
+  step: number;                  // signed £ contribution (LMDI; sums with baseline to the total)
+  kind: 'place' | 'composition';
+  withinScotland?: boolean;      // crime is ranked within Scotland — flag it
 }
 
 // Unified detail shape rendered by DetailPanel, from EITHER a postcode
@@ -88,6 +98,8 @@ export interface AreaDetail {
   calibrated_premium?: number;
   premium_place_only?: number;
   composition_uplift?: number;
+  premium_baseline?: number;
+  steps?: WaterfallStep[];
   wtw_anchor_premium?: number;
   postcode_area?: string;
   components: AreaDetailComponent[];

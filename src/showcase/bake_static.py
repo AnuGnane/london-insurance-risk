@@ -53,7 +53,7 @@ COORD_PRECISION = 0.00001  # ~1 m; snaps output coords so json writes short floa
 # colours by `_pct` and the detail panel shows percentile + £ `_contrib`.
 # NB: the frontend keys on `lsoa11cd` (== area_code in our data), so emit that.
 _BASE_PROPS = ["lsoa11cd", "lsoa_name", "calibrated_premium",
-               "premium_place_only", "risk_index", "quintile"]
+               "premium_place_only", "premium_baseline", "risk_index", "quintile"]
 # Premium drivers + composition controls: keep _pct (map) AND _contrib (£ in panel).
 _DRIVERS = ["vehicle_crime", "deprivation", "aadf_intensity",
             "young_driver_share", "cars_per_household"]
@@ -74,16 +74,23 @@ def _component_cols(gdf: gpd.GeoDataFrame) -> list[str]:
 
 
 def _round_props(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Coarsen numbers to cut JSON entropy: percentiles + risk_index to whole
-    integers, £ contributions to whole pounds (premiums are already Int)."""
+    """Coarsen numbers to cut JSON entropy. Model-driver percentiles ship at 1 dp
+    (the premium is computed from 1-dp percentiles upstream, so this keeps the
+    served premium exactly reproducible — see tests/test_serve_consistency.py).
+    Diagnostic percentiles are display-only -> whole integers. £ figures -> whole £."""
     out = gdf.copy()
     if "risk_index" in out:
         out["risk_index"] = out["risk_index"].round(0).astype("Int64")
-    for c in _COMPONENTS:
+    if "premium_baseline" in out:
+        out["premium_baseline"] = out["premium_baseline"].round(0).astype("Int64")
+    for c in _DRIVERS:
         if f"{c}_pct" in out:
-            out[f"{c}_pct"] = out[f"{c}_pct"].round(0).astype("Int64")
+            out[f"{c}_pct"] = out[f"{c}_pct"].round(1)          # 1 dp (float)
         if f"{c}_contrib" in out:
             out[f"{c}_contrib"] = out[f"{c}_contrib"].round(0).astype("Int64")
+    for c in _DIAGNOSTICS:
+        if f"{c}_pct" in out:
+            out[f"{c}_pct"] = out[f"{c}_pct"].round(0).astype("Int64")
     return out
 
 

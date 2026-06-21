@@ -60,12 +60,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   if (!data) return null;
 
   const color = quintileColor(data.quintile);
-  const drivers = data.components.filter((c) => c.kind === 'driver');
   const diagnostics = data.components.filter((c) => c.kind === 'diagnostic');
-  // Biggest premium effect first (by absolute £ contribution).
-  drivers.sort(
-    (a, b) => Math.abs(b.contribution ?? 0) - Math.abs(a.contribution ?? 0)
-  );
 
   const uplift = data.composition_uplift;
 
@@ -150,45 +145,51 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
       )}
 
-      {/* Premium drivers */}
-      {drivers.length > 0 && (
-        <div className="section" style={{ borderTop: 'none', paddingBottom: 0 }}>
-          <span className="eyebrow">What moves the premium</span>
-          <div className="drivers">
-            {drivers.map((c) => {
-              const active = colorMode !== 'composite' && c.key === colorMode;
-              const pct = c.percentile ?? 0;
-              const contrib = c.contribution;
-              return (
-                <div
-                  key={c.key}
-                  className={`driver${active ? ' driver-active' : ''}`}
-                >
-                  <div className="driver-head">
-                    <span className="driver-name">
-                      {COMPONENT_LABELS[c.key] || c.key}
+      {/* Premium waterfall — exact, order-invariant bridge from the typical-GB baseline */}
+      {data.steps && data.premium_baseline != null && premium != null && (() => {
+        const maxAbs = Math.max(1, ...data.steps.map((s) => Math.abs(s.step)));
+        return (
+          <div className="section" style={{ borderTop: 'none', paddingBottom: 0 }}>
+            <span className="eyebrow">Why this price</span>
+            <div className="waterfall" aria-label="Breakdown of the estimated premium by factor">
+              <div className="wf-row wf-anchor">
+                <span className="wf-label">Typical GB area</span>
+                <span className="wf-amount">{gbp(data.premium_baseline)}</span>
+              </div>
+              {data.steps.map((s) => {
+                const active = colorMode !== 'composite' && s.key === colorMode;
+                const up = s.step >= 0;
+                return (
+                  <div key={s.key} className={`wf-row wf-step${active ? ' wf-active' : ''}`}>
+                    <span className="wf-label">
+                      {s.label}
+                      {s.percentile != null && (
+                        <span className="wf-pct">{ordinalPct(s.percentile)} pct</span>
+                      )}
+                      {s.withinScotland && <span className="diag-tag">within Scotland</span>}
                     </span>
-                    {c.percentile != null && (
-                      <span className="driver-pct">{ordinalPct(pct)} pct</span>
-                    )}
+                    <span className="wf-track">
+                      <span className={`wf-bar ${up ? 'wf-up' : 'wf-down'}`}
+                            style={{ width: `${(Math.abs(s.step) / maxAbs) * 50}%` }} />
+                    </span>
+                    <span className={`wf-delta ${up ? 'pos' : 'neg'}`}>
+                      {up ? '+' : '−'}{gbp(Math.abs(s.step))}
+                    </span>
                   </div>
-                  <div className="bar">
-                    <div className="bar-fill" style={{ width: `${Math.min(100, pct)}%` }} />
-                  </div>
-                  {contrib != null && (
-                    <div className="driver-meta">
-                      <span className="pos">
-                        {contrib >= 0 ? '+' : '−'}{gbp(Math.abs(contrib))}
-                      </span>{' '}
-                      vs the GB-average area
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+              <div className="wf-row wf-total">
+                <span className="wf-label">This area</span>
+                <span className="wf-amount" style={{ color }}>{gbp(premium)}</span>
+              </div>
+            </div>
+            <p className="drivers-note">
+              Each step is this area's factor versus a national-median area; the steps add up
+              exactly to the estimate, and each factor's share is independent of ordering.
+            </p>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Diagnostic layers — mapped, but evidence-gated out of the premium */}
       {diagnostics.length > 0 && (
