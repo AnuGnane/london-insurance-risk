@@ -5,6 +5,11 @@ Great Britain from open data, render it as an interactive choropleth, and look i
 premium is **calibrated** against the published WTW / Confused.com Car Insurance Price Index, and the
 0–100 "risk index" is simply that premium on a percentile scale — one reconciled model, not two.
 
+Every area's price is fully explained: the detail panel renders a **premium waterfall** that bridges
+from a typical-GB-area baseline (£537) to the area's estimate via exact, order-invariant per-factor
+£ steps (LMDI decomposition — `baseline + Σ steps == premium`, to the pound). See `AUDIT.md` for the
+model-verification write-up.
+
 This is a **territorial risk proxy**, not a quote engine: it uses no individual driver or vehicle
 details. See `AGENTS.md` for the coding agent's working agreement, `MODEL_REVIEW.md` for the model
 audit + design decisions, and `implementation_plan.md` for the original design.
