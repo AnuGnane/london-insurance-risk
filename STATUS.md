@@ -1,6 +1,14 @@
 # Project Status
 
-Last updated: 2026-06-17. Branch: `phase2-anchor-expansion`.
+Last updated: 2026-06-21. Branch: `main`.
+
+**Transparency & verification — COMPLETE (2026-06-21, PR #9).** The premium is now fully
+explainable per area: an exact, order-invariant **LMDI waterfall** bridges from a typical-GB-area
+baseline (£537) to each estimate via signed per-factor £ steps (`baseline + Σ steps == premium`).
+Driver percentiles ship at 1 dp so the served premium is exactly reproducible from the static data
+(`tests/test_serve_consistency.py` guards baseline, reproducibility, exact reconciliation and signs).
+Model verification written up in `AUDIT.md`; rankings confirmed not UI-desynced. See
+`docs/superpowers/specs/2026-06-21-transparency-polish-finalize-design.md`.
 
 **Phase 2 (anchor expansion) — COMPLETE.** Three things landed (see `PHASE2_PLAN.md`):
 1. **Scotland validated, not extrapolated** — the four Confused Scottish regions are
@@ -91,7 +99,8 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 ### Frontend
 
 - React + MapLibre GL choropleth over all 41,729 GB small areas
-- Postcode search → detail panel with **£ premium as the headline** + per-driver £ contributions
+- Postcode search → detail panel with **£ premium as the headline** + a **premium waterfall**
+  (baseline → signed per-factor £ steps → estimate) that reconciles to the pound
 - Filter map by: premium · vehicle crime · collisions · deprivation · density
 - Quintile legend + deep-linkable URLs (`?area=<code>&filter=<mode>`)
 - Initial view: Great Britain (zoomed out to show all nations)
@@ -105,10 +114,10 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 
 | Issue | Impact |
 |-------|--------|
-| Premium importance is ~76% population density | The model is largely an urban-density proxy (accepted for a premium estimator, but it's not strongly "crime/claims" driven) |
+| Premium is weighted toward urban-intensity signals (AADF traffic + deprivation) | Phase 3 replaced raw population density with point-level AADF (independent, VIF 2.3), but the model still reads more "where it's busy/deprived" than "crime/claims" |
 | Scotland crime is council-grain, disaggregated by population | No within-council variation in the crime feature, even though Scottish regions now validate at anchor grain |
 | WTW/MSM panel is quarterly at postcode-area/region grain | No sub-district calibration; all LSOA-level values remain modelled predictions |
-| Phase 3 traffic exposure is LA-grain v1 | More stable than sparse count points, but it will not capture within-authority road exposure until a point-level refinement |
+| Traffic exposure is point-level AADF within 2 km of each centroid | Genuine driver (partial r +0.38), but ~10% of areas fall back to the nearest count point where local coverage is sparse |
 | GeoJSON served as single ~15 MB file | Works fine in Docker; for production consider PMTiles (Phase D) |
 | Population vintage differs (England mid-2015 vs Wales/Scotland 2011) | Per-capita rates/density slightly off across the border (P1: move to Census 2021/2022) |
 
