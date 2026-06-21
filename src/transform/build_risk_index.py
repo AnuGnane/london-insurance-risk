@@ -120,67 +120,106 @@ def enrich_components(features: pd.DataFrame, weights: dict[str, float]) -> list
 MEDIAN_PCT = 50.0   # percentile of a "national-average" area for a given factor
 
 
-def bake_premium_and_contributions(features: pd.DataFrame, comps: list[str]) -> dict:
-    """Bake the three premium numbers + per-driver £ contributions from the
-    calibration (a log relative-index model). Returns the coefficient dict.
+def decompose_premium(pct: pd.DataFrame, coefs: dict, national_avg: float,
+                      order: list[str], composition_cols: set[str],
+                      median_pct: float = MEDIAN_PCT) -> dict:
+    """Exact, ORDER-INVARIANT additive premium waterfall (LMDI). Pure.
 
-    premium £ = national_avg × exp(const + Σ coef × {feature}_pct).
-      - calibrated_premium     — full prediction (place + composition).
-      - premium_place_only     — composition controls held at the national mean
-        (pct=50): "what the area costs at national-average demographics".
-    Missing controls (e.g. Scotland's uningested demographics, or 2011/2021 LSOA
-    mismatches) are held at the national mean, so those areas equal place-only.
-    Per-driver contribution £ = full − (that feature held at the national mean):
-    the £ this factor adds versus a median area (multiplicative model → these are
-    interpretable deltas, not an exact additive split)."""
+    The model is log-linear: ln(premium/baseline) = Σ coefₖ·(pctₖ − median). The
+    logarithmic-mean (LMDI) split gives each factor an exact £ share of the gap from
+    baseline:  stepₖ = L · coefₖ·(pctₖ − median),  L = (full − baseline)/ln(full/baseline),
+    so baseline + Σ stepₖ == full and stepₖ depends only on factor k (no ordering).
+    Missing/NaN cells are held at the median (step £0). Steps are integer-reconciled
+    so round(baseline) + Σ round(step) == round(full) exactly.
+
+    Returns {baseline:int, premium_full:Int64, premium_place_only:Int64, steps:Int64[order]}.
+    """
+    place_cols = [c for c in order if c not in composition_cols]
+
+    # Per-factor log-contribution (order-independent); columns sum to ln(full/baseline).
+    log_cols = {}
+    for col in order:
+        if col in pct.columns:
+            vals = pct[col].fillna(median_pct)
+        else:
+            vals = pd.Series(median_pct, index=pct.index)
+        log_cols[col] = float(coefs[col]) * (vals - median_pct)
+    log_df = pd.DataFrame(log_cols)[order]
+    total_log = log_df.sum(axis=1)
+
+    baseline = float(national_avg) * np.exp(
+        float(coefs["const"]) + median_pct * sum(float(coefs[c]) for c in order)
+    )
+    full = baseline * np.exp(total_log)
+    place_log = (log_df[place_cols].sum(axis=1) if place_cols
+                 else pd.Series(0.0, index=pct.index))
+    place_only = baseline * np.exp(place_log)
+
+    # Logarithmic mean L(full, baseline) = (full−baseline)/ln(full/baseline); → baseline
+    # as full → baseline (all factors at the median).
+    tl = total_log.to_numpy()
+    diff = (full - baseline).to_numpy()
+    safe = np.where(np.abs(tl) < 1e-12, 1.0, tl)
+    L = np.where(np.abs(tl) < 1e-12, baseline, diff / safe)
+    raw = log_df.mul(pd.Series(L, index=pct.index), axis=0)        # £ steps; Σ == full − baseline
+
+    # Integer reconciliation: the largest-|step| factor per row absorbs the rounding residual.
+    baseline_int = round(baseline)
+    full_int = full.round()                                        # rounded ONCE; reused below
+    steps_int = raw.round()
+    residual = (full_int - baseline_int - steps_int.sum(axis=1)).to_numpy()
+    arr = steps_int.to_numpy(dtype=float).copy()                  # pandas 3.x: to_numpy is read-only
+    pick = raw.abs().to_numpy().argmax(axis=1)
+    arr[np.arange(len(arr)), pick] += residual
+    steps_int = pd.DataFrame(arr, index=pct.index, columns=order)
+
+    return {
+        "baseline": int(baseline_int),
+        "premium_full": full_int.astype("Int64"),
+        "premium_place_only": place_only.round().astype("Int64"),
+        "steps": steps_int.astype("Int64"),
+    }
+
+
+def bake_premium_and_contributions(features: pd.DataFrame, comps: list[str]) -> dict:
+    """Bake the premium, the constant baseline, and per-driver LMDI step
+    £-contributions (exact, order-invariant waterfall) from the calibration
+    coefficients. baseline + Σ {driver}_contrib == calibrated_premium, to the pound."""
     calib_path = ROOT / "reports" / "calibration.json"
     calib = json.loads(calib_path.read_text()) if calib_path.exists() else {}
     coefs = calib.get("coefficients", {})
     national_avg = calib.get("national_avg_latest")
     if not coefs or national_avg is None:
-        log.info("No calibration (coefficients/national_avg) yet — skipping premium. "
-                 "Run `make calibrate` then rebuild; risk_index falls back to the composite.")
+        log.info("No calibration yet — skipping premium; risk_index falls back to composite.")
         for c in comps:
             features[f"{c}_contrib"] = 0.0
         return {}
 
     composition_cols = set(calib.get("composition_features", []))
-    const = float(coefs["const"])
-    all_model_cols = [c for c in coefs if c != "const"]
-    missing = [c for c in all_model_cols if c not in features.columns]
+    order = [c for c in coefs if c != "const"]          # place then composition (insertion order)
+    missing = [c for c in order if c not in features.columns]
     if missing:
-        log.warning(
-            "Calibration features missing from feature table — treating as national mean (pct=50): %s",
-            missing,
-        )
-    model_cols = all_model_cols
+        log.warning("Calibration features missing — held at the national median (pct=50): %s", missing)
 
-    def predict(hold_at_median: set[str]) -> pd.Series:
-        z = pd.Series(const, index=features.index)
-        for col in model_cols:
-            if col in hold_at_median or col not in features.columns:
-                vals = MEDIAN_PCT
-            else:
-                vals = features[col].fillna(MEDIAN_PCT)
-            z = z + float(coefs[col]) * vals
-        return float(national_avg) * np.exp(z)
+    pct = features.reindex(columns=order)                # missing cols -> NaN -> median inside
+    res = decompose_premium(pct, coefs, float(national_avg), order, composition_cols)
 
-    premium_full = predict(hold_at_median=set())
-    premium_place_only = predict(hold_at_median=composition_cols)
-    features["calibrated_premium"] = premium_full.round().astype("Int64")
-    features["premium_place_only"] = premium_place_only.round().astype("Int64")
+    features["premium_baseline"] = res["baseline"]
+    features["calibrated_premium"] = res["premium_full"]
+    features["premium_place_only"] = res["premium_place_only"]
 
+    steps = res["steps"]
     priced: set[str] = set()
-    for col in model_cols:
+    for col in order:
         base = col[:-4] if col.endswith("_pct") else col
-        features[f"{base}_contrib"] = (premium_full - predict({col})).round(2)
+        features[f"{base}_contrib"] = steps[col]
         priced.add(base)
-    for c in comps:                                  # features not in the model contribute £0
+    for c in comps:                                      # non-model features contribute £0
         if c not in priced:
-            features[f"{c}_contrib"] = 0.0
-    log.info("Baked premium (full £%.0f–£%.0f, place-only £%.0f–£%.0f) from %d coefficients",
-             premium_full.min(), premium_full.max(),
-             premium_place_only.min(), premium_place_only.max(), len(coefs))
+            features[f"{c}_contrib"] = 0
+    log.info("Baked premium (£%s–£%s, baseline £%s) + %d LMDI step contribs",
+             int(features['calibrated_premium'].min()), int(features['calibrated_premium'].max()),
+             res["baseline"], len(order))
     return coefs
 
 
