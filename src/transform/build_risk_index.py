@@ -304,6 +304,8 @@ def run() -> None:
         keep.append("calibrated_premium")
     if "premium_place_only" in gdf.columns:
         keep.append("premium_place_only")
+    if "premium_baseline" in gdf.columns:                # waterfall anchor (API-path parity)
+        keep.append("premium_baseline")
     for c in comps:
         keep += [f"{c}_val", f"{c}_pct", f"{c}_contrib"]
 
