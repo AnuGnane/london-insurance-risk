@@ -6,11 +6,9 @@ You are building a UK/GB car-insurance risk model - read the README.md for more 
 1. **Never commit data.** Everything under `data/` is git-ignored. Ingest scripts download into `data/raw`.
 2. **Respect source terms.** police.uk is rate-limited — throttle and cache responses; do not hammer it.
    Document every source's licence in `README.md` if you add one.
-3. **No quote scraping.** Do not add code that automates Compare the Market / MoneySuperMarket / Confused /
-   GoCompare quote journeys. Out of scope by design (see PLAN §why this scope).
-4. **One spatial vintage.** Default LSOA = 2011 (matches IMD 2019). If you bridge to 2021, use the official
+3. **One spatial vintage.** Default LSOA = 2011 (matches IMD 2019). If you bridge to 2021, use the official
    ONS lookup and say so in code comments.
-5. **Config over constants.** Years, weights, region code, paths, normalisation method all live in
+4. **Config over constants.** Years, weights, region code, paths, normalisation method all live in
    `config/config.yaml` and are read via `src/common/config.py`. Don't hard-code them in modules.
 ```
 
