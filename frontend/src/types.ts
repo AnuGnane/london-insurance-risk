@@ -66,6 +66,8 @@ export interface LsoaProps {
   quintile?: number;
   risk_bucket?: number;          // legacy name — read defensively
   calibrated_premium?: number;
+  premium_low?: number;            // 95% CI lower bound (£)
+  premium_high?: number;           // 95% CI upper bound (£)
   premium_baseline?: number;     // £ premium with every factor at the median percentile
   [key: string]: any;            // *_val, *_pct, *_contrib per component
 }
@@ -96,6 +98,8 @@ export interface AreaDetail {
   risk_index: number;
   quintile: number;
   calibrated_premium?: number;
+  premium_low?: number;
+  premium_high?: number;
   premium_place_only?: number;
   composition_uplift?: number;
   premium_baseline?: number;

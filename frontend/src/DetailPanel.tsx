@@ -76,7 +76,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         <span className="hero-swatch" style={{ background: color }} />
         <div>
           <div className="hero-value">{premium != null ? gbp(premium) : '—'}</div>
-          <div className="hero-caption">Estimated annual premium</div>
+          {data.premium_low != null && data.premium_high != null && (
+            <div className="hero-range">
+              {gbp(data.premium_low)}–{gbp(data.premium_high)}
+            </div>
+          )}
+          <div className="hero-caption">
+            {data.premium_low != null ? 'Estimated annual premium (95% range)' : 'Estimated annual premium'}
+          </div>
         </div>
       </div>
 

@@ -245,6 +245,16 @@ def run() -> None:
     # 3. Calibrated premium + per-driver £ contributions
     coefs = bake_premium_and_contributions(features, comps)
 
+    # 3b. Uncertainty bands (premium_low / premium_high) from calibration.
+    interval_path = ROOT / "reports" / "premium_intervals.parquet"
+    if interval_path.exists() and "calibrated_premium" in features.columns:
+        intervals = pd.read_parquet(interval_path)
+        features = features.merge(intervals, on="area_code", how="left")
+        log.info("Merged uncertainty bands: premium_low/premium_high for %d areas",
+                 features["premium_low"].notna().sum())
+    else:
+        log.info("No premium intervals — run `make calibrate` to generate them.")
+
     # 4. risk_index. Reconciled model: risk_index IS the calibrated premium on a
     #    0–100 scale (its GB-wide percentile), so the map's colouring, the
     #    quintiles and the headline £ are one construct. Falls back to the expert
@@ -305,12 +315,10 @@ def run() -> None:
     keep = ["area_code", "lsoa11cd", "risk_index", "quintile"]
     if "lsoa_name" in gdf.columns:
         keep.append("lsoa_name")
-    if "calibrated_premium" in gdf.columns:
-        keep.append("calibrated_premium")
-    if "premium_place_only" in gdf.columns:
-        keep.append("premium_place_only")
-    if "premium_baseline" in gdf.columns:                # waterfall anchor (API-path parity)
-        keep.append("premium_baseline")
+    for pcol in ["calibrated_premium", "premium_place_only", "premium_baseline",
+                 "premium_low", "premium_high"]:
+        if pcol in gdf.columns:
+            keep.append(pcol)
     for c in comps:
         keep += [f"{c}_val", f"{c}_pct", f"{c}_contrib"]
 

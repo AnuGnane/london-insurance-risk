@@ -193,6 +193,8 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
 
   const full = props.calibrated_premium as number | undefined;
   const placeOnly = props.premium_place_only as number | undefined;
+  const premiumLow = props.premium_low as number | undefined;
+  const premiumHigh = props.premium_high as number | undefined;
 
   const baseline = props.premium_baseline as number | undefined;
   const steps = baseline == null
@@ -213,6 +215,8 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
     risk_index: Number(props.risk_index),
     quintile: readQuintile(props),
     calibrated_premium: full,
+    premium_low: premiumLow,
+    premium_high: premiumHigh,
     premium_place_only: placeOnly,
     composition_uplift:
       full != null && placeOnly != null ? full - placeOnly : undefined,
