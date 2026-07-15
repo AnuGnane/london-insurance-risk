@@ -30,7 +30,7 @@ import time
 import geopandas as gpd
 import pandas as pd
 import requests
-from shapely.geometry import MultiPolygon, Polygon
+from src.common.esri import esri_rings_to_geom
 
 from src.common.config import active_nations, is_london_footprint
 from src.common.geo import WORKING_CRS
@@ -212,38 +212,7 @@ def _fetch_ew_lsoas(nations: list[str]) -> gpd.GeoDataFrame:
     return gdf
 
 
-def _ring_is_clockwise(ring: list[list[float]]) -> bool:
-    """Esri convention: clockwise rings are exteriors, counter-clockwise are holes."""
-    s = 0.0
-    for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]):
-        s += (x2 - x1) * (y2 + y1)
-    return s > 0
 
-
-def _esri_rings_to_geom(rings: list[list[list[float]]]):
-    """Convert an Esri polygon ``rings`` array to a shapely (Multi)Polygon.
-
-    Esri packs all exterior rings and holes into one flat list; we split by
-    winding order and assign each hole to the exterior that contains it. This is
-    what arcgis2geojson does — vendored here to avoid an extra dependency and
-    because the gov.scot geojson endpoint mis-serialises multi-island zones.
-    """
-    exteriors = [r for r in rings if len(r) >= 4 and _ring_is_clockwise(r)]
-    holes = [r for r in rings if len(r) >= 4 and not _ring_is_clockwise(r)]
-    if not exteriors:  # all CCW — treat each as its own polygon
-        exteriors, holes = rings, []
-
-    ext_polys = [Polygon(r) for r in exteriors]
-    hole_assignment: list[list] = [[] for _ in ext_polys]
-    for h in holes:
-        rep = Polygon(h).representative_point()
-        for i, ext in enumerate(ext_polys):
-            if ext.contains(rep):
-                hole_assignment[i].append(h)
-                break
-
-    polys = [Polygon(ext, hl) for ext, hl in zip(exteriors, hole_assignment)]
-    return polys[0] if len(polys) == 1 else MultiPolygon(polys)
 
 
 def _fetch_scotland_dz() -> gpd.GeoDataFrame:
@@ -274,7 +243,7 @@ def _fetch_scotland_dz() -> gpd.GeoDataFrame:
         for feat in features:
             attrs = feat["attributes"]
             rows.append({"area_code": attrs["datazone"], "area_name": attrs["name"]})
-            geoms.append(_esri_rings_to_geom(feat["geometry"]["rings"]))
+            geoms.append(esri_rings_to_geom(feat["geometry"]["rings"]))
         offset += len(features)
         if len(features) < SCOTLAND_PAGE_SIZE:
             break

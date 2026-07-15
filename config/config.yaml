@@ -99,7 +99,9 @@ sources:
   # data/raw/flood/<nation>/. See PHASE4_PLAN.md.
   flood_england_rofrs: "https://environment.data.gov.uk/dataset/96ab4342-82c1-4095-87f1-0082e8d84ef1"
   flood_scotland_sepa: "https://www2.sepa.scot/flooddata/"
+  flood_scotland_sepa_rest: "https://map.sepa.org.uk/server/rest/services/Open"
   flood_wales_nrw: "https://datamap.gov.wales/"
+  flood_wales_nrw_ows: "https://datamap.gov.wales/geoserver/ows"
   imd2019: "https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019"
   geoportal: "https://geoportal.statistics.gov.uk"
   wtw_index: "https://www.confused.com/car-insurance/price-index"

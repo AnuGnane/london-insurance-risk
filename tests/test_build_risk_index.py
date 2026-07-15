@@ -40,3 +40,26 @@ def test_missing_place_and_composition_columns_held_at_median():
     out = decompose_premium(pct, coefs, 558.55, order, composition_cols={"c_pct"})
     assert (out["steps"]["d_pct"].astype(int) == 0).all()
     assert (out["steps"]["c_pct"].astype(int) == 0).all()
+
+
+def test_feature_groups_flood_is_per_nation():
+    from src.transform.build_risk_index import _feature_groups
+    df = pd.DataFrame({"nation": ["england", "wales", "scotland", "england"]})
+    groups = _feature_groups(df, "flood_risk")
+    assert list(groups) == ["england", "wales", "scotland", "england"]
+    # crime keeps its E+W-pooled grouping
+    assert list(_feature_groups(df, "vehicle_crime")) == ["ew", "ew", "scotland", "ew"]
+    # ungrouped features rank GB-wide
+    assert _feature_groups(df, "deprivation") is None
+
+
+def test_flood_pct_ranked_within_nation():
+    from src.transform.build_risk_index import _feature_groups, normalise
+    df = pd.DataFrame({
+        "nation": ["england"] * 3 + ["scotland"] * 3,
+        "flood_risk": [0.0, 0.1, 0.2, 0.0, 0.01, 0.02],
+    })
+    pct = normalise(df["flood_risk"], "percentile", _feature_groups(df, "flood_risk"))
+    # Scotland's 0.02 max ranks as high within Scotland as England's 0.2 does
+    # within England — absolute scales are never compared across nations.
+    assert pct.iloc[2] == pct.iloc[5]

@@ -1,8 +1,8 @@
 # Phase 4 Implementation Plan — Flood Risk
 
-> Status: **started** (scaffold + plan). Follows `NEXT_PHASE_DESIGN.md` §3 and §6.
-> This is the largest data lift in the project: national flood extents are big
-> geospatial layers and there are three separate regulators.
+> Status: **code complete (Tasks 1–5); awaiting England data**. Follows
+> `NEXT_PHASE_DESIGN.md` §3 and §6 + the detailed 10-task spec in
+> `docs/superpowers/specs/2026-07-15-phase4-flood-completion.md`.
 
 **Goal:** add a per-area **flood-risk exposure** feature and let the calibration
 evidence gate (`reports/feature_analysis.md`) decide whether it's a premium driver
@@ -22,33 +22,33 @@ boundary-vintage-robust metric and reuses the EPSG:27700 geometries already load
 
 | Nation | Source | Access | Licence |
 |---|---|---|---|
-| England | EA **Risk of Flooding from Rivers and Sea (RoFRS)** — 50 m cells, 4 risk bands | environment.data.gov.uk (dataset `96ab4342-…`); downloadable extent + WMS/feature service | OGL v3.0 |
-| Wales | NRW **Flood Risk Assessment Wales (FRAW)** rivers/sea | NRW DataMap Wales / Lle | OGL |
-| Scotland | SEPA **Flood Maps** (river/coastal, High/Med/Low return periods) | www2.sepa.scot/flooddata + spatialdata.gov.scot (ESRI REST / WMS) | OGL v3.0 |
+| England | EA **Risk of Flooding from Rivers and Sea (RoFRS)** — 50 m cells, 4 risk bands | environment.data.gov.uk (dataset `96ab4342-…`); **SFTP large-data request required** | OGL v3.0 |
+| Wales | NRW **Flood Risk Assessment Wales (FRAW)** rivers/sea | **Automated** (WFS paged GeoJSON from datamap.gov.wales) | OGL |
+| Scotland | SEPA **Flood Maps** (river/coastal, High/Med/Low return periods) | **Automated** (ArcGIS REST, 4 pre-split services) | OGL v3.0 |
 
-High = ≥1/30 (3.3%) annual chance; Medium = 1/30–1/100. We take **High+Medium** as
-the "at risk" mask (matches EA's public banding and the SEPA High/Medium scenarios).
+## England runbook (manual download — SFTP required)
 
-## Why it's heavy (and the chosen approach)
+Verified 2026-07-15: the legacy EA ArcGIS service
+(`EA/RiskOfFloodingFromRiversAndSea/MapServer`, last modified 2020) returns
+HTTP 500 and the DSP WFS slugs 404 — England's current RoFRS (NaFRA2-based,
+revised 2026-06-18) is only available through the interactive downloader.
+The "Full dataset" download and smaller polygon tiles both redirect to a
+**large-data request form** (SFTP). Submit the request and wait for access.
 
-The national RoFRS is hundreds of MB as a raster/polygon at 50 m. Overlaying it
-against ~42k areas is the expensive step. Two viable routes:
+1. Open https://environment.data.gov.uk/explore/96ab4342-82c1-4095-87f1-0082e8d84ef1?download=true
+2. Select **`rofrs_4band`** layer (NOT "All" — depth layers are not needed).
+3. Choose **GeoPackage** format (or ESRI Shapefile as fallback).
+4. If "Full dataset" triggers a large-data request form, submit it and wait
+   for SFTP credentials. Download the file(s) when available.
+5. Unzip into `data/raw/flood/england/` (any mix of .gpkg/.shp/.geojson/.parquet).
+6. Re-run `uv run python -m src.ingest.flood`. The ingest reads every file in
+   the folder, keeps High+Medium via the band column (`prob_4band`/`risk_band`/…)
+   and logs exactly which band values were kept vs dropped — check that log line:
+   if it reports no band column but the source has 4 bands, stop and add the
+   column name to `_BAND_COL_CANDIDATES` in `src/ingest/flood.py`.
 
-1. **Areal overlay (preferred for the model):** download each nation's flood-extent
-   polygons (or a dissolved High+Medium polygon), `gpd.overlay`/`sjoin` with the
-   area boundaries, sum intersection area per `area_code`. Heavy but exact.
-2. **Pre-aggregated property counts (fast fallback):** EA "Properties in Areas at
-   Risk" gives counts of properties at flood risk — if joinable to a small-area
-   geography, that's a quick England proxy without the overlay. Useful as a cross-
-   check, but England-only and property- not area-based.
-
-v1 implements route 1, nation by nation, reading pre-downloaded extents from
-`data/raw/flood/{england,wales,scotland}/`. Because the files are large and some
-sit behind ESRI REST / WMS rather than a single static CSV, the ingest is **drop-in
-friendly**: `src/ingest/flood.py` looks for the extent files locally and no-ops
-gracefully (logging what to fetch) if they're absent — so the pipeline keeps running
-and flood simply stays unset until the data is present (same pattern as
-`scotland_crime.py` / `aadf.py`).
+Scotland (SEPA) and Wales (NRW) need no manual step — `flood.py` fetches and
+caches them automatically.
 
 ## Implementation steps
 
@@ -56,16 +56,23 @@ and flood simply stays unset until the data is present (same pattern as
 - [x] Config: `sources.flood_*` URLs; `flood_risk` wired as a place **candidate**.
 - [x] `aggregate_to_lsoa.py`: merge `flood.parquet` when present; missing → NaN
       (reweighted / held at median, never silently zero outside covered nations).
-- [ ] Implement the areal-overlay transform per nation + the download/cache helpers.
+- [x] Shared Esri helpers (`src/common/esri.py`) — ring converter + paged polygon fetch.
+- [x] Fix 3 scaffold bugs (band-filter-before-strip, dissolve overlaps, per-nation NaN-not-zero).
+- [x] Within-nation percentile ranking for `flood_risk` (`_feature_groups` in `build_risk_index.py`).
+- [x] SEPA Scotland fetcher (ArcGIS REST, 4 services, cached GeoParquet).
+- [x] NRW Wales fetcher (WFS paged GeoJSON, band-checked, cached GeoParquet).
+- [x] England runbook documented (SFTP large-data request required).
+- [ ] **BLOCKED**: England data download (Defra SFTP request submitted).
+- [ ] Run ingest for real (Scotland + Wales now; England when data arrives).
 - [ ] Re-run calibration; `feature_analysis.md` decides keep vs diagnostic.
-- [ ] Tests for the pure overlay/share transform; docs (README/STATUS) refresh.
+- [ ] Frontend flood layer + about entry.
+- [ ] Tests for full integration; docs (README/STATUS) refresh.
 
-## Open scope question
+## Open scope question — resolved
 
-England-first (EA only, clearly caveated) vs full GB (EA+NRW+SEPA) in v1. Full GB is
-the honest target but triples the ingest surface. Recommend: **EA + SEPA first**
-(England + Scotland, the two with clean OGL bulk downloads), add Wales/NRW once its
-download path is confirmed — mirroring how Scotland demographics were sequenced.
+**Outcome:** SEPA + NRW automated; England is a manual SFTP download. Proceeding
+with Scotland + Wales. England slots in when the Defra SFTP request is fulfilled.
+This mirrors how Scotland demographics were sequenced in Phase 2.
 
 ## Deferred
 
