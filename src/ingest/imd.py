@@ -45,7 +45,13 @@ ENGLAND_COLUMNS = {
     "Index of Multiple Deprivation (IMD) Score": "deprivation_score",
     "Index of Multiple Deprivation (IMD) Rank (where 1 is most deprived)": "deprivation_rank",
     "Total population: mid 2015 (excluding prisoners)": "population",
+    # Sub-domain scores and ranks (roadmap 2.3 — evidence-gate candidates).
+    "Crime Score": "imd_crime_score",
+    "Crime Rank (where 1 is most deprived)": "imd_crime_rank",
+    "Income Score (rate)": "imd_income_score",
+    "Income Rank (where 1 is most deprived)": "imd_income_rank",
 }
+
 
 # --- Wales: WIMD 2019 Overall (Welsh Government ArcGIS) ---------------------
 WIMD_OVERALL_URL = (
@@ -94,7 +100,8 @@ def parse_imd(df: pd.DataFrame) -> pd.DataFrame:
 def _england() -> pd.DataFrame:
     df = parse_imd(_cached_csv(IMD_FILE7_URL, "imd_file7.csv"))
     df["nation"] = "england"
-    log.info("England: %d LSOAs", len(df))
+    log.info("England: %d LSOAs (crime/income sub-domains: %s)",
+             len(df), [c for c in df.columns if c.startswith("imd_")])
     return df
 
 
@@ -121,9 +128,14 @@ def _wales() -> pd.DataFrame:
 
 def _scotland() -> pd.DataFrame:
     simd = _cached_csv(SIMD_CSV_URL, "simd2020v2.csv")
-    simd = simd[["DataZone", "SIMD2020V2Rank"]].rename(
-        columns={"DataZone": "area_code", "SIMD2020V2Rank": "deprivation_rank"}
-    )
+    # Extract overall rank + crime domain rank (DZ grain — directly addresses the
+    # Scotland crime council-grain limitation in roadmap 2.3).
+    keep = {"DataZone": "area_code", "SIMD2020V2Rank": "deprivation_rank"}
+    if "SIMD_2020v2_Crime_Domain_Rank" in simd.columns:
+        keep["SIMD_2020v2_Crime_Domain_Rank"] = "imd_crime_rank"
+    elif "CrimeDomainRank" in simd.columns:
+        keep["CrimeDomainRank"] = "imd_crime_rank"
+    simd = simd[list(keep.keys())].rename(columns=keep)
 
     pop = pd.DataFrame(
         fetch_arcgis_attributes(
@@ -134,8 +146,9 @@ def _scotland() -> pd.DataFrame:
     df = simd.merge(pop, on="area_code", how="left")
     df["deprivation_score"] = pd.NA  # SIMD publishes ranks, not a comparable score
     df["nation"] = "scotland"
-    log.info("Scotland: %d Data Zones (%d missing population)",
-             len(df), int(df["population"].isna().sum()))
+    log.info("Scotland: %d Data Zones (%d missing population, crime domain: %s)",
+             len(df), int(df["population"].isna().sum()),
+             "imd_crime_rank" in df.columns)
     return df
 
 
@@ -163,9 +176,12 @@ def run() -> None:
         for n in nations
         if n in _FETCHERS
     ]
-    cols = ["area_code", "nation", "deprivation_score", "deprivation_rank",
-            "deprivation_pct", "population"]
-    df = pd.concat([p[cols] for p in parts], ignore_index=True)
+    # Core columns always present; sub-domain columns only in nations that have them.
+    core_cols = ["area_code", "nation", "deprivation_score", "deprivation_rank",
+                 "deprivation_pct", "population"]
+    sub_cols = ["imd_crime_rank", "imd_crime_score", "imd_income_rank", "imd_income_score"]
+    all_cols = core_cols + [c for c in sub_cols if any(c in p.columns for p in parts)]
+    df = pd.concat([p.reindex(columns=all_cols) for p in parts], ignore_index=True)
 
     # Keep only areas in the current footprint (mirrors area_boundaries).
     bpath = interim("area_boundaries.parquet")
