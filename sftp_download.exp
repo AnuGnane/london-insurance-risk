@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+# SFTP download helper for Defra NaFRA2 flood data.
+# Usage: expect sftp_download.exp <command>
+# where <command> is an sftp command like "ls" or "get filename"
+
+set timeout 120
+set password "Nbw0epe3df0481zOLbADKiYjSVS/Qvho"
+set user "stdspsftpprod.nafra2user2"
+set host "stdspsftpprod.blob.core.windows.net"
+
+# Get the sftp command from args (default: ls)
+if {[llength $argv] > 0} {
+    set cmd [join $argv " "]
+} else {
+    set cmd "ls"
+}
+
+spawn sftp -o StrictHostKeyChecking=no ${user}@${host}
+expect {
+    "password:" {
+        send "${password}\r"
+    }
+    timeout {
+        puts "Timed out waiting for password prompt"
+        exit 1
+    }
+}
+
+expect "sftp>"
+send "${cmd}\r"
+expect "sftp>"
+send "exit\r"
+expect eof

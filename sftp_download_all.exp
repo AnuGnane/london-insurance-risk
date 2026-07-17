@@ -1,0 +1,51 @@
+#!/usr/bin/expect -f
+# Download all RoFRS (current, non-climate-change) tiles from the Defra SFTP.
+# Each grid-square directory contains RoFRS_<grid>_v*.zip files (~40-55 MB each).
+# Total download: ~2-4 GB depending on how many sub-tiles per grid square.
+#
+# Usage: expect sftp_download_all.exp
+# Output: data/raw/flood/england/*.zip
+
+set timeout 600
+set password "Nbw0epe3df0481zOLbADKiYjSVS/Qvho"
+set user "stdspsftpprod.nafra2user2"
+set host "stdspsftpprod.blob.core.windows.net"
+set localdir "data/raw/flood/england"
+
+spawn sftp -o StrictHostKeyChecking=no ${user}@${host}
+
+expect {
+    "password:" {
+        send "${password}\r"
+    }
+    timeout {
+        puts "Timed out waiting for password prompt"
+        exit 1
+    }
+}
+
+expect "sftp>"
+
+# Set local download directory
+send "lcd ${localdir}\r"
+expect "sftp>"
+
+# List all grid-square directories
+set grids {NT NU NX NY NZ OV SD SE SJ SK SO SP SS ST SU SV SW SX SY SZ TA TF TG TL TM TQ TR TV}
+
+foreach grid $grids {
+    puts "\n=== Downloading grid square: $grid ==="
+    # Download only RoFRS_ files (NOT Climate_Change) from each grid directory
+    send "mget RoFRS/${grid}/RoFRS_*_v*.zip\r"
+    # Long timeout — each file is ~40-55 MB
+    expect {
+        "sftp>" {}
+        timeout {
+            puts "Timeout on grid $grid — continuing"
+        }
+    }
+}
+
+send "exit\r"
+expect eof
+puts "\n=== Download complete ==="

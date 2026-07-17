@@ -24,6 +24,8 @@ Verified endpoints (2026-07-15):
 from __future__ import annotations
 
 import logging
+import shutil
+import zipfile
 
 import geopandas as gpd
 import pandas as pd
@@ -155,6 +157,100 @@ def fetch_wales() -> None:
         log.info("Cached %d NRW features -> %s", len(gdf), dest.name)
 
 # ---------------------------------------------------------------------------
+# EA England fetcher (local GDB files from Defra SFTP download)
+# ---------------------------------------------------------------------------
+
+# Data structure: data/raw/flood/england/RoFRS_<grid>_v*.zip
+# Each zip contains a .gdb with layer RoFRS_4band (Risk_band column).
+# Risk_band values: High, Medium, Low, Very low. CRS: EPSG:27700.
+_ENGLAND_GDB_LAYER = "RoFRS_4band"
+_ENGLAND_COMBINED_CACHE = "england_rofrs_combined.parquet"
+
+
+def fetch_england() -> None:
+    """Process locally-downloaded Defra RoFRS GDB tiles into a single GeoParquet.
+
+    The raw data is 83 zipped Esri File Geodatabases from the Defra SFTP,
+    tiled by OS National Grid squares. Each GDB contains the layer
+    ``RoFRS_4band`` with columns ``Risk_band`` (High/Medium/Low/Very low)
+    and geometry (MultiPolygon, EPSG:27700).
+
+    Grain in: flood-extent polygons per ~50km grid tile.
+    Out     : data/raw/flood/england/england_rofrs_combined.parquet
+              (geometry + Risk_band, so _at_risk_extent filters at load time).
+    Source  : EA Risk of Flooding from Rivers and Sea (NaFRA2), OGL v3.0.
+    """
+    eng_dir = raw("flood") / "england"
+    combined_path = eng_dir / _ENGLAND_COMBINED_CACHE
+
+    if combined_path.exists():
+        log.info("England flood data already combined (%s)", combined_path.name)
+        return
+
+    zips = sorted(eng_dir.glob("RoFRS_*_v*.zip"))
+    if not zips:
+        log.info("No England RoFRS zips found in %s — skipping", eng_dir)
+        return
+
+    log.info("Processing %d England RoFRS GDB tiles…", len(zips))
+    parts: list[gpd.GeoDataFrame] = []
+    for i, zp in enumerate(zips):
+        try:
+            with zipfile.ZipFile(zp) as zf:
+                # Find the .gdb directory inside the zip.
+                gdb_dirs = {n.split("/")[0] for n in zf.namelist()
+                            if n.endswith(".gdb/")}
+                if not gdb_dirs:
+                    # Some zips have the gdb one level deeper.
+                    gdb_dirs = {"/".join(n.split("/")[:2]) for n in zf.namelist()
+                                if ".gdb/" in n}
+                if not gdb_dirs:
+                    log.warning("No .gdb found in %s — skipping", zp.name)
+                    continue
+
+                # Extract the zip to a temp directory (pyogrio needs filesystem access).
+                extract_dir = eng_dir / f"_tmp_{zp.stem}"
+                zf.extractall(extract_dir)
+
+            gdb_name = sorted(gdb_dirs)[0]
+            gdb_path = extract_dir / gdb_name
+
+            gdf = gpd.read_file(gdb_path, layer=_ENGLAND_GDB_LAYER)
+            # Keep only Risk_band + geometry for the combined output.
+            if "Risk_band" in gdf.columns:
+                gdf = gdf[["Risk_band", "geometry"]]
+            else:
+                # Fallback: look for any band-like column.
+                for col in gdf.columns:
+                    if col.lower() in {"risk_band", "prob_4band", "riskband"}:
+                        gdf = gdf.rename(columns={col: "Risk_band"})
+                        gdf = gdf[["Risk_band", "geometry"]]
+                        break
+
+            parts.append(gdf)
+            if (i + 1) % 10 == 0:
+                log.info("  … processed %d/%d tiles (%d features so far)",
+                         i + 1, len(zips), sum(len(p) for p in parts))
+
+            # Clean up extracted GDB.
+            shutil.rmtree(extract_dir, ignore_errors=True)
+
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Error processing %s: %s — skipping", zp.name, exc)
+            continue
+
+    if not parts:
+        log.warning("No England flood features extracted from %d zips", len(zips))
+        return
+
+    combined = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True),
+                                crs="EPSG:27700")
+    combined.to_parquet(combined_path)
+    log.info("Combined %d England flood features from %d tiles → %s",
+             len(combined), len(parts), combined_path.name)
+
+
+# ---------------------------------------------------------------------------
 # Shared transforms (pure)
 # ---------------------------------------------------------------------------
 
@@ -258,6 +354,7 @@ def flood_shares_by_nation(
 
 def run() -> None:
     log.info("Ingesting flood-risk exposure (Phase 4)")
+    fetch_england()
     fetch_scotland()
     fetch_wales()
     extents = _load_nation_extents()
