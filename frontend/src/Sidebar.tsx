@@ -23,8 +23,10 @@ interface SidebarProps {
 const COLOR_MODES: { mode: ColorMode; label: string }[] = [
   { mode: 'composite', label: 'Premium' },
   { mode: 'vehicle_crime', label: 'Crime' },
-  { mode: 'deprivation', label: 'Deprivation' },
+  { mode: 'imd_crime', label: 'Crime deprivation' },
   { mode: 'aadf_intensity', label: 'Traffic' },
+  { mode: 'deprivation', label: 'Deprivation' },
+  { mode: 'flood_risk', label: 'Flood risk' },
   { mode: 'road_casualties', label: 'Casualties' },
   { mode: 'population_density', label: 'Density' },
   { mode: 'traffic_per_capita', label: 'Traffic/capita' },
@@ -235,9 +237,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="section" style={{ borderTop: 'none', paddingTop: 8 }}>
           <div className="disclaimer">
             <b>Not an insurance quote.</b> A relative proxy for territorial risk
-            from public data — crime, deprivation, traffic intensity and local
-            demographics — calibrated against published average premiums. It uses
-            no individual driver or vehicle details.
+            from public data — vehicle crime, crime deprivation, traffic
+            intensity and local demographics — calibrated against published
+            average premiums. It uses no individual driver or vehicle details.
           </div>
         </div>
       </div>

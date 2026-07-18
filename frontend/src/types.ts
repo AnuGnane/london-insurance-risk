@@ -113,8 +113,10 @@ export interface AreaDetail {
 export type ColorMode =
   | 'composite'
   | 'vehicle_crime'
+  | 'imd_crime'
   | 'road_casualties'
   | 'deprivation'
+  | 'flood_risk'
   | 'population_density'
   | 'aadf_intensity'
   | 'traffic_per_capita'
