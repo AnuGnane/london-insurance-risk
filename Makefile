@@ -1,4 +1,4 @@
-.PHONY: ingest features risk calibrate api test clean showcase-data
+.PHONY: ingest features risk calibrate api test clean showcase-data showcase-tiles
 
 ingest:        ## M1: download + parse all sources -> data/interim/*.parquet
 	python -m src.ingest.boundaries
@@ -31,6 +31,9 @@ api:           ## M5: serve FastAPI (local dev only — not used by the static s
 
 showcase-data: ## Bake static assets for GitHub Pages -> frontend/public/data/
 	python -m src.showcase.bake_static
+
+showcase-tiles: ## Bake LSOA PMTiles for the Vouched map -> frontend/public/data/
+	python -m src.showcase.bake_tiles
 
 test:
 	pytest -q
