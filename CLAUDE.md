@@ -79,3 +79,15 @@ calibration or coefficients, always re-run `calibrate` (which re-runs `risk` and
   git-ignored, derived).
 - The user reviews and creates PRs themselves — use `gh` only for small, requested pushes,
   not unprompted.
+- **Vouched bridge refresh rule:** every model-changing ship (anything that alters
+  `reports/calibration.json` or `data/processed/lsoa_risk.parquet`) must be followed by
+  regenerating the Vouched district pack: run
+  `../Car Marketplace/vouched/packages/tco-data/build_area_premiums.py` with this repo's
+  venv, then `validate_contract.py` there. The export carries `model_commit` provenance;
+  the validator warns when it's stale. See the 2026-07-17 synergy spec in
+  `docs/superpowers/specs/`.
+- **First calibrate cycle after activating a NEW feature in `features.place`:** run
+  `python -m src.transform.build_risk_index` once before `make calibrate` — calibrate
+  reads the processed parquet's `{f}_pct` columns, which only exist after a risk build
+  (the Makefile's calibrate target runs risk *after* calibrate, so a brand-new feature
+  otherwise KeyErrors).

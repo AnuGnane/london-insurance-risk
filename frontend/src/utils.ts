@@ -8,13 +8,18 @@ import type { AreaDetail, LsoaProps } from './types';
 // a credibility requirement (the premium is not "just a density model").
 export const MODEL_DRIVERS = [
   'vehicle_crime',
-  'deprivation',
+  'imd_crime',
   'aadf_intensity',
   'young_driver_share',
   'cars_per_household',
 ] as const;
 
+// deprivation moved driver → diagnostic in the 2026-07 gate cycle: the IMD
+// crime sub-domain (imd_crime) replaced it as the premium driver. flood_risk
+// was gated OUT for car premiums (wrong-signed — flood tracks rurality).
 export const DIAGNOSTIC_LAYERS = [
+  'deprivation',
+  'flood_risk',
   'road_casualties',
   'population_density',
   'traffic_per_capita',
@@ -26,14 +31,16 @@ export const COMPONENT_KEYS = [...MODEL_DRIVERS, ...DIAGNOSTIC_LAYERS] as const;
 // Canonical DISPLAY order (place drivers first, then composition controls). LMDI
 // step magnitudes are order-invariant, so this only sets the on-screen sequence.
 export const WATERFALL_ORDER = [
-  'vehicle_crime', 'deprivation', 'aadf_intensity',     // place
+  'vehicle_crime', 'imd_crime', 'aadf_intensity',       // place
   'young_driver_share', 'cars_per_household',            // composition
 ] as const;
-const PLACE_KEYS = new Set<string>(['vehicle_crime', 'deprivation', 'aadf_intensity']);
+const PLACE_KEYS = new Set<string>(['vehicle_crime', 'imd_crime', 'aadf_intensity']);
 
 export const COMPONENT_LABELS: Record<string, string> = {
   vehicle_crime: 'Vehicle crime',
+  imd_crime: 'Crime deprivation (IMD)',
   deprivation: 'Deprivation (IMD)',
+  flood_risk: 'Flood risk',
   aadf_intensity: 'Traffic intensity (AADF)',
   young_driver_share: 'Young drivers (17–24)',
   cars_per_household: 'Cars per household',
@@ -193,6 +200,8 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
 
   const full = props.calibrated_premium as number | undefined;
   const placeOnly = props.premium_place_only as number | undefined;
+  const premiumLow = props.premium_low as number | undefined;
+  const premiumHigh = props.premium_high as number | undefined;
 
   const baseline = props.premium_baseline as number | undefined;
   const steps = baseline == null
@@ -213,6 +222,8 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
     risk_index: Number(props.risk_index),
     quintile: readQuintile(props),
     calibrated_premium: full,
+    premium_low: premiumLow,
+    premium_high: premiumHigh,
     premium_place_only: placeOnly,
     composition_uplift:
       full != null && placeOnly != null ? full - placeOnly : undefined,

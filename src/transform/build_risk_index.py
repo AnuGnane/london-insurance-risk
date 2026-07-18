@@ -51,15 +51,22 @@ def normalise(s: pd.Series, method: str, groups: pd.Series | None = None) -> pd.
 
 
 # Features measured by nation-specific sources on incomparable scales → ranked
-# within nation-group before use. Maps nation -> comparability group.
-_CRIME_SOURCE_GROUP = {"england": "ew", "wales": "ew", "scotland": "scotland"}
+# within a comparability group before use. Maps feature -> (nation -> group).
+_SOURCE_GROUPS: dict[str, dict[str, str]] = {
+    # E+W crime is police.uk point data; Scotland is council-grain SPARQL counts.
+    "vehicle_crime": {"england": "ew", "wales": "ew", "scotland": "scotland"},
+    # Flood extents come from three regulators (EA / NRW / SEPA) whose likelihood
+    # bandings differ (SEPA Medium = 1-in-200 vs EA Medium = ~1-in-100).
+    "flood_risk": {"england": "england", "wales": "wales", "scotland": "scotland"},
+}
 
 
-def _crime_groups(features: pd.DataFrame) -> pd.Series | None:
-    """Comparability groups for vehicle_crime, or None if no nation column."""
-    if "nation" not in features.columns:
+def _feature_groups(features: pd.DataFrame, feature: str) -> pd.Series | None:
+    """Comparability groups for ``feature``, or None if ungrouped / no nation col."""
+    mapping = _SOURCE_GROUPS.get(feature)
+    if mapping is None or "nation" not in features.columns:
         return None
-    return features["nation"].map(_CRIME_SOURCE_GROUP).fillna("other")
+    return features["nation"].map(mapping).fillna("other")
 
 
 def composite(features: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
@@ -72,9 +79,8 @@ def composite(features: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
     the weighted average sum(norm*w)/sum(w).
     """
     method = settings["risk_index"]["normalisation"]
-    cg = _crime_groups(features)
     norm = pd.DataFrame({
-        col: normalise(features[col], method, cg if col == "vehicle_crime" else None)
+        col: normalise(features[col], method, _feature_groups(features, col))
         for col in weights
     })
     w = pd.Series(weights, dtype=float)
@@ -106,12 +112,11 @@ def enrich_components(features: pd.DataFrame, weights: dict[str, float]) -> list
     single-driver colour filters, and the click breakdown). Covers place AND
     composition features. £ contributions are added later from the calibration
     coefficients — see bake_premium_and_contributions."""
-    cg = _crime_groups(features)
     comps = [c for c in model_features() if c in features.columns]
     for c in comps:
-        # vehicle_crime is ranked within nation-group (E+W vs Scotland) — the two
-        # come from different sources on incomparable scales (see normalise()).
-        pct = normalise(features[c], "percentile", cg if c == "vehicle_crime" else None)
+        # Source-grouped features (crime, flood) are ranked within their
+        # comparability group — see _SOURCE_GROUPS / normalise().
+        pct = normalise(features[c], "percentile", _feature_groups(features, c))
         features[f"{c}_val"] = features[c].round(2)
         features[f"{c}_pct"] = pct.round(1)
     return comps
@@ -240,6 +245,16 @@ def run() -> None:
     # 3. Calibrated premium + per-driver £ contributions
     coefs = bake_premium_and_contributions(features, comps)
 
+    # 3b. Uncertainty bands (premium_low / premium_high) from calibration.
+    interval_path = ROOT / "reports" / "premium_intervals.parquet"
+    if interval_path.exists() and "calibrated_premium" in features.columns:
+        intervals = pd.read_parquet(interval_path)
+        features = features.merge(intervals, on="area_code", how="left")
+        log.info("Merged uncertainty bands: premium_low/premium_high for %d areas",
+                 features["premium_low"].notna().sum())
+    else:
+        log.info("No premium intervals — run `make calibrate` to generate them.")
+
     # 4. risk_index. Reconciled model: risk_index IS the calibrated premium on a
     #    0–100 scale (its GB-wide percentile), so the map's colouring, the
     #    quintiles and the headline £ are one construct. Falls back to the expert
@@ -300,12 +315,10 @@ def run() -> None:
     keep = ["area_code", "lsoa11cd", "risk_index", "quintile"]
     if "lsoa_name" in gdf.columns:
         keep.append("lsoa_name")
-    if "calibrated_premium" in gdf.columns:
-        keep.append("calibrated_premium")
-    if "premium_place_only" in gdf.columns:
-        keep.append("premium_place_only")
-    if "premium_baseline" in gdf.columns:                # waterfall anchor (API-path parity)
-        keep.append("premium_baseline")
+    for pcol in ["calibrated_premium", "premium_place_only", "premium_baseline",
+                 "premium_low", "premium_high"]:
+        if pcol in gdf.columns:
+            keep.append(pcol)
     for c in comps:
         keep += [f"{c}_val", f"{c}_pct", f"{c}_contrib"]
 

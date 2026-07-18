@@ -8,3 +8,8 @@ data/processed/*
 !data/**/.gitkeep
 reports/
 .DS_Store
+sftp.md
+sftp_download.exp
+sftp_download_all.exp
+sftp_download_all.sh
+sftp_test.exp

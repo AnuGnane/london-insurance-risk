@@ -61,8 +61,10 @@ function App() {
     const filterParam = params.get('filter') as ColorMode | null;
     const validFilters = [
       'vehicle_crime',
+      'imd_crime',
       'road_casualties',
       'deprivation',
+      'flood_risk',
       'population_density',
       'aadf_intensity',
       'traffic_per_capita',

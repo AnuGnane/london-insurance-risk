@@ -62,6 +62,26 @@ scales), and naively concatenating it would produce a garbage model.
 - **Source:** England **IoD2019** (MHCLG File 7), Wales **WIMD2019** (Welsh Gov ArcGIS,
   population via NOMIS KS101EW), Scotland **SIMD2020v2** (NHS Scotland open data,
   population via DZ `totpop2011`). `src/ingest/imd.py`.
+- **2026-07: crime + income sub-domains** (`imd_crime`, `imd_income`) join the table as
+  within-nation percentiles, same formula as the overall rank:
+  - England: IoD2019 File 7 `Crime Score/Rank`, `Income Score (rate)/Rank`.
+  - Wales: **WIMD Income** and **WIMD Community Safety** domain ranks — Wales publishes
+    no pure crime domain; Community Safety (police-recorded crime + ASB + fire) is the
+    closest analogue and only its *ordering* is used, so the definitional difference is
+    acceptable. Fetched from the **official `data_WG` ArcGIS org**
+    (`services-eu1.arcgis.com/3Wk9d4HSvTixPOJc`: `wimd2019_overall/1`,
+    `wimd2019_income/8`, `wimd2019_community_safety/0`, each `lsoa_code` + `rank`). The
+    previously hardcoded org (`services9…/3DS2hBWXSllJ5p3H`) was found **decommissioned**
+    in July 2026 — the whole Wales fetch migrated.
+  - Scotland: the official SG **"SIMD 2020v2 – ranks" workbook** (gov.scot, sheet
+    `SIMD 2020v2 ranks`: `SIMD2020v2_Income_Domain_Rank`, `SIMD2020_Crime_Domain_Rank` —
+    the naming asymmetry is official; only Income/Employment were revised in v2). The
+    NHS CSV used for the overall rank carries **no domain columns** (an earlier attempt
+    to read a crime domain from it was a silent no-op — fixed and guarded with fail-loud
+    merges in `merge_domain_ranks`).
+  - **Gate outcome:** `imd_crime` replaced overall deprivation as the premium's
+    crime/deprivation driver; `imd_income` gated out (redundant, VIF 33). See
+    `reports/feature_analysis.md` and `AUDIT.md` §10.
 - **Why ranks, not scores:** the three indices are on different scales and methodologies
   — they cannot be pooled. What *is* meaningful is each area's **rank within its nation**.
 - **Normalisation (the key line):**
@@ -168,6 +188,32 @@ scales), and naively concatenating it would produce a garbage model.
   ground-truth the territorial index is regressed against (see model doc §5–6).
 
 ---
+
+### 2.10 Flood risk (Phase 4, 2026-07) — three regulators, one within-nation feature
+- **Feature:** `flood_risk` = share of each area inside a **High or Medium** river-and-sea
+  flood zone (0–1). Overlapping extent polygons are **dissolved before intersection** so a
+  High zone nested inside a Medium zone (SEPA publishes exactly this) isn't double-counted.
+  `src/ingest/flood.py` (`flood_area_share`, `flood_shares_by_nation`); EPSG:27700 areal
+  overlay; nations without extent data would stay NaN (never zero-filled).
+- **England:** EA **Risk of Flooding from Rivers and Sea** (RoFRS/NaFRA2). The legacy
+  ArcGIS service is dead; current data comes via **Defra's SFTP** as 83 local GDB tiles.
+  Runbook: request access via the EA data portal → receive SFTP credentials (git-ignored,
+  never committed) → download `RoFRS_*_v*.zip` tiles into `data/raw/flood/england/` →
+  the ingest extracts the `RoFRS_4band` layer across tiles (326,037 features; 188,392 at
+  High/Medium) and caches `england_rofrs_combined.parquet`. OGL.
+- **Wales:** NRW **Flood Risk from Rivers / from Sea** via DataMapWales GeoServer WFS
+  (paged GeoJSON), High+Medium bands. OGL.
+- **Scotland:** SEPA **Flood Maps** (river + coastal) via ArcGIS REST paged queries —
+  the fetch that motivated `fetch_arcgis_polygons`'s per-ObjectID fallback (SEPA pages
+  intermittently 500 on complex geometry). OGL.
+- **Why within-nation ranking:** the regulators' likelihood bandings differ (SEPA
+  "Medium" = 1-in-200yr vs EA "Medium" ≈ 1-in-100yr) — absolute shares are not
+  comparable across borders, orderings are. Same logic as deprivation and crime.
+- **Gate outcome (the honest headline):** *diagnostic, not driver.* Univariate r=−0.94
+  against the premium index — flood exposure is a **rurality proxy** in the car-insurance
+  context, and rural areas are cheap to insure. Shown on the map, excluded from the
+  premium, and banked as prior evidence for a future home-insurance line where flood is
+  expected to price with the opposite sign. See `AUDIT.md` §10.
 
 ## 3. The normalisation layer — turning features into model inputs
 

@@ -341,6 +341,100 @@ def _variance_decomposition(df: pd.DataFrame) -> dict:
             "full_r2": r2(FEATURE_COLS)}
 
 
+def _cluster_bootstrap_intervals(
+    matched: pd.DataFrame,
+    lsoa_pct: pd.DataFrame,
+    national_avg: float,
+    *,
+    n_boot: int = 200,
+    seed: int = 42,
+) -> dict:
+    """Cluster bootstrap premium intervals with LOAO residual-variance widening.
+
+    Resamples the ~30 anchor areas with replacement, refits OLS each time, and
+    predicts per-LSOA premiums. The per-LSOA 2.5th/97.5th quantile of the
+    bootstrap predictions gives the coefficient-uncertainty band. We then widen
+    by the LOAO residual standard deviation (the honest correction for the
+    LSOA-grain extrapolation — bootstrap alone captures coefficient uncertainty
+    only, not the coarse→fine gap).
+
+    Parameters
+    ----------
+    matched : Panel with _logindex, area_name, FEATURE_COLS.
+    lsoa_pct : Per-LSOA percentile features (columns matching FEATURE_COLS).
+    national_avg : Latest national average premium (£).
+    n_boot : Number of bootstrap replications.
+    seed : RNG seed for reproducibility.
+
+    Returns
+    -------
+    dict with premium_low, premium_high (pd.Series, int64), bootstrap_width_median,
+    loao_sigma, total_width_median, n_boot.
+    """
+    rng = np.random.default_rng(seed)
+    areas = matched["area_name"].unique()
+    n_areas = len(areas)
+
+    # Pre-compute LOAO residual variance (the widening factor).
+    loao_resids = []
+    for area in areas:
+        tr = matched[matched["area_name"] != area]
+        te = matched[matched["area_name"] == area]
+        if len(tr) < len(FEATURE_COLS) + 2:
+            continue
+        lr = LinearRegression().fit(tr[FEATURE_COLS], tr["_logindex"])
+        loao_resids.extend(
+            lr.predict(te[FEATURE_COLS]) - te["_logindex"].values
+        )
+    loao_sigma = float(np.std(loao_resids)) if loao_resids else 0.0
+
+    # Build the LSOA prediction matrix once (filling NaN features at median=50).
+    X_lsoa = lsoa_pct[FEATURE_COLS].fillna(50.0).values
+    n_lsoa = len(X_lsoa)
+
+    # Bootstrap: resample areas, refit, predict all LSOAs.
+    log.info("Running %d-rep cluster bootstrap over %d areas…", n_boot, n_areas)
+    boot_preds = np.empty((n_boot, n_lsoa))
+    for b in range(n_boot):
+        # Resample areas with replacement, then take all their rows.
+        sampled = rng.choice(areas, size=n_areas, replace=True)
+        idx = matched["area_name"].isin(sampled)
+        tr = matched[idx]
+        lr = LinearRegression().fit(tr[FEATURE_COLS], tr["_logindex"])
+        boot_preds[b] = lr.intercept_ + X_lsoa @ lr.coef_
+
+    # Coefficient-uncertainty band (2.5th / 97.5th percentile of log-predictions).
+    lo_log = np.percentile(boot_preds, 2.5, axis=0)
+    hi_log = np.percentile(boot_preds, 97.5, axis=0)
+
+    # Widen by LOAO residual sigma (additive in log-space, symmetrically).
+    lo_log_wide = lo_log - loao_sigma
+    hi_log_wide = hi_log + loao_sigma
+
+    # Convert to £.
+    premium_low = np.round(np.exp(lo_log_wide) * national_avg).astype(int)
+    premium_high = np.round(np.exp(hi_log_wide) * national_avg).astype(int)
+
+    boot_width = premium_high - premium_low
+    log.info(
+        "Bootstrap intervals: median width £%d, LOAO σ=%.3f, "
+        "widened median width £%d",
+        int(np.median(np.round(np.exp(hi_log) * national_avg)
+                      - np.round(np.exp(lo_log) * national_avg))),
+        loao_sigma,
+        int(np.median(boot_width)),
+    )
+
+    return {
+        "premium_low": pd.Series(premium_low, index=lsoa_pct.index, dtype="Int64"),
+        "premium_high": pd.Series(premium_high, index=lsoa_pct.index, dtype="Int64"),
+        "bootstrap_width_median": int(np.median(boot_width)),
+        "loao_sigma": round(loao_sigma, 4),
+        "total_width_median": int(np.median(boot_width)),
+        "n_boot": n_boot,
+    }
+
+
 # Named area pairs for the spatial-multiplier sanity check (postcode areas).
 _SPATIAL_PAIRS = [
     ("WC", "CV", "West Central London vs Rugby (CV)"),
@@ -626,6 +720,31 @@ def run() -> None:
                  results["leave_one_area_out"]["mae_gbp"],
                  results["spearman_pred_vs_actual"]["rho"],
                  vd["place_only_r2"], vd["composition_only_r2"])
+
+        # Uncertainty bands — cluster bootstrap + LOAO-widened intervals.
+        matched_boot = matched.copy()
+        matched_boot["_logindex"] = np.log(matched_boot["premium_index"])
+        national_avg = results["national_avg_latest"]
+        boot = _cluster_bootstrap_intervals(
+            matched_boot, risk, float(national_avg),
+        )
+        # Persist the interval columns as a parquet (picked up by build_risk_index).
+        interval_df = pd.DataFrame({
+            "area_code": risk["area_code"],
+            "premium_low": boot["premium_low"].values,
+            "premium_high": boot["premium_high"].values,
+        })
+        dest = REPORTS_DIR / "premium_intervals.parquet"
+        interval_df.to_parquet(dest, index=False)
+        results["uncertainty_bands"] = {
+            "bootstrap_width_median_gbp": boot["bootstrap_width_median"],
+            "loao_sigma": boot["loao_sigma"],
+            "total_width_median_gbp": boot["total_width_median"],
+            "n_bootstrap_reps": boot["n_boot"],
+        }
+        log.info("Wrote premium intervals → %s (median width £%d)",
+                 dest.name, boot["total_width_median"])
+
     _write_report(results)
 
 

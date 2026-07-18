@@ -66,7 +66,9 @@ def test_waterfall_reconciles_exactly():
 def test_signs_and_extrema_are_sane():
     calib, feats = _load()
     coefs = calib["coefficients"]
-    for c in ("vehicle_crime_pct", "deprivation_pct", "aadf_intensity_pct"):
+    place = calib.get("place_features") or []
+    assert place, "calibration.json carries no place_features"
+    for c in place:
         assert coefs[c] > 0, f"place driver {c} should raise premium"
     prems = [f["properties"]["calibrated_premium"] for f in feats
              if f["properties"].get("calibrated_premium") is not None]

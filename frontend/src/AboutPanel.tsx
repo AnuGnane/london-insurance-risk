@@ -10,10 +10,23 @@ const DATA_SOURCES: { key: string; label?: string; source: string; description: 
       'Street-level vehicle crime from England & Wales forces (data.police.uk), per LSOA, per 1,000 residents. Scotland uses Recorded Crime in Scotland, ranked within its own source.',
   },
   {
+    key: 'imd_crime',
+    label: 'Crime deprivation (IMD)',
+    source: 'IoD / WIMD / SIMD',
+    description:
+      "The crime sub-domain of each nation's deprivation index (England IoD2019 Crime · Wales WIMD2019 Community Safety · Scotland SIMD2020v2 Crime), ranked within nation. Replaced overall deprivation as a premium driver in the 2026-07 evidence gate (partial r +0.43).",
+  },
+  {
     key: 'deprivation',
     source: 'IoD / WIMD / SIMD',
     description:
-      "Each nation's own deprivation index (England IoD2019 · Wales WIMD2019 · Scotland SIMD2020v2), ranked within nation so the scales are comparable.",
+      "Each nation's own overall deprivation index (England IoD2019 · Wales WIMD2019 · Scotland SIMD2020v2), ranked within nation. A map diagnostic since 2026-07 — its premium signal is carried by the crime sub-domain.",
+  },
+  {
+    key: 'flood_risk',
+    source: 'EA / NRW / SEPA',
+    description:
+      'Share of each area inside a High/Medium river-and-sea flood zone (England RoFRS via Defra · Wales NRW · Scotland SEPA), ranked within nation. Evidence-gated OUT of the car premium (flood exposure tracks rurality, which is cheap to insure) — shown as a diagnostic.',
   },
   {
     key: 'aadf_intensity',
