@@ -36,7 +36,8 @@ import geopandas as gpd
 import pandas as pd
 import shapely
 
-from src.common.config import ROOT
+from src.common.config import ROOT, settings
+from src.transform.build_risk_index import model_features
 from src.common.io import LSOA_RISK_PARQUET, interim, processed
 
 log = logging.getLogger(__name__)
@@ -53,13 +54,16 @@ COORD_PRECISION = 0.00001  # ~1 m; snaps output coords so json writes short floa
 # colours by `_pct` and the detail panel shows percentile + £ `_contrib`.
 # NB: the frontend keys on `lsoa11cd` (== area_code in our data), so emit that.
 _BASE_PROPS = ["lsoa11cd", "lsoa_name", "calibrated_premium",
-               "premium_place_only", "premium_baseline", "risk_index", "quintile"]
-# Premium drivers + composition controls: keep _pct (map) AND _contrib (£ in panel).
-_DRIVERS = ["vehicle_crime", "deprivation", "aadf_intensity",
-            "young_driver_share", "cars_per_household"]
-# Diagnostics: map-filter colouring only → _pct.
-_DIAGNOSTICS = ["road_casualties", "population_density", "traffic_per_capita",
-                "ksi_collisions_per_billion_vehicle_miles"]
+               "premium_place_only", "premium_baseline",
+               "premium_low", "premium_high", "risk_index", "quintile"]
+# Premium drivers + composition controls: keep _pct (map) AND _contrib (£ in
+# panel). DERIVED from config so a gate-cycle feature change can never skew the
+# served map against the coefficients (guarded by tests/test_serve_consistency).
+_FEATS = settings.get("features", {})
+_DRIVERS = _FEATS.get("place", []) + _FEATS.get("composition", [])
+# Diagnostics: map-filter colouring only → _pct (legacy risk-index components
+# plus config features.diagnostics, minus anything that is a driver).
+_DIAGNOSTICS = [c for c in model_features() if c not in _DRIVERS]
 _COMPONENTS = _DRIVERS + _DIAGNOSTICS
 
 
