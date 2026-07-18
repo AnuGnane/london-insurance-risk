@@ -128,6 +128,53 @@ def _england() -> pd.DataFrame:
     return df
 
 
+def merge_wales_domains(
+    ranks: pd.DataFrame, domains: dict[str, pd.DataFrame]
+) -> pd.DataFrame:
+    """Left-merge WIMD domain rank frames onto the Wales overall-rank frame.
+
+    Pure function (analogous to England's parse_imd) so the merge semantics are
+    testable without network I/O. `ranks` is keyed on area_code; each frame in
+    `domains` is the raw ArcGIS output (lsoa_code, rank) for the service named
+    by its key, renamed here via WALES_DOMAIN_FIELDS.
+
+    Fails LOUDLY on an empty/malformed domain frame: a silently missing domain
+    would leave every Welsh anchor row NaN on that feature, and calibrate drops
+    NaN place-feature rows — quietly deleting Wales from the panel.
+
+    Duplicate area_codes are dropped (first kept) with a warning rather than
+    raised: ArcGIS pagination can occasionally overlap a page boundary, which
+    yields identical repeated features — dropping those is safe, whereas a hard
+    raise would make the pipeline flaky on a transient service quirk. Row count
+    is asserted stable across each merge, so any non-identical duplicate that
+    slipped through fan-out would still fail loudly.
+    """
+    df = ranks
+    for service, dom in domains.items():
+        our_col = WALES_DOMAIN_FIELDS[service]
+        if dom.empty or not {"lsoa_code", "rank"}.issubset(dom.columns):
+            raise ValueError(
+                f"WIMD domain service {service!r} returned no usable rows/columns"
+                " — Wales candidate coverage would be incomplete"
+            )
+        dom = dom[["lsoa_code", "rank"]].rename(
+            columns={"lsoa_code": "area_code", "rank": our_col}
+        )
+        n_dupes = int(dom["area_code"].duplicated().sum())
+        if n_dupes:
+            log.warning(
+                "WIMD domain %r: dropping %d duplicate area_code rows", service, n_dupes
+            )
+            dom = dom.drop_duplicates(subset="area_code")
+        df = df.merge(dom, on="area_code", how="left")
+        if len(df) != len(ranks):
+            raise ValueError(
+                f"WIMD domain {service!r} merge changed row count "
+                f"({len(ranks)} -> {len(df)}) — non-unique keys fanned out"
+            )
+    return df
+
+
 def _wales() -> pd.DataFrame:
     ranks = pd.DataFrame(
         fetch_arcgis_attributes(
@@ -143,24 +190,24 @@ def _wales() -> pd.DataFrame:
 
     df = ranks.merge(pop, on="area_code", how="left")
 
-    # Left-merge the income + community-safety domain ranks (roadmap 2.3 — evidence
-    # -gate candidates). Each domain service exposes its rank as a plain `rank`.
-    for service, our_col in WALES_DOMAIN_FIELDS.items():
-        dom = pd.DataFrame(
-            fetch_arcgis_attributes(
-                WALES_DOMAIN_URLS[service],
-                out_fields="lsoa_code,rank",
-                page_size=2000,
-            )
-        ).rename(columns={"lsoa_code": "area_code", "rank": our_col})
-        df = df.merge(dom, on="area_code", how="left")
+    # Income + community-safety domain ranks (roadmap 2.3 — evidence-gate
+    # candidates). Fetch here; merge semantics live in merge_wales_domains.
+    domains = {
+        service: pd.DataFrame(
+            fetch_arcgis_attributes(url, out_fields="lsoa_code,rank", page_size=2000)
+        )
+        for service, url in WALES_DOMAIN_URLS.items()
+    }
+    df = merge_wales_domains(df, domains)
 
     df["deprivation_score"] = pd.NA  # WIMD publishes ranks, not a comparable score
     df["nation"] = "wales"
-    log.info("Wales: %d LSOAs (%d missing population, %d missing income, "
-             "%d missing crime)", len(df), int(df["population"].isna().sum()),
-             int(df["imd_income_rank"].isna().sum()),
-             int(df["imd_crime_rank"].isna().sum()))
+    missing = ", ".join(
+        f"{int(df[col].isna().sum())} missing {col}"
+        for col in WALES_DOMAIN_FIELDS.values()
+    )
+    log.info("Wales: %d LSOAs (%d missing population, %s)",
+             len(df), int(df["population"].isna().sum()), missing)
     return df
 
 
