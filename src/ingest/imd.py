@@ -9,6 +9,8 @@ the cross-nation-comparable feature the risk model consumes.
 Sources:
   England  : MHCLG IoD2019 File 7 (score, rank, population mid-2015)   — direct CSV
   Wales    : WIMD 2019 Overall ranks (1–1,909)                          — Welsh Gov ArcGIS
+             + Income and Community Safety domain ranks (imd_income_rank,
+               imd_crime_rank; community safety used as the crime analogue)
              population: 2011 Census usual residents                    — NOMIS KS101EW
   Scotland : SIMD 2020v2 ranks (1–6,976)                                — NHS Scotland open data
              population: Data Zone totpop2011 (2011 Census)             — gov.scot service
@@ -53,11 +55,32 @@ ENGLAND_COLUMNS = {
 }
 
 
-# --- Wales: WIMD 2019 Overall (Welsh Government ArcGIS) ---------------------
-WIMD_OVERALL_URL = (
-    "https://services9.arcgis.com/3DS2hBWXSllJ5p3H/arcgis/rest/services"
-    "/Welsh_Index_of_Multiple_Deprivation_WIMD_2019_Overall/FeatureServer/0/query"
+# --- Wales: WIMD 2019 (Welsh Government "data_WG" ArcGIS org) ---------------
+# Each WIMD domain is published as its own FeatureService, keyed on lsoa_code
+# with a single `rank` field (1 = most deprived, 1..1,909). We fetch the overall
+# ranks and left-merge the two domain services below.
+_WIMD_BASE = (
+    "https://services-eu1.arcgis.com/3Wk9d4HSvTixPOJc/arcgis/rest/services"
 )
+WIMD_OVERALL_URL = f"{_WIMD_BASE}/wimd2019_overall/FeatureServer/1/query"
+
+# WIMD 2019 domain ranks (Welsh Gov ArcGIS). Wales has no pure "crime" domain;
+# COMMUNITY SAFETY (police-recorded crime + ASB + fire) is the closest analogue
+# and is used as Wales's imd_crime. Within-nation percentile ranking means only
+# the ordering matters, so the definitional difference is acceptable — documented
+# here and in DATA_PROVENANCE_AND_TRANSFORMS.md. Each service exposes its rank as
+# a plain `rank` field, so we key the mapping by domain service name.
+WALES_DOMAIN_FIELDS = {
+    "wimd2019_income": "imd_income_rank",
+    "wimd2019_community_safety": "imd_crime_rank",
+}
+# Domain service -> query endpoint (layer ids are service-specific, verified live).
+WALES_DOMAIN_URLS = {
+    "wimd2019_income": f"{_WIMD_BASE}/wimd2019_income/FeatureServer/8/query",
+    "wimd2019_community_safety": (
+        f"{_WIMD_BASE}/wimd2019_community_safety/FeatureServer/0/query"
+    ),
+}
 # NOMIS KS101EW usual-resident population, restricted to LSOAs within Wales.
 WALES_POP_URL = (
     "https://www.nomisweb.co.uk/api/v01/dataset/NM_144_1.data.csv"
@@ -119,10 +142,25 @@ def _wales() -> pd.DataFrame:
     )
 
     df = ranks.merge(pop, on="area_code", how="left")
+
+    # Left-merge the income + community-safety domain ranks (roadmap 2.3 — evidence
+    # -gate candidates). Each domain service exposes its rank as a plain `rank`.
+    for service, our_col in WALES_DOMAIN_FIELDS.items():
+        dom = pd.DataFrame(
+            fetch_arcgis_attributes(
+                WALES_DOMAIN_URLS[service],
+                out_fields="lsoa_code,rank",
+                page_size=2000,
+            )
+        ).rename(columns={"lsoa_code": "area_code", "rank": our_col})
+        df = df.merge(dom, on="area_code", how="left")
+
     df["deprivation_score"] = pd.NA  # WIMD publishes ranks, not a comparable score
     df["nation"] = "wales"
-    log.info("Wales: %d LSOAs (%d missing population)",
-             len(df), int(df["population"].isna().sum()))
+    log.info("Wales: %d LSOAs (%d missing population, %d missing income, "
+             "%d missing crime)", len(df), int(df["population"].isna().sum()),
+             int(df["imd_income_rank"].isna().sum()),
+             int(df["imd_crime_rank"].isna().sum()))
     return df
 
 
