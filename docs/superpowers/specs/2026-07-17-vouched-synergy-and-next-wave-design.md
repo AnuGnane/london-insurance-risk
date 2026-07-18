@@ -84,10 +84,11 @@ When Vouched's concierge phase captures `insurance_outcome_json` (what a buyer a
 
 ## 10. Follow-ups noted for the founder (not part of this design)
 
-- `vouched-plan-revision-2026-07-14.md` D6 ends with "Scraping allowed", contradicting §6's unchanged "no scraping" rule — reconcile before anyone acts on it.
+- ~~`vouched-plan-revision-2026-07-14.md` D6 ends with "Scraping allowed", contradicting §6's unchanged "no scraping" rule — reconcile before anyone acts on it.~~ **Resolved 2026-07-18:** founder decided scraping is permitted as a data-acquisition option; both Vouched docs amended with dated notes (per-source ToS check retained, no scraped listings on the site itself). No effect on Waves 1–2, whose data is all open/licensed government sources.
 - Vouched's `resolveConfidence` caps off `Boolean(district)` even when scaling didn't actually apply — worth a look when Agent B is next in `estimate.ts`.
 - `project_status.md` (14 Jul) still describes `area-premiums.json` as a stub — superseded by `6b490d1`.
 
 ## Changelog
 
 - 2026-07-17: Initial version, approved in-session (gate bundling; regenerate + flip; all four synergy builds; coupling approach B).
+- 2026-07-18: Spec approved by user. Scraping follow-up resolved (now permitted, Vouched docs amended). 
