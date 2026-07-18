@@ -1,8 +1,12 @@
 # Phase 4 Implementation Plan — Flood Risk
 
-> Status: **code complete (Tasks 1–5); awaiting England data**. Follows
-> `NEXT_PHASE_DESIGN.md` §3 and §6 + the detailed 10-task spec in
-> `docs/superpowers/specs/2026-07-15-phase4-flood-completion.md`.
+> Status: **COMPLETE (2026-07-18).** All three nations ingested (England via Defra SFTP,
+> Wales NRW WFS, Scotland SEPA REST) and the evidence gate ruled `flood_risk` a
+> **diagnostic, not a premium driver** — wrong-signed for car insurance (univariate
+> r=−0.94: flood exposure tracks rurality, which is cheap). Outcome + defence in
+> `AUDIT.md` §10, provenance in `DATA_PROVENANCE_AND_TRANSFORMS.md` §2.10, and the
+> gate table in `reports/feature_analysis.md`. Banked as prior evidence for the
+> home-insurance line (roadmap 2.10). Historical plan below.
 
 **Goal:** add a per-area **flood-risk exposure** feature and let the calibration
 evidence gate (`reports/feature_analysis.md`) decide whether it's a premium driver

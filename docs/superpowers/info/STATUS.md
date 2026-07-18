@@ -1,6 +1,47 @@
 # Project Status
 
-Last updated: 2026-06-21. Branch: `main`.
+Last updated: 2026-07-18. Branch: `docs-finalize-transparency`.
+
+**2026-07 model wave — COMPLETE (Phase 4 flood + uncertainty bands + IMD sub-domains + Vouched bridge).**
+One evidence-gate calibrate cycle tested three candidates against the n=106 anchor panel
+(`reports/feature_analysis.md`, 4 calibrate runs). Outcomes:
+- **`imd_crime` KEPT — and it replaced overall `deprivation`** (mirroring how AADF replaced
+  density in Phase 3). Partial r +0.43, p=3.8e-6, VIF 3.5 — the strongest place driver.
+  With it present, overall deprivation's partial collapses to +0.03 (p=0.78, VIF 2.4 — no
+  collinearity excuse, simply no unique signal): the crime sub-domain IS the deprivation
+  component that prices car risk. Deprivation stays a map diagnostic.
+- **`flood_risk` EXCLUDED for car premiums** — wrong-signed (univariate r=−0.94: flood
+  exposure tracks rurality, and rural is cheap to insure; partial p=0.18, VIF 22.7). All
+  three nations ingested (England Defra-SFTP RoFRS 83 GDB tiles, Wales NRW WFS, Scotland
+  SEPA ArcGIS) and shipped as a within-nation-ranked **map diagnostic**. A star candidate
+  for the home-insurance line (roadmap 2.10) — this gate outcome is the evidence.
+- **`imd_income` EXCLUDED** — redundant with the deprivation family (VIF 33, wrong-signed
+  partial).
+- **`aadf_intensity` kept on a LOAO head-to-head** (dropping it worsens out-of-sample MAE
+  £76.51→£82.54) despite a marginal p=0.063 next to imd_crime — documented in config.
+- **Uncertainty bands live**: 200-rep cluster bootstrap + LOAO residual-variance widening
+  (bootstrap median width £241 → honest widened width **£373**); `premium_low/high` ship
+  in the processed parquet, the served GeoJSON and the map's hero range.
+- **Serve-consistency guard earned its keep**: it caught that `bake_static.py` hardcoded
+  the driver list (imd_crime props missing from the served map) and that `premium_low/high`
+  had never been baked into served props. Both fixed; driver/diagnostic props now derive
+  from config.
+- **Coverage prerequisites shipped**: Wales WIMD income + community-safety domain ranks
+  (WIMD's crime analogue) — including migrating the whole Wales fetch to the official
+  `data_WG` ArcGIS org after the previously hardcoded org was found decommissioned (the
+  old `_wales()` was silently broken); Scotland income + crime domain ranks from the
+  official SG "SIMD 2020v2 – ranks" workbook (the NHS CSV never carried domain columns —
+  the earlier "SIMD crime domain" extraction had been a silent no-op).
+- **Headline fit: R²=0.9304, LOAO MAE £76.51 (was £88.77), temporal backtest £69.76,
+  Spearman 0.974, n=106; premium span £186–£1,578.** Place = vehicle_crime, aadf_intensity,
+  imd_crime; composition unchanged.
+- **Vouched bridge formalized + refreshed**: `area-premiums.json` regenerated from this
+  model (2,773 districts, 100% live-postcode coverage, LONDON_BASE £806) with provenance
+  stamps (`model_commit`, calibration date, n, R²) per the integrator-approved §3.1
+  amendment; `validate_contract.py` enforces them and warns on staleness. Refresh rule:
+  every model-changing ship here ⇒ regenerate the Vouched pack (see CLAUDE.md).
+See `docs/superpowers/specs/2026-07-17-vouched-synergy-and-next-wave-design.md` and
+`docs/superpowers/plans/2026-07-18-wave1-2-model-wave-and-vouched-bridge.md`.
 
 **Transparency & verification — COMPLETE (2026-06-21, PR #9).** The premium is now fully
 explainable per area: an exact, order-invariant **LMDI waterfall** bridges from a typical-GB-area
@@ -37,13 +78,13 @@ Current fit: R²=0.909, CV-R²=0.876, LOAO MAE £104, Spearman 0.967.
   remain diagnostics. ONSPD now derives `local_authority_code` at the DfT highway-
   authority grain. See `PHASE3_PLAN.md`.
 
-**Phase 4 (flood risk) — STARTED.** Plan (`PHASE4_PLAN.md`) + ingest scaffold
-(`src/ingest/flood.py`, areal-overlay `flood_area_share` transform + tests) + config
-sources + guarded aggregate merge are in. `flood_risk` is wired as a place *candidate*
-(commented) and activates once EA/NRW/SEPA High+Medium extents are dropped under
-`data/raw/flood/<nation>/` and `src/ingest/flood.py` is run — kept inactive until then
-so the all-NaN column can't drop calibration rows. Next: implement per-nation extent
-download/cache, then let the evidence gate decide keep vs diagnostic.
+**Phase 4 (flood risk) — COMPLETE (2026-07-18).** All three nations ingested and the
+evidence gate ruled: **diagnostic, not driver** (wrong-signed for car premiums — see the
+2026-07 wave summary above). Sources: England EA RoFRS via Defra SFTP (83 local GDB
+tiles, 326k features, runbook in `DATA_PROVENANCE_AND_TRANSFORMS.md`), Wales NRW
+rivers+sea via DataMapWales WFS, Scotland SEPA river+coastal via ArcGIS REST. Within-
+nation percentile ranking (regulator bandings differ); `flood_risk` = share of area in a
+High/Medium zone, dissolved to prevent double-counting.
 
 **Model:** premium estimator. The calibrated **expected annual premium (£)** is the headline; the
 0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on
