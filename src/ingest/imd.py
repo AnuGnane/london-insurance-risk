@@ -12,7 +12,11 @@ Sources:
              + Income and Community Safety domain ranks (imd_income_rank,
                imd_crime_rank; community safety used as the crime analogue)
              population: 2011 Census usual residents                    — NOMIS KS101EW
-  Scotland : SIMD 2020v2 ranks (1–6,976)                                — NHS Scotland open data
+  Scotland : SIMD 2020v2 overall rank (1–6,976)                         — NHS Scotland open data
+             + Income and Crime domain ranks (imd_income_rank,
+               imd_crime_rank) from the Scottish Government
+               "SIMD 2020v2 - ranks" workbook — the NHS CSV publishes
+               only the overall rank, no domain columns
              population: Data Zone totpop2011 (2011 Census)             — gov.scot service
 
 Grain  : small area (LSOA in E+W, Data Zone in Scotland)
@@ -24,8 +28,8 @@ NI deferred (NIMDM 2017) — see implementation_plan.md.
 """
 from __future__ import annotations
 
-import io
 import logging
+from pathlib import Path
 
 import pandas as pd
 
@@ -92,23 +96,47 @@ SIMD_CSV_URL = (
     "https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378"
     "/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv"
 )
+# Official SG "SIMD 2020v2 - ranks" workbook: overall + all seven domain ranks
+# per Data Zone. Needed because the NHS CSV above carries NO domain columns
+# (verified 2026-07: its only rank field is SIMD2020V2Rank).
+SIMD_DOMAIN_XLSX_URL = (
+    "https://www.gov.scot/binaries/content/documents/govscot/publications"
+    "/statistics/2020/01"
+    "/scottish-index-of-multiple-deprivation-2020-ranks-and-domain-ranks"
+    "/documents/scottish-index-of-multiple-deprivation-2020-ranks-and-domain-ranks"
+    "/scottish-index-of-multiple-deprivation-2020-ranks-and-domain-ranks"
+    "/govscot%3Adocument/SIMD%2B2020v2%2B-%2Branks.xlsx"
+)
+SIMD_DOMAIN_XLSX_SHEET = "SIMD 2020v2 ranks"
+# Workbook domain-rank columns -> our names (column spellings verified against
+# the live file; note the official asymmetry — only Income/Employment were
+# revised in v2, so Crime keeps the plain SIMD2020_ prefix).
+SCOTLAND_DOMAIN_FIELDS = {
+    "SIMD2020v2_Income_Domain_Rank": "imd_income_rank",
+    "SIMD2020_Crime_Domain_Rank": "imd_crime_rank",
+}
 SCOTLAND_DZ_URL = (
     "https://maps.gov.scot/server/rest/services"
     "/ScotGov/StatisticalUnits/MapServer/2/query"
 )
 
 
-def _cached_csv(url: str, name: str) -> pd.DataFrame:
-    """Download a CSV to data/raw/<name> once, then read from cache."""
+def _cached_download(url: str, name: str) -> Path:
+    """Download a file to data/raw/<name> once; return the cached path."""
     cache = raw(name)
     if cache.exists():
         log.info("Using cached %s", cache)
-        return pd.read_csv(cache, low_memory=False)
+        return cache
     log.info("Downloading %s -> %s", url, cache)
     resp = get_with_retry(url, timeout=300)
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_bytes(resp.content)
-    return pd.read_csv(io.BytesIO(resp.content), low_memory=False)
+    return cache
+
+
+def _cached_csv(url: str, name: str) -> pd.DataFrame:
+    """Download a CSV to data/raw/<name> once, then read from cache."""
+    return pd.read_csv(_cached_download(url, name), low_memory=False)
 
 
 def parse_imd(df: pd.DataFrame) -> pd.DataFrame:
@@ -128,49 +156,60 @@ def _england() -> pd.DataFrame:
     return df
 
 
-def merge_wales_domains(
-    ranks: pd.DataFrame, domains: dict[str, pd.DataFrame]
+def merge_domain_ranks(
+    ranks: pd.DataFrame,
+    domains: dict[str, pd.DataFrame],
+    field_map: dict[str, str],
+    key_col: str = "lsoa_code",
 ) -> pd.DataFrame:
-    """Left-merge WIMD domain rank frames onto the Wales overall-rank frame.
+    """Left-merge domain-rank frames onto a nation's overall-rank frame.
 
     Pure function (analogous to England's parse_imd) so the merge semantics are
     testable without network I/O. `ranks` is keyed on area_code; each frame in
-    `domains` is the raw ArcGIS output (lsoa_code, rank) for the service named
-    by its key, renamed here via WALES_DOMAIN_FIELDS.
+    `domains` carries (key_col, rank) for the source named by its key, renamed
+    here via `field_map` (WALES_DOMAIN_FIELDS keyed on lsoa_code for the WIMD
+    ArcGIS services, SCOTLAND_DOMAIN_FIELDS keyed on Data_Zone for the SIMD
+    workbook columns).
 
-    Fails LOUDLY on an empty/malformed domain frame: a silently missing domain
-    would leave every Welsh anchor row NaN on that feature, and calibrate drops
-    NaN place-feature rows — quietly deleting Wales from the panel.
+    Fails LOUDLY on an empty/malformed domain frame OR a merge that attaches
+    zero non-null values: a silently missing domain would leave every anchor
+    row in that nation NaN on that feature, and calibrate drops NaN
+    place-feature rows — quietly deleting the nation from the panel.
 
-    Duplicate area_codes are dropped (first kept) with a warning rather than
-    raised: ArcGIS pagination can occasionally overlap a page boundary, which
-    yields identical repeated features — dropping those is safe, whereas a hard
-    raise would make the pipeline flaky on a transient service quirk. Row count
-    is asserted stable across each merge, so any non-identical duplicate that
+    Duplicate keys are dropped (first kept) with a warning rather than raised:
+    ArcGIS pagination can occasionally overlap a page boundary, which yields
+    identical repeated features — dropping those is safe, whereas a hard raise
+    would make the pipeline flaky on a transient service quirk. Row count is
+    asserted stable across each merge, so any non-identical duplicate that
     slipped through fan-out would still fail loudly.
     """
     df = ranks
-    for service, dom in domains.items():
-        our_col = WALES_DOMAIN_FIELDS[service]
-        if dom.empty or not {"lsoa_code", "rank"}.issubset(dom.columns):
+    for source, dom in domains.items():
+        our_col = field_map[source]
+        if dom.empty or not {key_col, "rank"}.issubset(dom.columns):
             raise ValueError(
-                f"WIMD domain service {service!r} returned no usable rows/columns"
-                " — Wales candidate coverage would be incomplete"
+                f"Domain rank source {source!r} returned no usable rows/columns"
+                " — candidate coverage would be incomplete"
             )
-        dom = dom[["lsoa_code", "rank"]].rename(
-            columns={"lsoa_code": "area_code", "rank": our_col}
+        dom = dom[[key_col, "rank"]].rename(
+            columns={key_col: "area_code", "rank": our_col}
         )
         n_dupes = int(dom["area_code"].duplicated().sum())
         if n_dupes:
             log.warning(
-                "WIMD domain %r: dropping %d duplicate area_code rows", service, n_dupes
+                "Domain source %r: dropping %d duplicate key rows", source, n_dupes
             )
             dom = dom.drop_duplicates(subset="area_code")
         df = df.merge(dom, on="area_code", how="left")
         if len(df) != len(ranks):
             raise ValueError(
-                f"WIMD domain {service!r} merge changed row count "
+                f"Domain source {source!r} merge changed row count "
                 f"({len(ranks)} -> {len(df)}) — non-unique keys fanned out"
+            )
+        if int(df[our_col].notna().sum()) == 0:
+            raise ValueError(
+                f"Domain source {source!r} matched no area codes — merge left"
+                f" every {our_col} value null"
             )
     return df
 
@@ -191,14 +230,14 @@ def _wales() -> pd.DataFrame:
     df = ranks.merge(pop, on="area_code", how="left")
 
     # Income + community-safety domain ranks (roadmap 2.3 — evidence-gate
-    # candidates). Fetch here; merge semantics live in merge_wales_domains.
+    # candidates). Fetch here; merge semantics live in merge_domain_ranks.
     domains = {
         service: pd.DataFrame(
             fetch_arcgis_attributes(url, out_fields="lsoa_code,rank", page_size=2000)
         )
         for service, url in WALES_DOMAIN_URLS.items()
     }
-    df = merge_wales_domains(df, domains)
+    df = merge_domain_ranks(df, domains, WALES_DOMAIN_FIELDS)
 
     df["deprivation_score"] = pd.NA  # WIMD publishes ranks, not a comparable score
     df["nation"] = "wales"
@@ -212,15 +251,30 @@ def _wales() -> pd.DataFrame:
 
 
 def _scotland() -> pd.DataFrame:
+    # Overall rank from the NHS CSV (unchanged source for deprivation_rank).
     simd = _cached_csv(SIMD_CSV_URL, "simd2020v2.csv")
-    # Extract overall rank + crime domain rank (DZ grain — directly addresses the
-    # Scotland crime council-grain limitation in roadmap 2.3).
     keep = {"DataZone": "area_code", "SIMD2020V2Rank": "deprivation_rank"}
-    if "SIMD_2020v2_Crime_Domain_Rank" in simd.columns:
-        keep["SIMD_2020v2_Crime_Domain_Rank"] = "imd_crime_rank"
-    elif "CrimeDomainRank" in simd.columns:
-        keep["CrimeDomainRank"] = "imd_crime_rank"
     simd = simd[list(keep.keys())].rename(columns=keep)
+
+    # Income + crime domain ranks (roadmap 2.3 — evidence-gate candidates) come
+    # from the SG ranks workbook: the NHS CSV has no domain columns, so DZ-grain
+    # domains must be sourced here (also fixes the crime council-grain limit).
+    xlsx = pd.read_excel(
+        _cached_download(SIMD_DOMAIN_XLSX_URL, "simd2020v2_ranks.xlsx"),
+        sheet_name=SIMD_DOMAIN_XLSX_SHEET,
+    )
+    missing = [c for c in SCOTLAND_DOMAIN_FIELDS if c not in xlsx.columns]
+    if missing:
+        raise ValueError(
+            f"SIMD ranks workbook is missing domain columns {missing}"
+            " — Scotland candidate coverage would be incomplete"
+        )
+    domains = {
+        col: xlsx[["Data_Zone", col]].rename(columns={col: "rank"})
+        for col in SCOTLAND_DOMAIN_FIELDS
+    }
+    simd = merge_domain_ranks(simd, domains, SCOTLAND_DOMAIN_FIELDS,
+                              key_col="Data_Zone")
 
     pop = pd.DataFrame(
         fetch_arcgis_attributes(
@@ -231,9 +285,12 @@ def _scotland() -> pd.DataFrame:
     df = simd.merge(pop, on="area_code", how="left")
     df["deprivation_score"] = pd.NA  # SIMD publishes ranks, not a comparable score
     df["nation"] = "scotland"
-    log.info("Scotland: %d Data Zones (%d missing population, crime domain: %s)",
-             len(df), int(df["population"].isna().sum()),
-             "imd_crime_rank" in df.columns)
+    missing_dom = ", ".join(
+        f"{int(df[col].isna().sum())} missing {col}"
+        for col in SCOTLAND_DOMAIN_FIELDS.values()
+    )
+    log.info("Scotland: %d Data Zones (%d missing population, %s)",
+             len(df), int(df["population"].isna().sum()), missing_dom)
     return df
 
 
