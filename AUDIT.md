@@ -153,13 +153,51 @@ distribution should be read as directionally correct rankings, not precise £ fi
 
 | Metric | Value | Notes |
 |---|---|---|
-| Panel R² (quarter FE, area-clustered SE) | **0.917** | 106 obs, 30 areas |
-| Ridge 5-fold CV-R² | **0.887** | Out-of-fold |
-| Leave-one-area-out MAE | **£89** | Generalisation to held-out postcode areas |
+| Panel R² (quarter FE, area-clustered SE) | **0.930** | 106 obs, 30 areas (2026-07 model) |
+| Ridge 5-fold CV-R² | **0.910** | Out-of-fold |
+| Leave-one-area-out MAE | **£76.51** | Generalisation to held-out postcode areas (was £89) |
+| Temporal backtest MAE | **£69.76** | Train ≤2025-Q4, predict 2026 |
 | Spearman (predicted, actual premium) | **0.97** | Rank agreement across all observations |
-| Coefficient sign checks | **5 / 5** | All sensible (see §5) |
+| Coefficient sign checks | **5 / 5** | All sensible (see §5; imd_crime replaced deprivation, §10) |
 
 The validation is at **postcode-area / region grain** against the WTW/Confused.com index — the
 finest geographic resolution for which published premium benchmarks exist. Per-LSOA accuracy is
 not directly measurable with public data; the rank metric (Spearman 0.97) is the best available
 proxy.
+
+## 9. Uncertainty intervals are honest (2026-07)
+
+Every area now ships a 95% interval (`premium_low`–`premium_high`) around the point
+estimate, shown as the hero range on the map. Two components, both necessary:
+
+1. **Cluster bootstrap (coefficient uncertainty).** 200 replications resampling the 30
+   anchor **areas** with replacement (not rows — quarters within an area are correlated),
+   refitting, and collecting each area's prediction spread. Alone this gives a median
+   width of **£241** — and would be an *understatement*, because it only captures
+   uncertainty in the coefficients, not the error of extrapolating a postcode-area-grain
+   fit down to LSOA grain.
+2. **LOAO residual-variance widening (extrapolation honesty).** The leave-one-area-out
+   residuals estimate how wrong the model is on geography it wasn't fitted to
+   (σ_log = 0.113). Widening the bootstrap band by this variance lifts the median width
+   to **£373** — the honest interval for an unseen area.
+
+Defence of the width: ±~19% on a mid-range premium is consistent with the LOAO MAE
+(£76.51 on a £559 national average ≈ 14% typical error, plus coefficient uncertainty).
+An interval much narrower than that would contradict the model's own out-of-sample
+record; much wider would contradict the backtest (£69.76). The interval is validated
+end-to-end: `premium_low ≤ calibrated_premium ≤ premium_high` holds for all 41,729
+areas in the shipped artifacts (checked in the pipeline run; the serve-consistency
+suite guards the premium itself).
+
+## 10. The 2026-07 evidence gate (flood + IMD sub-domains)
+
+The gate's job is to say no, and it did: of three candidates, only **imd_crime**
+survived — and it *replaced* overall deprivation (partial r +0.43 p=3.8e-6 vs
+deprivation's +0.03 p=0.78 once imd_crime is present). **flood_risk** is wrong-signed
+for car premiums (univariate r=−0.94; flood exposure tracks rurality, which is cheap) —
+it ships as a map diagnostic and is documented evidence for a future home-insurance
+line. **imd_income** is redundant with the deprivation family (VIF 33). aadf_intensity
+was retained on a LOAO head-to-head (£76.51 with vs £82.54 without) despite a marginal
+partial p=0.063 — the out-of-sample test outranks the in-sample p-value. Full table:
+`reports/feature_analysis.md`. Post-gate fit: R²=0.9304, LOAO MAE £76.51 (from £88.77),
+backtest £69.76, Spearman 0.974.
