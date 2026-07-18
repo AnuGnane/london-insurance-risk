@@ -43,3 +43,25 @@ def test_compute_ksi_collision_rate_per_billion_vehicle_miles():
     assert abs(out.loc["A", "ksi_collisions_per_billion_vehicle_miles"] - 200.0) < 1e-9
     # area with no KSI collisions resolves to a 0 rate, not NaN
     assert out.loc["B", "ksi_collisions_per_billion_vehicle_miles"] == 0.0
+
+
+def test_deprivation_features_subdomain_passthrough():
+    from src.transform.aggregate_to_lsoa import deprivation_features
+
+    dep = pd.DataFrame({
+        "area_code": ["A", "B"],
+        "deprivation_pct": [0.2, 0.9],
+        "imd_crime_pct": [0.1, 0.8],
+        "imd_income_pct": [0.3, 0.7],
+    })
+    out = deprivation_features(dep)
+    assert list(out.columns) == ["area_code", "deprivation", "imd_crime", "imd_income"]
+    assert out["imd_crime"].tolist() == [0.1, 0.8]
+
+
+def test_deprivation_features_absent_columns_ok():
+    from src.transform.aggregate_to_lsoa import deprivation_features
+
+    dep = pd.DataFrame({"area_code": ["A"], "deprivation_pct": [0.5]})
+    out = deprivation_features(dep)
+    assert list(out.columns) == ["area_code", "deprivation"]

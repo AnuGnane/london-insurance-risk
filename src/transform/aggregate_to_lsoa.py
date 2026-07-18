@@ -11,6 +11,8 @@ Out : data/interim/lsoa_features.parquet
                          on the DfT traffic denominator (Phase 3, if ingested)
         traffic_per_capita — LA traffic exposure per resident (Phase 3, if ingested)
         deprivation — within-nation deprivation percentile (0–1, higher = worse)
+        imd_crime, imd_income — within-nation IMD sub-domain percentiles
+                         (0–1, higher = worse; roadmap 2.3 gate candidates)
         population_density — persons per km²
 
 Missing-feature handling:
@@ -138,6 +140,17 @@ def merge_demographics(features: pd.DataFrame, demographics: pd.DataFrame) -> pd
     return features.merge(demographics[present], on="area_code", how="left")
 
 
+def deprivation_features(dep: pd.DataFrame) -> pd.DataFrame:
+    """Slice the deprivation table to model feature columns: the overall
+    within-nation percentile plus any IMD sub-domain percentiles present
+    (roadmap 2.3 evidence-gate candidates). Pure function."""
+    rename = {"deprivation_pct": "deprivation",
+              "imd_crime_pct": "imd_crime",
+              "imd_income_pct": "imd_income"}
+    cols = ["area_code"] + [c for c in rename if c in dep.columns]
+    return dep[cols].rename(columns=rename)
+
+
 def compute_population_density(population: pd.DataFrame,
                               boundaries: pd.DataFrame) -> pd.DataFrame:
     """Persons per km². Pure function."""
@@ -172,9 +185,7 @@ def run() -> None:
                     "`python -m src.ingest.scotland_crime` first.", scot_path)
     casualty_rate = compute_casualty_rate(collisions, pop, settings["data_years"]["stats19_years"])
     pop_density = compute_population_density(pop, boundaries)
-    deprivation = dep[["area_code", "deprivation_pct"]].rename(
-        columns={"deprivation_pct": "deprivation"}
-    )
+    deprivation = deprivation_features(dep)
     traffic = None
     ksi_rate = None
     traffic_path = interim("traffic.parquet")
