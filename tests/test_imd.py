@@ -99,3 +99,29 @@ def test_merge_domain_ranks_duplicate_keys_do_not_fan_out():
     out = merge_domain_ranks(_ranks(), {"wimd2019_income": dup}, WALES_DOMAIN_FIELDS)
     assert len(out) == 3
     assert out["imd_income_rank"].tolist() == [10, 20, 30]
+
+
+def test_within_nation_percentile_covers_subdomains():
+    """Sub-domain ranks (1 = most deprived) become 0-1 percentiles, higher =
+    worse, same convention as deprivation_pct."""
+    from src.ingest.imd import _within_nation_percentile
+
+    df = pd.DataFrame({
+        "deprivation_rank": [1, 2, 3, 4],
+        "imd_crime_rank": [4, 3, 2, 1],
+        "imd_income_rank": [1, 3, 2, 4],
+    })
+    out = _within_nation_percentile(df)
+    assert out["deprivation_pct"].tolist() == pytest.approx([1.0, 2 / 3, 1 / 3, 0.0])
+    assert out["imd_crime_pct"].tolist() == pytest.approx([0.0, 1 / 3, 2 / 3, 1.0])
+    assert out["imd_income_pct"].iloc[0] == 1.0  # rank 1 = most deprived = 1.0
+
+
+def test_within_nation_percentile_without_subdomains():
+    """Nations lacking a sub-domain rank column simply don't get its pct."""
+    from src.ingest.imd import _within_nation_percentile
+
+    df = pd.DataFrame({"deprivation_rank": [1, 2, 3]})
+    out = _within_nation_percentile(df)
+    assert "deprivation_pct" in out.columns
+    assert "imd_crime_pct" not in out.columns

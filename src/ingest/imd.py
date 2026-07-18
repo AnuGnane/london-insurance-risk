@@ -294,15 +294,28 @@ def _scotland() -> pd.DataFrame:
     return df
 
 
+# Rank column -> its within-nation percentile column. Overall deprivation is
+# always present; the sub-domain ranks (roadmap 2.3 candidates) only exist in
+# nations whose source publishes them — all three, since Tasks 2–3.
+_RANK_TO_PCT = {
+    "deprivation_rank": "deprivation_pct",
+    "imd_crime_rank": "imd_crime_pct",
+    "imd_income_rank": "imd_income_pct",
+}
+
+
 def _within_nation_percentile(df: pd.DataFrame) -> pd.DataFrame:
-    """Add deprivation_pct: rank within own nation, 0–1, higher = more deprived.
+    """Add 0–1 within-nation percentiles (higher = more deprived) for the
+    overall rank and any sub-domain ranks present.
 
     Ranks are nation-specific (1 = most deprived). Converting to a within-nation
     percentile is what makes the three indices comparable across borders.
     """
     df = df.copy()
-    n = df["deprivation_rank"].max()
-    df["deprivation_pct"] = (n - df["deprivation_rank"]) / (n - 1)
+    for rank_col, pct_col in _RANK_TO_PCT.items():
+        if rank_col in df.columns:
+            n = df[rank_col].max()
+            df[pct_col] = (n - df[rank_col]) / (n - 1)
     return df
 
 
@@ -321,7 +334,8 @@ def run() -> None:
     # Core columns always present; sub-domain columns only in nations that have them.
     core_cols = ["area_code", "nation", "deprivation_score", "deprivation_rank",
                  "deprivation_pct", "population"]
-    sub_cols = ["imd_crime_rank", "imd_crime_score", "imd_income_rank", "imd_income_score"]
+    sub_cols = ["imd_crime_rank", "imd_crime_score", "imd_crime_pct",
+                "imd_income_rank", "imd_income_score", "imd_income_pct"]
     all_cols = core_cols + [c for c in sub_cols if any(c in p.columns for p in parts)]
     df = pd.concat([p.reindex(columns=all_cols) for p in parts], ignore_index=True)
 
