@@ -49,13 +49,17 @@ features:
   # fell to ~£89. population_density stays a map diagnostic (via risk_index.weights).
   place:
     - vehicle_crime
-    - deprivation
+    # aadf_intensity: partial p=0.063 is marginal next to imd_crime (which
+    # absorbs shared urban-intensity variance), but the LOAO head-to-head is
+    # decisive: dropping it worsens out-of-sample MAE £76.51 -> £82.54. Kept
+    # on predictive evidence; revisit if a future feature subsumes it.
     - aadf_intensity
-    # Evidence-gate CANDIDATES (2026-07 cycle) — keep/demote per
-    # reports/feature_analysis.md after `make calibrate`:
-    - flood_risk     # Phase 4: share of area in High/Medium flood zone, within-nation ranked
+    # 2026-07 gate outcome (reports/feature_analysis.md): imd_crime REPLACED
+    # overall deprivation, mirroring how AADF replaced population_density in
+    # Phase 3. With imd_crime present, deprivation's partial collapses to
+    # r=+0.03 p=0.78 (VIF 2.4 — not collinearity; simply no unique signal):
+    # the crime sub-domain IS the deprivation component that prices car risk.
     - imd_crime      # IoD2019 crime / SIMD crime / WIMD community-safety, within-nation pct
-    - imd_income     # IoD2019 income / SIMD income / WIMD income, within-nation pct
   composition:
     - young_driver_share
     - cars_per_household
@@ -70,6 +74,17 @@ features:
   diagnostics:
     - traffic_per_capita
     - ksi_collisions_per_billion_vehicle_miles
+    # 2026-07 gate exclusions (reports/feature_analysis.md): flood_risk is
+    # WRONG-SIGNED for car premiums (univariate r=-0.94 — flood exposure tracks
+    # rurality, and rural areas are cheap; partial p=0.18, VIF 22.7). A star
+    # candidate for the home-insurance line (roadmap 2.10), not this one.
+    # imd_income is redundant with overall deprivation (VIF 33.2, partial
+    # wrong-signed) — income IS the dominant IMD component.
+    - flood_risk
+    - imd_income
+    # deprivation stays a MAP layer (risk_index weights) but is no longer a
+    # premium driver — replaced by imd_crime (2026-07 gate, see above).
+    - deprivation
 
 calibration:
   panel_csv: "data/manual/wtw_anchors_panel.csv"  # 137-row multi-quarter panel
@@ -86,11 +101,8 @@ calibration:
   # premium_features is only a fallback if features.place is absent — kept in sync.
   premium_features:
     - vehicle_crime
-    - deprivation
     - aadf_intensity
-    - flood_risk
     - imd_crime
-    - imd_income
 
 sources:
   police_api: "https://data.police.uk/api"
