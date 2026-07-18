@@ -86,6 +86,11 @@ calibration or coefficients, always re-run `calibrate` (which re-runs `risk` and
   venv, then `validate_contract.py` there. The export carries `model_commit` provenance;
   the validator warns when it's stale. See the 2026-07-17 synergy spec in
   `docs/superpowers/specs/`.
+  The same model-changing ship must ALSO rebake the streaming map layer: run
+  `make showcase-tiles` (regenerates `frontend/public/data/lsoa-risk.pmtiles`, which ships
+  with the next GH Pages deploy) AND re-run Vouched's `build_map_meta.py` so the map page's
+  metadata stays in lockstep with the premiums pack. (`build_map_meta.py` lands on the
+  Vouched side shortly.)
 - **First calibrate cycle after activating a NEW feature in `features.place`:** run
   `python -m src.transform.build_risk_index` once before `make calibrate` — calibrate
   reads the processed parquet's `{f}_pct` columns, which only exist after a risk build
