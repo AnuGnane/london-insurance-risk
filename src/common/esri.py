@@ -41,12 +41,15 @@ def esri_rings_to_geom(rings: list[list[list[float]]]):
 
     ext_polys = [Polygon(r) for r in exteriors]
     hole_assignment: list[list] = [[] for _ in ext_polys]
-    for h in holes:
-        rep = Polygon(h).representative_point()
-        for i, ext in enumerate(ext_polys):
-            if ext.contains(rep):
-                hole_assignment[i].append(h)
-                break
+    if holes and ext_polys:
+        from shapely import STRtree
+        tree = STRtree(ext_polys)
+        for h in holes:
+            rep = Polygon(h).representative_point()
+            for i in tree.query(rep):
+                if ext_polys[i].contains(rep):
+                    hole_assignment[i].append(h)
+                    break
 
     polys = [Polygon(ext, hl) for ext, hl in zip(exteriors, hole_assignment)]
     return polys[0] if len(polys) == 1 else MultiPolygon(polys)
@@ -73,19 +76,65 @@ def fetch_arcgis_polygons(query_url: str, *, page_size: int = 2000) -> gpd.GeoDa
 
     ``page_size`` must be <= the endpoint's maxRecordCount, or a capped first
     page looks like the final page (same caveat as fetch_arcgis_attributes).
+    If a page query fails (e.g. ArcGIS 500 error due to complex geometry reprojection),
+    falls back to fetching by Object IDs with simplification fallback.
     """
     pages, offset = [], 0
     while True:
-        page = get_json_with_retry(query_url, {
-            "where": "1=1", "outFields": "", "returnGeometry": "true",
-            "outSR": 27700, "f": "json",
-            "resultOffset": offset, "resultRecordCount": page_size,
-        })
-        n = len(page.get("features", []))
-        if n:
-            pages.append(page)
-        offset += n
-        if n < page_size and not page.get("exceededTransferLimit"):
+        try:
+            page = get_json_with_retry(query_url, {
+                "where": "1=1", "outFields": "", "returnGeometry": "true",
+                "outSR": 27700, "f": "json",
+                "resultOffset": offset, "resultRecordCount": page_size,
+            })
+            n = len(page.get("features", []))
+            if n:
+                pages.append(page)
+            offset += n
+            if n < page_size and not page.get("exceededTransferLimit"):
+                break
+            time.sleep(0.3)
+        except Exception as exc:
+            log.warning("Page query failed at offset %d (%s); falling back to per-ObjectID fetch", offset, exc)
+            try:
+                ids_page = get_json_with_retry(query_url, {
+                    "where": "1=1", "returnIdsOnly": "true", "f": "json",
+                })
+                oids = ids_page.get("objectIds", [])[offset:]
+            except Exception as ids_exc:
+                log.error("Failed to fetch Object IDs during fallback: %s", ids_exc)
+                raise exc from ids_exc
+
+            log.info("Falling back to fetching %d Object IDs in batches/individually", len(oids))
+            batch_size = 50
+            for i in range(0, len(oids), batch_size):
+                batch = oids[i:i + batch_size]
+                try:
+                    p = get_json_with_retry(query_url, {
+                        "objectIds": ",".join(map(str, batch)), "returnGeometry": "true",
+                        "outSR": 27700, "f": "json",
+                    })
+                    if p.get("features"):
+                        pages.append(p)
+                except Exception as batch_exc:
+                    log.warning("Batch of %d Object IDs failed (%s); retrying individually", len(batch), batch_exc)
+                    for oid in batch:
+                        try:
+                            p = get_json_with_retry(query_url, {
+                                "objectIds": str(oid), "returnGeometry": "true",
+                                "outSR": 27700, "f": "json",
+                            })
+                            if p.get("features"):
+                                pages.append(p)
+                        except Exception as exc_oid:
+                            log.warning("ObjectID %s failed (%s); retrying with maxAllowableOffset=1", oid, exc_oid)
+                            p = get_json_with_retry(query_url, {
+                                "objectIds": str(oid), "returnGeometry": "true",
+                                "outSR": 27700, "maxAllowableOffset": 1, "f": "json",
+                            })
+                            if p.get("features"):
+                                pages.append(p)
+                        time.sleep(0.1)
+                time.sleep(0.2)
             break
-        time.sleep(0.3)
     return esri_features_to_gdf(pages)
