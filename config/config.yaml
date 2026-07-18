@@ -51,10 +51,11 @@ features:
     - vehicle_crime
     - deprivation
     - aadf_intensity
-    # - flood_risk            # Phase 4 candidate — ACTIVATE once data/interim/flood.parquet
-    #                         # exists (run src/ingest/flood.py with extents dropped in
-    #                         # data/raw/flood/). Adding it before the data exists would make
-    #                         # the all-NaN place column drop every calibration row.
+    # Evidence-gate CANDIDATES (2026-07 cycle) — keep/demote per
+    # reports/feature_analysis.md after `make calibrate`:
+    - flood_risk     # Phase 4: share of area in High/Medium flood zone, within-nation ranked
+    - imd_crime      # IoD2019 crime / SIMD crime / WIMD community-safety, within-nation pct
+    - imd_income     # IoD2019 income / SIMD income / WIMD income, within-nation pct
   composition:
     - young_driver_share
     - cars_per_household
@@ -87,6 +88,9 @@ calibration:
     - vehicle_crime
     - deprivation
     - aadf_intensity
+    - flood_risk
+    - imd_crime
+    - imd_income
 
 sources:
   police_api: "https://data.police.uk/api"
