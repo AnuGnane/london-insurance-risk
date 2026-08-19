@@ -127,7 +127,8 @@ matters and not raw units:
 **Place vs composition split** — the identification idea at the core of the project:
 
 - **Place features** (the territorial drivers we *want* to estimate): `vehicle_crime`,
-  `deprivation`, `aadf_intensity`.
+  `aadf_intensity`, `imd_crime`. (`imd_crime` — the IMD crime sub-domain — replaced
+  overall `deprivation` as a driver in the 2026-07 evidence gate; see §7.)
 - **Composition features** (demographic *controls*): `young_driver_share`,
   `cars_per_household`.
 
@@ -141,8 +142,9 @@ area:
 - **Composition uplift** — full − place-only: the demographic effect.
 
 **Diagnostics** (`traffic_per_capita`, `ksi_collisions_per_billion_vehicle_miles`,
-plus legacy `road_casualties`, `population_density`) are ingested and shown on the map
-but are **not** premium drivers — they were *evidence-gated out* (§8).
+plus legacy `road_casualties`, `population_density`, and — since the 2026-07 gate —
+overall `deprivation`, `imd_income`, and `flood_risk`) are ingested and shown on the
+map but are **not** premium drivers — they were *evidence-gated out* (§7).
 
 ---
 
@@ -166,7 +168,7 @@ doesn't distort another source's index.
 
 ```
 log(premium_index) = const
-                   + β1·vehicle_crime_pct + β2·deprivation_pct + β3·aadf_intensity_pct      (place)
+                   + β1·vehicle_crime_pct + β2·imd_crime_pct + β3·aadf_intensity_pct      (place)
                    + β4·young_driver_share_pct + β5·cars_per_household_pct                    (composition)
                    + C(source)                                                                (source FE, when >1 source)
 ```
@@ -188,7 +190,7 @@ reconstructed (this is what `build_risk_index.bake_premium_and_contributions` do
 premium(£) = national_avg × exp(const + Σ βᵢ · featureᵢ_pct)
 ```
 
-with `national_avg = £558.55` (latest quarter). This is a **multiplicative** (log-linear)
+with `national_avg = £559` (latest quarter). This is a **multiplicative** (log-linear)
 model — a percentile-point change scales the premium, it doesn't add a fixed £.
 
 ### 5.4 Per-driver £ contributions
@@ -205,7 +207,7 @@ multiplicative, these deltas **don't sum exactly** to the premium — that's exp
 worth stating, not a bug.
 
 > **The negative-coefficient gotcha** (you debugged this): `cars_per_household` has a
-> *negative* coefficient (−0.0044). Low car-ownership areas are dense/urban with higher
+> *negative* coefficient (−0.0038). Low car-ownership areas are dense/urban with higher
 > theft/uninsured exposure, so **low car ownership → higher premium**. An area at the
 > 3rd percentile of car ownership is pushed *furthest above* the median, so it can be
 > the *biggest* positive £ contributor while rendering near-white on a percentile colour
@@ -219,7 +221,7 @@ worth stating, not a bug.
 - The "reason" chip uses `dominantDriver()` = the driver with the **largest positive £
   contribution** — which is a *different axis* from the largest percentile. (After the
   recent recalibration the top area shifted; the strongest spread driver is
-  `young_driver_share`, std-coef back-fit weight 0.44.)
+  `young_driver_share`, std-coef back-fit weight 0.39.)
 
 ---
 
@@ -231,23 +233,32 @@ multi-quarter, multi-grain). Current headline numbers:
 | Metric | Value | What it tells you |
 |---|---|---|
 | Matched observations | **106** (30 areas × up to 11 quarters) | the *real* sample size — not 41,729 |
-| Panel OLS R² (adj) | **0.917 (0.912)** | in-sample fit |
-| Ridge K-fold **CV-R²** | **0.887** ± … (α≈2.34) | out-of-sample generalisation |
-| **Leave-one-area-out** MAE | **£89** (n=106) | predict each area from the *others* — spatial hold-out |
-| **Temporal back-test** MAE | **£74** | fit quarters ≤T, predict T+1 — forward generalisation |
-| Spearman(pred, actual) | **0.968** | does it *rank* areas like the market does? |
-| Variance decomposition | place-only **0.759** · composition-only **0.884** · full **0.915** | how much is place vs who-lives-there |
+| Panel OLS R² (adj) | **0.9304 (0.926)** | in-sample fit |
+| Ridge K-fold **CV-R²** | **0.910** ± … | out-of-sample generalisation |
+| **Leave-one-area-out** MAE | **£76.51** (n=106) | predict each area from the *others* — spatial hold-out |
+| **Temporal back-test** MAE | **£69.76** | fit quarters ≤T, predict T+1 — forward generalisation |
+| Spearman(pred, actual) | **0.974** | does it *rank* areas like the market does? |
+| Variance decomposition | place-only **0.819** · composition-only **0.884** · full **0.928** | how much is place vs who-lives-there |
 | Cross-source (MoneySuperMarket) | independent 2nd anchor | spatial pattern isn't a Confused artefact |
 
 Plus **sanity checks**: predicted spatial multipliers (West-Central London ÷ Rugby ≈
-1.94×, City of London ÷ Truro ≈ 2.42×) that match real-world intuition.
+1.93×, City of London ÷ Truro ≈ 2.49×) that match real-world intuition.
+
+**Uncertainty intervals are honest, not decorative (2026-07).** Every area ships a
+`premium_low`–`premium_high` band around the point estimate, built from two components:
+a **200-rep cluster bootstrap** resampling the 30 anchor *areas* with replacement (median
+width £241 — coefficient uncertainty only), widened by the **LOAO residual variance**
+(σ_log = 0.113) to account for extrapolating a postcode-area-grain fit down to LSOA grain
+(honest median width **£373**). `premium_low ≤ calibrated_premium ≤ premium_high` holds
+for all 41,729 areas; the bands ship in the processed parquet, the served GeoJSON, and
+the map's hero range. See `AUDIT.md` §9.
 
 **Why each rung exists** (this is the interview gold):
 
 - **Ridge CV** guards overfitting on a small n and reports honest generalisation; the
   α is chosen by `RidgeCV` over a log-spaced grid.
 - **Leave-one-area-out** is the strict test: never let an area's own data inform its
-  prediction. £89 MAE on a ~£558 average is the credible headline.
+  prediction. £76.51 MAE on a ~£559 average is the credible headline.
 - **Temporal back-test** answers a different question (forward in time, not across
   space) — both matter.
 - **Spearman** matters because for a *ranking* product, rank fidelity ≥ point accuracy.
@@ -262,14 +273,28 @@ Features aren't kept by intuition — they pass a **partial-correlation + VIF** 
 (verdict `keep` iff partial-p < 0.05 **and** VIF < 10):
 
 - **young_driver_share** — strongest independent predictor (partial r ≈ +0.57).
-- **aadf_intensity** — +0.38, p<1e-4, VIF ≈ 2.3 (a genuine, non-collinear keeper).
+- **imd_crime** — the IMD/SIMD/WIMD crime sub-domain, and the strongest *place* driver
+  (partial r +0.43, p=3.8e-6, VIF 3.5). **It replaced overall `deprivation` in the
+  2026-07 gate** — mirroring how AADF replaced density in Phase 3. With `imd_crime`
+  present, overall deprivation's own partial collapses to +0.03 (p=0.78, VIF 2.4 — no
+  collinearity excuse, simply no unique signal beyond the crime sub-domain): deprivation
+  is now a **map diagnostic only**, not a premium driver.
+- **aadf_intensity** — retained on a **LOAO head-to-head** rather than its in-sample
+  p-value alone: partial p=0.063 is marginal next to `imd_crime` (which absorbs shared
+  urban-intensity variance), but dropping it worsens out-of-sample LOAO MAE
+  £76.51→£82.54 — the predictive test outranks the p-value.
 - **cars_per_household** — significant, negative (see §5.4).
-- **vehicle_crime, deprivation** — keepers.
+- **vehicle_crime** — keeper.
 - **Gated OUT to diagnostics:** `ksi_collisions…` (no independent signal once
   crime/deprivation/density controlled, partial p≈0.44); `traffic_per_capita` (an
   inverse-density proxy, univariate r≈−0.92, VIF≈16, wrong-signed as risk);
   `road_casualties` (insignificant + wrong-signed at panel grain);
-  `population_density` (collinear urban-intensity proxy, VIF 13–60).
+  `population_density` (collinear urban-intensity proxy, VIF 13–60); overall
+  `deprivation` (superseded by `imd_crime`, see above); `imd_income` (redundant with
+  the deprivation family, VIF 33, wrong-signed partial); `flood_risk` (wrong-signed for
+  car premiums — univariate r=−0.94, flood exposure tracks rurality and rural is cheap
+  to insure; partial p=0.18, VIF 22.7 — see §8 item 9 for the flood ingest story and
+  why it's evidence for a future home-insurance line, not this model).
 
 This gating is the answer to the project's hardest critique — *"isn't this just a density
 model?"* — see §8.
@@ -306,7 +331,7 @@ The London→GB story, as a sequence of defensible pivots:
 6. **Place vs composition decomposition.** Added young-driver share + cars/household as
    *controls* so the place effect is net of demographics — and surfaced the three
    numbers (full / place-only / uplift). Notably **composition-only R² (0.884) > place-
-   only R² (0.759)**: at this grain, *who lives there* explains more variance than
+   only R² (0.819)**: at this grain, *who lives there* explains more variance than
    *where* — an honest finding worth volunteering.
 
 7. **Scotland validation (Phase 2).** Once Scotland had all three place features, the
@@ -316,9 +341,22 @@ The London→GB story, as a sequence of defensible pivots:
 8. **Second anchor source (MoneySuperMarket).** Pooled with a source fixed effect for
    independent cross-source spatial corroboration.
 
+9. **Flood ingestion + IMD sub-domain gate (Phase 4, 2026-07).** All three nations'
+   flood extents were ingested (England EA RoFRS/NaFRA2 via a Defra-requested SFTP
+   drop — 83 local GDB tiles; Wales NRW via WFS; Scotland SEPA via ArcGIS REST),
+   within-nation percentile ranked. The evidence gate ruled it **out** of the premium
+   model — wrong-signed for car risk (flood exposure tracks rurality, and rural is
+   cheap to insure) — so it ships as a map diagnostic and banked evidence for a future
+   home-insurance line. In the same wave, splitting IMD into sub-domains found
+   `imd_crime` a stronger, non-redundant driver than overall `deprivation`, which it
+   replaced (see §7); `imd_income` was excluded as redundant with the deprivation
+   family. Also landed: 200-rep cluster-bootstrap + LOAO-residual-widened uncertainty
+   bands (`premium_low`/`premium_high`, honest median width £373) for all 41,729 areas.
+
 **Deferred (and why):** Northern Ireland (no NI crime/collision open source — would carry
-only 2 of 4 features); flood risk (Phase 4 scaffold exists, awaiting EA/SEPA/NRW
-extents); PMTiles vector tiling (payload optimisation).
+only 2 of 4 features); PMTiles vector tiling (payload optimisation); sub-district
+calibration (the WTW panel is postcode-area grain only). Flood risk is **no longer
+deferred** — it's ingested and evidence-gated to a diagnostic (item 9 above).
 
 ---
 
@@ -339,8 +377,9 @@ extents); PMTiles vector tiling (payload optimisation).
 - **Contributions are counterfactual deltas, not an exact additive split** (multiplicative
   model).
 - **Grain caveat in the model card:** wealthy-but-central LSOAs can be under-priced
-  because deprivation (a strong clean signal) is low there while real premiums are driven
-  by unmodelled factors (vehicle value, congestion, claims cost).
+  because `imd_crime` (the strong clean signal, since the 2026-07 gate — see §7) is low
+  there while real premiums are driven by unmodelled factors (vehicle value, congestion,
+  claims cost).
 
 ---
 
@@ -377,10 +416,10 @@ discipline, not the estimator."*
 | They ask | You say |
 |---|---|
 | *"Why not a gradient-boosted model / neural net?"* | n=106 matched observations. A high-variance learner would overfit; a regularised linear model is the right bias/variance point, and it's auditable — which matters for a pricing-adjacent product. I'd reach for GBMs only with claims-level data (10⁴–10⁶ rows). |
-| *"Isn't 0.917 R² suspiciously high?"* | In-sample, yes — that's why the honest numbers are CV-R² 0.887 and LOAO MAE £89. And it's validated at coarse grain, then extrapolated to LSOA. |
-| *"Is this just a density model?"* | It was a fair critique of the v1. I replaced density (VIF 13–60) with point-level AADF (VIF 2.3); now every feature is an independent, significant keeper, and LOAO MAE improved. |
+| *"Isn't 0.9304 R² suspiciously high?"* | In-sample, yes — that's why the honest numbers are CV-R² 0.910 and LOAO MAE £76.51. And it's validated at coarse grain, then extrapolated to LSOA. |
+| *"Is this just a density model?"* | It was a fair critique of the v1. I replaced density (VIF 13–60) with point-level AADF (VIF 2.3); now every feature is an independent, significant keeper, and LOAO MAE improved. The same discipline caught a second lookalike critique in 2026-07: overall deprivation looked like a driver, but splitting IMD into sub-domains showed `imd_crime` was the actual signal (partial r +0.43 vs deprivation's +0.03) — so it replaced deprivation as the driver. |
 | *"How do you know it's not overfit to Confused.com?"* | Cross-source check against MoneySuperMarket (pooled with a source FE) reproduces the same spatial ordering — the pattern isn't a single-source artefact. |
-| *"What would you do next?"* | Calibrate on claims-level or quote-level data to lift validation to the prediction grain; add flood (Phase 4); PMTiles for payload; a CI guard so served premiums can't drift from published coefficients. |
+| *"What would you do next?"* | Calibrate on claims-level or quote-level data to lift validation to the prediction grain; PMTiles for payload; a CI guard so served premiums can't drift from published coefficients. Flood risk is already ingested and gated out for car premiums (wrong-signed — it tracks rurality) but banked as evidence for a home-insurance line. |
 
 **Two-minute narrative arc:** problem (opaque territorial pricing) → data (reconcile 3
 nations of open data) → feature engineering (percentiles, place vs composition) →
@@ -393,13 +432,16 @@ map) → the honest caveat (validation grain) and what's next.
 
 - **41,729** areas mapped · **30** calibration areas · **106** matched obs · **11**
   quarters · **137**-row anchor panel.
-- **R² 0.917** (adj 0.912) · **CV-R² 0.887** · **LOAO MAE £89** · **temporal MAE £74**
-  · **Spearman 0.968**.
-- Variance: place-only **0.759**, composition-only **0.884**, full **0.915**.
-- National average premium **£558.55**; current premium range **£193–£1,542**.
-- Coefficients (log-index): const −0.724; vehicle_crime +0.0014; deprivation +0.0034;
-  aadf_intensity +0.0039; young_driver_share +0.0094; cars_per_household **−0.0044**.
-- Back-fit importances: young_driver 0.44, cars 0.24, aadf 0.17, crime 0.09, deprivation 0.08.
+- **R² 0.9304** (adj 0.926) · **CV-R² 0.910** · **LOAO MAE £76.51** (was £88.77) ·
+  **temporal MAE £69.76** · **Spearman 0.974**.
+- Variance: place-only **0.819**, composition-only **0.884**, full **0.928**.
+- National average premium **£559**; current premium range **£186–£1,578**.
+- Coefficients (log-index): const −0.774; vehicle_crime +0.0019; imd_crime +0.0065
+  (replaced deprivation, 2026-07 gate); aadf_intensity +0.0018; young_driver_share
+  +0.0084; cars_per_household **−0.0038**.
+- Back-fit importances: young_driver 0.39, imd_crime 0.22, cars 0.20, crime 0.11, aadf 0.08.
+- Uncertainty: `premium_low`/`premium_high` for all 41,729 areas — 200-rep cluster
+  bootstrap + LOAO-residual widening (σ_log=0.113), honest median width **£373** (see §6).
 
 ---
 

@@ -45,8 +45,9 @@ features:
   # as a place driver. AADF is a direct measure of local road business (partial r
   # +0.38, p<1e-4, VIF 2.3) whereas density was always a collinear urban-intensity
   # proxy (VIF 13–60, the long-standing "it's just a density model" critique). With
-  # AADF in, every premium feature is an independent significant keeper and LOAO MAE
-  # fell to ~£89. population_density stays a map diagnostic (via risk_index.weights).
+  # AADF in, every premium feature was an independent significant keeper and LOAO MAE
+  # fell to ~£89. The 2026-07 imd_crime gate (below) took it further, to £76.51.
+  # population_density stays a map diagnostic (via risk_index.weights).
   place:
     - vehicle_crime
     # aadf_intensity: partial p=0.063 is marginal next to imd_crime (which
@@ -70,7 +71,9 @@ features:
   # density are controlled (partial p≈0.44); traffic_per_capita is an inverse-density
   # proxy (univariate r≈-0.92, VIF≈16, wrong-signed as a "risk" driver — high traffic
   # per resident = rural through-roads/motorways). They stay diagnostics, like the
-  # legacy road_casualties, pending point-level AADF exposure (deferred).
+  # legacy road_casualties, alongside point-level AADF exposure — which WAS adopted as
+  # a place driver (see the place: block above), not deferred. The 2026-07 gate below
+  # added flood_risk, imd_income and overall deprivation to this diagnostics list.
   diagnostics:
     - traffic_per_capita
     - ksi_collisions_per_billion_vehicle_miles
