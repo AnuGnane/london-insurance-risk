@@ -1,174 +1,231 @@
 # GB Car-Insurance Risk Map
 
-Estimate an **expected annual motor-insurance premium** for every small area (LSOA / Data Zone) in
-Great Britain from open data, render it as an interactive choropleth, and look it up by postcode. The
-premium is **calibrated** against the published WTW / Confused.com Car Insurance Price Index, and the
-0–100 "risk index" is simply that premium on a percentile scale — one reconciled model, not two.
+An expected **annual motor-insurance premium** for every small area in Great Britain —
+41,729 LSOAs (England & Wales) and Data Zones (Scotland) — built entirely from **open
+data** and calibrated against **published price indices** (WTW/Confused.com quarterly
+index, MoneySuperMarket regional figures).
 
-Every area's price is fully explained: the detail panel renders a **premium waterfall** that bridges
-from a typical-GB-area baseline (£537) to the area's estimate via exact, order-invariant per-factor
-£ steps (LMDI decomposition — `baseline + Σ steps == premium`, to the pound). See `AUDIT.md` for the
-model-verification write-up.
+**Live map → https://anugnane.github.io/london-insurance-risk/** (static, GitHub Pages —
+search any GB postcode).
 
-This is a **territorial risk proxy**, not a quote engine: it uses no individual driver or vehicle
-details. See `AGENTS.md` for the coding agent's working agreement, `MODEL_REVIEW.md` for the model
-audit + design decisions, and `implementation_plan.md` for the original design.
+A one-page write-up of the whole project, readable in a browser with no build step, lives
+at [`docs/PROJECT_SUMMARY.html`](docs/PROJECT_SUMMARY.html).
 
-## Quickstart
-```bash
-uv sync            # or: python -m venv .venv && source .venv/bin/activate && pip install -e .
-cp .env.example .env
-make ingest && make features && make risk     # produces data/processed/lsoa_risk.geojson.gz
+This is a **territorial risk proxy, not a quote engine**: it uses no individual driver or
+vehicle details. The 0–100 `risk_index` is simply the calibrated premium on a percentile
+scale — one reconciled model, not two.
+
+## Headline results (July 2026 calibration)
+
+| Metric | Value |
+|---|---:|
+| Panel R² (log relative index, area-clustered SEs) | **0.9304** |
+| Leave-one-area-out MAE (strict spatial hold-out) | **£76.51** |
+| Temporal back-test MAE (fit ≤T, predict T+1) | **£69.76** |
+| Spearman (predicted vs actual premium) | **0.974** |
+| Matched anchor observations / areas | **106 / 30** (from a 137-row cited panel) |
+| Modelled premium span across GB | **£186 – £1,578** |
+| Honest 95% interval, median width | **£373** |
+| National average pin (latest published quarter) | **£558.55** |
+
+Full verification write-up — coefficients, tail reconstructions, sign checks, the 2026-07
+evidence gate — is in [`AUDIT.md`](AUDIT.md).
+
+## How it works
+
+**Response.** The regression target is `log(area premium ÷ national average)`, normalised
+per source × quarter. Modelling the *ratio* strips out the national price level and its
+drift over time, isolating the effect of place. Absolute £ is reconstructed at the end by
+pinning to the latest published national average (£558.55).
+
+**Estimator.** Ordinary least squares with **area-clustered standard errors** (the panel is
+repeated measures — the same area across up to 11 quarters), plus a source fixed effect
+when a second anchor source is pooled. Deliberately small, because the calibration sample
+honestly is: 106 observations across 30 areas. Ridge CV, leave-one-area-out and a temporal
+back-test carry the argument rather than the in-sample fit.
+
+**Features.** Everything enters as a **rank percentile (0–100)**, ranked **within
+comparable groups** — within nation for the deprivation family, England+Wales vs Scotland
+for crime (recording definitions differ). Percentiles bound extrapolation, so no outlier
+area can blow its own prediction up, and they make three nations' incompatible source
+scales comparable by construction.
+
+```
+log(premium ÷ national avg) = β₀
+  + β·place[vehicle_crime, imd_crime, aadf_intensity]
+  + β·composition[young_driver_share, cars_per_household]
 ```
 
-## Run the map (Docker)
-```bash
-docker compose up --build
-# then open http://localhost:8000
-```
+**Evidence gate.** Nothing is in the premium model by intuition. A candidate must show an
+independent partial correlation (p < 0.05) at acceptable collinearity (VIF < 10), or win a
+leave-one-area-out head-to-head. The gate has said no more often than yes:
+`population_density` was gated out and replaced by point-level AADF (which killed the
+"it's just a density model" critique); `flood_risk` is wrong-signed for car premiums
+(r = −0.94 — flood exposure tracks rurality, and rural is cheap), so it ships as a map
+diagnostic and as banked evidence for a future home-insurance line; `imd_income` is
+redundant within the deprivation family (VIF 33); `road_casualties` / KSI have no
+independent signal once traffic exposure is controlled. In the 2026-07 wave **`imd_crime`
+replaced overall deprivation** — with the crime sub-domain present, overall deprivation's
+partial correlation collapses to +0.03 (p=0.78). `aadf_intensity` was kept on out-of-sample
+evidence despite a marginal in-sample p=0.063: dropping it worsens LOAO MAE £76.51 → £82.54.
+Per-feature verdicts: `reports/feature_analysis.md`.
 
-The compose file mounts `./data` and `./reports` as volumes so the pre-built data is served
-without baking it into the image. No re-ingest needed inside Docker.
+**Place vs composition.** Demographics enter as **controls**, so the place coefficients are
+estimated net of who lives there — and each area gets **three numbers**: the full premium,
+a **place-only** counterfactual (composition held at the national median), and the
+**composition uplift** between them. Composition alone explains more of the spread than
+place alone. That's reported as a finding, not tuned away.
 
-## Live showcase (GitHub Pages — static, no backend)
+**Explainable to the pound.** The detail panel renders an exact, order-invariant **LMDI
+(logarithmic-mean) waterfall**: a signed £ step per factor from the £537 baseline (every
+feature at the median) to the area's estimate, with `baseline + Σ steps == premium`, no
+residual. A serve-consistency test guards the served map against stale coefficients.
 
-The public demo is a **fully static** build: GitHub Pages can't run the FastAPI
-backend, so the frontend reads pre-baked data and resolves postcodes client-side
-(see `SHOWCASE_PLAN.md`). Nothing is lost — postcode search still works.
+**Uncertainty.** Every area ships `premium_low`/`premium_high`: a 200-replication **cluster
+bootstrap** resampling anchor *areas* (not rows — quarters within an area are correlated)
+gives a median width of £241, which understates things because it captures only coefficient
+uncertainty. Widening by the **LOAO residual variance** (σ_log = 0.113) — the model's error
+on geography it was never fitted to — lifts the honest median width to **£373**.
 
-```bash
-make showcase-data        # bake frontend/public/data/{areas.geojson,methodology.json}
-                          # (run after make risk + make calibrate)
-cd frontend && GITHUB_PAGES=1 npm run build   # base path /london-insurance-risk/
-```
+## Pipeline
 
-`.github/workflows/deploy-pages.yml` builds and deploys on every push to `main`.
-The four old endpoints are replaced by `frontend/src/api.ts`: the choropleth is a
-static GeoJSON; **postcode → area uses postcodes.io for coordinates + client-side
-point-in-polygon** (postcodes.io now returns 2021/2022 codes that don't match the
-model's 2011 areas, so we match on location, not code); rankings sort the loaded
-GeoJSON; methodology is a static JSON. The local FastAPI app (`make api`, Docker)
-still works for full-fidelity development.
+`make` targets are the source of truth for order:
 
-## Layout
-```
-config/config.yaml      weights, years, region code, paths — single source of truth
-src/common/             config, io, geo helpers, shared HTTP retry
-src/ingest/             one module per data source → data/interim/*.parquet
-  boundaries.py         E+W LSOAs + Scotland Data Zones (41,729 areas)
-  imd.py                England IoD2019 · Wales WIMD2019 · Scotland SIMD2020v2
-  onspd.py              ONSPD postcode → area_code lookup (2.6 M postcodes)
-  police_crime.py       data.police.uk bulk download (E+W only; Scotland = NaN)
-  scotland_crime.py     Recorded Crime in Scotland council data → Data Zone
-  stats19.py            DfT STATS19 GB collisions + Scotland spatial join
-  census_demographics.py  Census age + car ownership controls
-  traffic.py            DfT local-authority traffic exposure (Phase 3 v1, diagnostic)
-  aadf.py               DfT point-level AADF traffic intensity → centroid (Phase 3 v2, premium driver)
-src/transform/
-  aggregate_to_lsoa.py  roll-up to area_code grain; per-row missing-feature handling
-  build_risk_index.py   composite index + calibrated premium
-src/calibrate/
-  wtw_index.py          WTW/Confused.com price panel (137 rows, quarterly)
-  calibrate.py          OLS + ridge CV + leave-one-area-out + temporal back-test
-src/api/main.py         FastAPI: /api/risk · /api/geojson · /api/rankings
-frontend/               React + MapLibre GL choropleth
-data/{raw,interim,processed}/   git-ignored — never commit
-tests/                  smoke tests (pytest)
-```
+| Stage | Command | What it does |
+|---|---|---|
+| M1 | `make ingest` | Ten source modules → `data/interim/*.parquet` (one per open source) |
+| M2 | `make features` | `aggregate_to_lsoa` joins everything onto the boundary master list, one row per area |
+| M3 | `make risk` | Percentile features + calibrated coefficients → `data/processed/lsoa_risk.{parquet,geojson.gz}` |
+| M4 | `make calibrate` | Anchor-panel ingest + the regression and its full validation ladder, **then re-runs M3 and the static bake** |
+| bake | `make showcase-data` | Topology-aware simplification → `frontend/public/data/*.geojson` (what the map actually serves) |
+
+> **The trap:** `make risk` has no dependency on `reports/calibration.json`'s timestamp, so
+> running it alone after touching calibration or coefficients can ship **stale premiums**
+> (this has bitten before — a train/serve-skew bug). After anything model-changing, always
+> run `make calibrate`, which re-runs risk and the bake for you. Never a bare `make risk`.
+
+`make api` serves a local FastAPI dev app; the deployed site is fully static and doesn't
+use it. `make showcase-tiles` bakes LSOA PMTiles for the Vouched map.
+`reports/calibration.json` is git-ignored — it's derived, regenerate it with `make calibrate`.
+
+## Data sources
+
+All Open Government Licence v3.0 (or OGL-compatible public statistics). "Open" spans five
+very different access routes, from a one-click download to a credentialed SFTP drop that
+had to be requested by email.
+
+| Source | Publisher | Licence | Access route | Feeds |
+|---|---|---|---|---|
+| LSOA / Data Zone boundaries + ONSPD postcodes | ONS Open Geography Portal · ScotGov | OGL v3 | ArcGIS REST + bulk ZIP | Spatial backbone; postcode search (2.6M postcodes) |
+| Street-level vehicle crime (E+W) | data.police.uk | OGL v3 | Bulk S3 archive (36 months) | `vehicle_crime` (England & Wales) |
+| Recorded Crime in Scotland | statistics.gov.scot | OGL v3 | **SPARQL** linked-data endpoint | `vehicle_crime` (Scotland), council grain → Data Zone by population |
+| IoD2019 (England) | MHCLG | OGL v3 | Bulk CSV (File 7) | `imd_crime` driver + deprivation diagnostic |
+| WIMD 2019 (Wales) | Welsh Government | OGL v3 | **Official `data_WG` ArcGIS org** (the previously used org was decommissioned mid-2026) | `imd_crime` (Community Safety domain, the documented nearest analogue) |
+| SIMD 2020v2 (Scotland) | Scottish Government · NHS Scotland | OGL v3 | Ranks workbook + open-data CSV | `imd_crime` + deprivation diagnostic |
+| AADF traffic count points | DfT | OGL v3 | Bulk ZIP (~22k GB points) | `aadf_intensity` (mean flow within 2 km of each centroid) |
+| Census 2021 (E+W) / 2022 (Scotland) | ONS via Nomis · NRS via UK Data Service | OGL v3 | Bulk table download | `young_driver_share`, `cars_per_household` |
+| STATS19 road collisions | DfT | OGL v3 | Bulk CSV | Diagnostics (severity-weighted casualties, KSI rate) |
+| Flood extents — England | Environment Agency (RoFRS / NaFRA2) | OGL v3 | **Not a public download**: requested from Defra by email → credentialed **SFTP**, 83-tile geodatabase (326k features); credentials git-ignored | `flood_risk` diagnostic |
+| Flood extents — Wales / Scotland | NRW (DataMapWales) · SEPA | OGL v3 | WFS · ArcGIS REST | `flood_risk` diagnostic |
+| DfT local-authority road traffic | DfT | OGL v3 | Bulk CSV | `traffic_per_capita` diagnostic (the demoted v1) |
+| **Price index (calibration anchor)** | WTW/Confused.com · MoneySuperMarket | Published figures, cited per row | Hand transcription | The £ ground truth — a 137-row panel, **no-invented-figures rule** |
+
+> Contains public sector information licensed under the Open Government Licence v3.0.
+
+Every transform — why each source was chosen and exactly what turned it into a feature — is
+documented in [`DATA_PROVENANCE_AND_TRANSFORMS.md`](DATA_PROVENANCE_AND_TRANSFORMS.md).
 
 ## Coverage
 
 | Nation | Areas | Crime | Collisions | Deprivation | Calibrated premium |
-|--------|------:|:-----:|:----------:|:-----------:|:-----------------:|
-| England | 32,844 | ✓ data.police.uk | ✓ | IoD 2019 | ✓ |
-| Wales | 1,909 | ✓ data.police.uk | ✓ | WIMD 2019 | ✓ |
-| Scotland | 6,976 | ✓ Recorded Crime in Scotland † | ✓ | SIMD 2020v2 | ✓ |
+|---|---:|:---:|:---:|:---:|:---:|
+| England | 32,844 | data.police.uk | ✓ | IoD 2019 | ✓ |
+| Wales | 1,909 | data.police.uk | ✓ | WIMD 2019 | ✓ |
+| Scotland | 6,976 | Recorded Crime in Scotland | ✓ | SIMD 2020v2 | ✓ |
 
-† Scotland publishes vehicle crime only at council grain; it's disaggregated to Data Zone by
-population and ranked **within Scotland** (the E+W and Scottish crime measures aren't comparable on
-an absolute scale). All 41,729 GB areas now carry a calibrated premium — there are no null premiums.
+All 41,729 GB areas carry a calibrated premium — there are no null premiums.
 
-## Data sources & licences
+## What it doesn't claim
 
-Deprivation is incomparable across nations by construction, so each area is ranked **within its
-own nation** (percentile 0–1) before combining. Scotland's vehicle-crime data comes from a
-different council-grain source, so vehicle crime is also ranked within source-comparable groups.
+- **Validation grain ≠ prediction grain.** The model validates at postcode-area / region
+  grain (where published premiums exist) and predicts at LSOA grain. Per-LSOA figures are
+  principled extrapolation — directionally strong rankings, not quotes. This is the single
+  most important caveat.
+- **Small anchor sample, by design.** 106 matched observations is what honestly exists in
+  public. Hence a linear model and the emphasis on hold-outs.
+- **Ecological inference.** Area aggregates predict area premiums; nothing here supports
+  individual-level conclusions (MAUP applies).
+- **Known blind spot.** Wealthy-but-central areas can under-price: deprivation-family
+  signals are low there while real premiums are driven by unmodelled factors (vehicle
+  values, congestion, claims cost).
+- **Scotland caveats.** Crime arrives at council grain and is disaggregated by population,
+  so there's no within-council variation; Scottish anchors validate at a thinner sample
+  than E+W.
+- **Northern Ireland is excluded** — data.police.uk and STATS19 both omit NI, so an NI area
+  would carry only half its features.
+- **The anchor is a market average,** transcribed from published indices, not claims data.
 
-- **Vehicle crime (E+W)** — https://data.police.uk/  (Open Government Licence).
-  data.police.uk has no Scottish/NI coverage.
-- **Vehicle crime (Scotland)** — "Recorded Crime in Scotland" (Theft of/from a motor vehicle) by
-  council area, https://statistics.gov.scot/data/recorded-crime (OGL), queried over SPARQL and
-  disaggregated to Data Zone by population.
-- **Road collisions (STATS19, GB)** — https://www.data.gov.uk/dataset/cb7ae6f0-4be6-4935-9277-47e5ce24a11f/road-accidents-safety-data
-  (OGL). Scotland's LSOA field is blank in STATS19, so Scottish collisions are assigned a
-  Data Zone by spatial join.
-- **Traffic exposure (Phase 3)** — DfT Road traffic statistics https://roadtraffic.dft.gov.uk/downloads
-  (OGL). v1 local-authority traffic / residents is a diagnostic; **v2 point-level AADF** (count-point
-  Annual Average Daily Flow, `dft_traffic_counts_aadf.zip`) is averaged within 2 km of each area
-  centroid and is the premium's traffic-intensity driver.
-- **Deprivation** — England IoD2019 https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019 ·
-  Wales WIMD 2019 https://www.gov.wales/welsh-index-multiple-deprivation-full-index-update-ranks-2019 ·
-  Scotland SIMD 2020v2 https://www.gov.scot/collections/scottish-index-of-multiple-deprivation-2020/
-  (all OGL). SIMD ranks via NHS Scotland open data.
-- **Boundaries** — E+W LSOAs + ONSPD https://geoportal.statistics.gov.uk/ ·
-  Scotland Data Zones 2011 https://spatialdata.gov.scot/ (gov.scot, OGL).
-- **Population** — England (IoD2019 mid-2015) · Scotland (Data Zone totpop2011) ·
-  Wales (2011 Census KS101EW via NOMIS https://www.nomisweb.co.uk/).
-- **Demographic controls** — E+W Census 2021 age/car availability via Nomis; Scotland Census 2022
-  UV103/UV405 on 2011 Data Zones via UK Data Service CSV (OGL-compatible public statistics).
-- **Price index (calibration anchor)** — https://www.confused.com/car-insurance/price-index
-  (WTW/Confused.com; transcribed quarterly figures, cited per row in the panel) plus
-  MoneySuperMarket published regional figures for London, Scotland and Wales (April 2026).
+## Quickstart
 
-> Contains public sector information licensed under the Open Government Licence v3.0.
+```bash
+uv sync                       # or: python -m venv .venv && source .venv/bin/activate && pip install -e .
+cp .env.example .env
 
-## Calibration results
+make ingest                   # ~20+ min first run; downloads several GB into data/raw
+make features
+make calibrate                # fits the model, then re-runs risk + showcase-data for you
 
-The model predicts a **relative territorial index** — `log(area premium ÷ national average)` — on
-**percentile** features (which bounds per-LSOA extrapolation, see MODEL_REVIEW.md §3.2), via panel OLS
-with area-clustered SEs, ridge CV, leave-one-area-out, and a temporal back-test against the WTW index
-(106 matched obs / 30 areas — including four Scottish regions and three MoneySuperMarket broad
-regions; Phase 2). It separates **place** drivers (vehicle crime, deprivation, **traffic intensity**)
-from **demographic-composition controls** (young-driver share, cars/household) so the place effect is
-estimated *net of who lives there* (NEXT_PHASE_DESIGN.md §2). Phase 3 replaced raw population density
-with **point-level AADF traffic intensity** (mean Annual Average Daily Flow of DfT count points within
-2 km of each area) — a direct measure of local road business that, unlike density, is an independent
-significant predictor. LA-traffic-per-resident, KSI-per-vehicle-mile, `road_casualties` and
-`population_density` are retained as **map diagnostics**, not premium drivers (see `PHASE3_PLAN.md`).
+pytest -q                     # or: make test
+ruff check src
+```
 
-| Metric | Value |
-|--------|------:|
-| Panel R² (log-index) | 0.917 |
-| CV-R² (ridge, 5-fold) | 0.887 |
-| Leave-one-area-out MAE | £89 |
-| Spearman (predicted vs actual premium) | 0.968 |
-| Spatial multiplier (WC London ÷ Rugby) | ≈ 1.9× |
-| Matched anchor obs / areas | 106 / 30 (incl. MSM) |
-| Feature VIFs (all premium features) | 2–6 (no collinearity) |
+Run the map locally:
 
-`reports/feature_analysis.md` reports per-feature partial correlation, VIF and a keep/drop verdict.
-Headline finding: **young-driver share is the strongest independent predictor** (partial r +0.57),
-followed by **traffic intensity** (+0.38). Replacing population density (always a collinear urban-
-intensity proxy, VIF 13–60) with point-level AADF resolved the long-standing "it's just a density
-model" critique — **every premium feature is now an independent significant keeper** (VIF 2–6). Per
-area we expose three numbers: full premium, **place-only** (at national-average demographics), and the
-**composition uplift**.
+```bash
+docker compose up --build     # mounts ./data and ./reports — no re-ingest inside the image
+# then open http://localhost:8000
 
-> **Grain caveat:** validation holds at postcode-area grain. At individual-LSOA grain predictions are
-> noisier — e.g. wealthy-but-central LSOAs can be under-priced because deprivation (a dominant clean
-> signal) is low there while real premiums are driven by factors not yet modelled (vehicle value,
-> congestion, claims cost — Phases 3–4).
+# or, frontend only:
+cd frontend && npm run dev
+```
 
-## Current and deferred work
+The public build is fully static: `cd frontend && GITHUB_PAGES=1 npm run build`, deployed by
+`.github/workflows/deploy-pages.yml` on every push to `main`. Postcode search resolves
+client-side (postcodes.io for coordinates + point-in-polygon, because postcodes.io now
+returns 2021/2022 codes that don't match the model's 2011 areas — so it matches on location,
+not code).
 
-- **Phase 3 done** — point-level **AADF traffic intensity** is now a premium driver and replaced
-  population density (LOAO MAE £104→£89; all features VIF 2–6). LA-traffic-per-resident and the
-  KSI-per-vehicle-mile rate were evidence-gated to **map diagnostics**. See `PHASE3_PLAN.md`.
-- **Phase 4 started** — flood risk. Ingest scaffold (`src/ingest/flood.py`), areal-overlay
-  transform and plumbing are in place; `flood_risk` activates as a place candidate once the
-  EA/NRW/SEPA High+Medium extents are dropped under `data/raw/flood/`. See `PHASE4_PLAN.md`.
+## Layout
 
-- **Northern Ireland** — data.police.uk and STATS19 both exclude NI, so an NI area would carry
-  only 2 of 4 features. NI is deferred to a later phase.
-- **PMTiles frontend** — serving ~42k areas as a vector tileset rather than a single GeoJSON
-  (currently ~15 MB gzipped) is Phase D, not yet implemented.
+```
+config/config.yaml        weights, years, feature buckets, paths — single source of truth
+src/ingest/               one module per source → data/interim/*.parquet
+src/transform/            aggregate_to_lsoa.py (M2) · build_risk_index.py (M3)
+src/calibrate/            wtw_index.py (anchor panel) · calibrate.py (regression + validation ladder)
+src/showcase/             bake_static.py (served GeoJSON) · bake_tiles.py (PMTiles)
+src/api/main.py           FastAPI — local dev only
+frontend/                 Vite + React + TypeScript + MapLibre GL
+tests/                    pytest, roughly one file per module
+data/                     git-ignored — never commit
+```
+
+## Docs
+
+| Doc | What's in it |
+|---|---|
+| [`docs/PROJECT_SUMMARY.html`](docs/PROJECT_SUMMARY.html) | Shareable one-page write-up — open it in any browser |
+| [`AUDIT.md`](AUDIT.md) | Model verification: coefficients, tail reconstructions, sign checks, uncertainty, the 2026-07 evidence gate |
+| [`DATA_PROVENANCE_AND_TRANSFORMS.md`](DATA_PROVENANCE_AND_TRANSFORMS.md) | Every source, why it was chosen, the exact transform and normalisation |
+| [`docs/superpowers/info/PROJECT_TECHNICAL_OVERVIEW.md`](docs/superpowers/info/PROJECT_TECHNICAL_OVERVIEW.md) | Model maths, architecture, evolution decisions |
+| [`docs/superpowers/info/STATUS.md`](docs/superpowers/info/STATUS.md) | Current state, per-phase completion log, known limitations |
+| [`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md) | Working agreement and conventions for coding agents |
+
+Phase plans and older design docs under `docs/superpowers/` are dated historical records —
+where they disagree with `AUDIT.md` (2026-07 addendum) or `STATUS.md`, those two win.
+
+## Elsewhere
+
+The model also powers the postcode-district premium estimates behind
+[vouched.autos](https://vouched.autos)'s First-Car Finder, via a frozen data contract with
+provenance stamps (model commit, calibration date, n, R²) — every model-changing ship here
+regenerates that pack.

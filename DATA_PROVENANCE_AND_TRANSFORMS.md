@@ -226,8 +226,10 @@ if method == "percentile":
     return s.rank(pct=True) * 100          # → 0–100
 ```
 - Every model feature is converted to its **GB-wide rank-percentile (0–100)** —
-  *except* the two that rank **within a group**:
-  - `deprivation` is already a within-nation percentile from ingest (§2.2).
+  *except* those that rank **within a group**:
+  - `deprivation` and the IMD sub-domains (`imd_crime`, `imd_income`) are already
+    within-nation percentiles from ingest (§2.2); `flood_risk` is ranked within nation too
+    (§2.10).
   - `vehicle_crime` is ranked **within source-group** (`ew` vs `scotland`) at this stage,
     via `groupby(...).transform`, because the two crime sources are incomparable.
 - **Why percentile and not raw / z-score / min-max:** percentiles are **bounded [0,100]**,
@@ -261,10 +263,13 @@ producing one row per `area_code`:
 | Feature | Bucket | Units (pre-percentile) | Source(s) |
 |---|---|---|---|
 | `vehicle_crime` | place | incidents / 1k pop / yr (within-source ranked) | police.uk (E+W) · gov.scot SPARQL (S) |
-| `deprivation` | place | within-nation percentile 0–1 | IoD2019 / WIMD2019 / SIMD2020v2 |
+| `imd_crime` | place | within-nation percentile 0–1 | IoD2019 crime · WIMD community safety · SIMD crime |
 | `aadf_intensity` | place | mean AADF within 2 km | DfT count points |
 | `young_driver_share` | composition | share of 17–24 | Census 2021 (E+W) / 2022 (S) |
 | `cars_per_household` | composition | mean, capped 3+ | Census 2021 (E+W) / 2022 (S) |
+| `deprivation` | diagnostic | within-nation percentile 0–1 (replaced by `imd_crime` as a driver, 2026-07 gate) | IoD2019 / WIMD2019 / SIMD2020v2 |
+| `imd_income` | diagnostic | within-nation percentile 0–1 | IoD2019 / WIMD / SIMD income domains |
+| `flood_risk` | diagnostic | share of area in a High/Medium zone (within-nation ranked) | EA RoFRS · NRW · SEPA |
 | `road_casualties` | diagnostic | severity-wtd / 1k pop / yr | STATS19 |
 | `ksi_..._per_billion_vehicle_miles` | diagnostic | KSI / traffic | STATS19 + DfT traffic |
 | `traffic_per_capita` | diagnostic | traffic / resident | DfT LA traffic |
