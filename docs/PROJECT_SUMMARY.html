@@ -1,0 +1,460 @@
+<title>GB Car-Insurance Risk Model</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #F7F8F6;
+    --panel: #FFFFFF;
+    --ink: #1B2430;
+    --muted: #5C6875;
+    --faint: #8A94A0;
+    --rule: #DDE3E1;
+    --accent: #0E6E6B;
+    --accent-soft: #D7E6E4;
+    --accent-ink: #0A514F;
+    --warn: #8A5A1E;
+    --warn-soft: #F3E8D8;
+    --mono-bg: #EEF2F1;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101720;
+      --panel: #171F2A;
+      --ink: #E8ECEF;
+      --muted: #9AA6B2;
+      --faint: #6E7A87;
+      --rule: #2A3441;
+      --accent: #52B8B2;
+      --accent-soft: #143733;
+      --accent-ink: #7ACFC9;
+      --warn: #D9A45B;
+      --warn-soft: #2E2517;
+      --mono-bg: #1E2833;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101720;
+    --panel: #171F2A;
+    --ink: #E8ECEF;
+    --muted: #9AA6B2;
+    --faint: #6E7A87;
+    --rule: #2A3441;
+    --accent: #52B8B2;
+    --accent-soft: #143733;
+    --accent-ink: #7ACFC9;
+    --warn: #D9A45B;
+    --warn-soft: #2E2517;
+    --mono-bg: #1E2833;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 16.5px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 20px 80px;
+  }
+  .wrap { max-width: 700px; margin: 0 auto; }
+  .wide { max-width: 940px; margin: 0 auto; }
+  h1, h2, h3 {
+    font-family: "Bricolage Grotesque", "Avenir Next", "Helvetica Neue", sans-serif;
+    text-wrap: balance;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+  }
+  h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 700; margin: 0 0 14px; }
+  h2 { font-size: clamp(23px, 3.4vw, 29px); font-weight: 600; margin: 0 0 16px; }
+  h3 { font-size: 18px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent-ink); text-decoration-color: var(--accent); text-underline-offset: 2px; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 10px;
+  }
+  header.hero { padding: 64px 0 8px; }
+  .standfirst { font-size: 19px; color: var(--muted); max-width: 620px; }
+  .hero-links { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 18px; font-family: "Bricolage Grotesque", sans-serif; font-size: 14.5px; }
+  section { margin-top: 58px; }
+  .mono, code {
+    font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+    font-size: 0.86em;
+  }
+  code { background: var(--mono-bg); padding: 1px 5px; border-radius: 3px; }
+  .num { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+
+  /* stat band */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 34px 0 0;
+  }
+  .stat { background: var(--panel); padding: 16px 16px 14px; }
+  .stat b {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 23px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    letter-spacing: -0.02em;
+  }
+  .stat span { font-size: 12.5px; color: var(--muted); line-height: 1.35; display: block; margin-top: 3px; }
+
+  /* quintile ramp strip */
+  .ramp { display: flex; height: 6px; margin: 26px 0 0; }
+  .ramp i { flex: 1; }
+
+  /* pipeline */
+  .pipe { display: flex; flex-direction: column; gap: 0; margin-top: 22px; }
+  .stage {
+    display: grid;
+    grid-template-columns: 118px 1fr;
+    gap: 18px;
+    padding: 16px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .stage:last-child { border-bottom: 1px solid var(--rule); }
+  .stage .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    padding-top: 2px;
+  }
+  .stage .tag em { display: block; font-style: normal; color: var(--faint); font-weight: 400; margin-top: 2px; }
+  .stage p { margin: 0; font-size: 15px; color: var(--muted); }
+  .stage p strong { color: var(--ink); font-weight: 600; }
+
+  /* tables */
+  .tblwrap { overflow-x: auto; margin-top: 20px; border: 1px solid var(--rule); }
+  table { border-collapse: collapse; width: 100%; min-width: 780px; background: var(--panel); }
+  th {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--faint);
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    font-weight: 600;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.src { font-family: "Bricolage Grotesque", sans-serif; font-weight: 600; font-size: 14px; white-space: nowrap; }
+  td.src small { display: block; font-weight: 400; color: var(--faint); font-family: "IBM Plex Mono", monospace; font-size: 11px; margin-top: 2px; }
+  td .feed { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent-ink); }
+  .kept, .diag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 1px 7px;
+    border-radius: 9px;
+    white-space: nowrap;
+  }
+  .kept { background: var(--accent-soft); color: var(--accent-ink); }
+  .diag { background: var(--warn-soft); color: var(--warn); }
+
+  /* callouts */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--panel);
+    padding: 14px 18px;
+    margin: 22px 0;
+    font-size: 15px;
+  }
+  .caveats { display: grid; gap: 0; margin-top: 18px; }
+  .caveat { border-top: 1px solid var(--rule); padding: 13px 0; font-size: 15px; color: var(--muted); }
+  .caveat:last-child { border-bottom: 1px solid var(--rule); }
+  .caveat strong { color: var(--ink); font-weight: 600; }
+
+  .formula {
+    background: var(--mono-bg);
+    border: 1px solid var(--rule);
+    padding: 14px 18px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13.5px;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin: 18px 0;
+    white-space: nowrap;
+  }
+  footer {
+    margin-top: 70px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--faint);
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="hero wrap">
+  <p class="eyebrow">Personal project · open data · England, Wales &amp; Scotland</p>
+  <h1>GB Car-Insurance Risk Model</h1>
+  <p class="standfirst">A territorial car-insurance pricing model covering all 41,729 census
+  small areas of Great Britain, built entirely from open data, calibrated against published
+  price indices, and shipped as an interactive premium map. Every estimate decomposes into
+  exact £ steps, ships with an honest uncertainty band, and traces to a cited source.</p>
+  <div class="hero-links">
+    <a href="https://anugnane.github.io/london-insurance-risk/" target="_blank" rel="noopener noreferrer">Live map ↗</a>
+    <a href="https://vouched.autos/risk-map" target="_blank" rel="noopener noreferrer">Consumer version at vouched.autos ↗</a>
+  </div>
+  <div class="ramp" aria-hidden="true">
+    <i style="background:#D7E6E4"></i><i style="background:#A9CCC8"></i><i style="background:#6FA9A4"></i><i style="background:#3B8983"></i><i style="background:#0E6E6B"></i>
+  </div>
+</header>
+
+<div class="wide">
+  <div class="stats">
+    <div class="stat"><b>41,729</b><span>LSOAs / Data Zones priced (32,844 England · 1,909 Wales · 6,976 Scotland)</span></div>
+    <div class="stat"><b>R² 0.930</b><span>panel fit on 106 matched anchor observations (30 areas, up to 11 quarters)</span></div>
+    <div class="stat"><b>£76.51</b><span>leave-one-area-out MAE — strict spatial holdout</span></div>
+    <div class="stat"><b>£69.76</b><span>temporal back-test MAE (train ≤T, predict T+1)</span></div>
+    <div class="stat"><b>0.974</b><span>Spearman rank agreement, predicted vs actual</span></div>
+    <div class="stat"><b>£186–£1,578</b><span>modelled annual-premium span across GB</span></div>
+  </div>
+</div>
+
+<section class="wrap">
+  <p class="eyebrow">The question</p>
+  <h2>Why does the same driver pay £2,000 in one postcode and £700 in another?</h2>
+  <p>Insurers price location aggressively but publish nothing about how. This model reverse-engineers
+  the territorial effect from the outside: it takes the open data an insurer's territory model
+  plausibly summarises — vehicle crime, area deprivation, traffic intensity, who lives there — and
+  regresses it against the only ground truth that exists publicly: published premium indices
+  (WTW/Confused.com quarterly index, MoneySuperMarket regional figures), transcribed into a
+  137-row anchor panel under a strict <strong>no-invented-figures rule</strong> — every £ figure
+  traces to an explicitly published, cited source.</p>
+  <p>A deliberate design choice follows from that: the model predicts a <strong>relative
+  territorial index</strong> — each area's premium as a multiple of the national average — not
+  absolute £ directly. Modelling the ratio strips out the national price level and its drift over
+  time, isolating the thing the project is actually about: <em>the effect of place</em>. Absolute £
+  is reconstructed at the end by pinning to the latest published national average (£558.55).</p>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">The model</p>
+  <h2>One regression, aggressively audited</h2>
+  <p>The core is a deliberately small model — ordinary least squares on the log relative index,
+  with area-clustered standard errors — because the calibration sample is honest but small
+  (106 observations across 30 areas). The sophistication is spent on <strong>auditing</strong> it
+  rather than growing it:</p>
+  <div class="formula">log(premium ÷ national&nbsp;avg) = β₀ + β·place[vehicle_crime, imd_crime, aadf_intensity] + β·composition[young_driver_share, cars_per_household]</div>
+  <p>Every feature enters as a <strong>rank percentile</strong> (0–100), ranked within comparable
+  groups (within nation, or England+Wales vs Scotland for crime, whose recording definitions
+  differ). Percentiles bound extrapolation — no outlier area can blow the prediction up — and make
+  three nations' incompatible source scales comparable by construction.</p>
+
+  <h3>Features earn their place through an evidence gate</h3>
+  <p>Nothing is in the premium model by intuition. A candidate feature must show an independent
+  partial correlation (p&nbsp;&lt;&nbsp;0.05) at acceptable collinearity (VIF&nbsp;&lt;&nbsp;10),
+  or win a leave-one-area-out head-to-head. The gate has real veto power — it has said
+  <em>no</em> more often than yes:</p>
+  <div class="tblwrap"><table>
+    <tr><th>Feature</th><th>Verdict</th><th>Evidence</th></tr>
+    <tr><td class="src">Young-driver share</td><td><span class="kept">DRIVER</span></td><td>strongest independent predictor (partial r ≈ +0.57) — kept as a <em>composition control</em></td></tr>
+    <tr><td class="src">IMD crime sub-domain</td><td><span class="kept">DRIVER</span></td><td>partial r +0.43, p=3.8×10⁻⁶ — <strong>replaced</strong> overall deprivation, which collapsed to p=0.78 once its crime component stood alone</td></tr>
+    <tr><td class="src">Vehicle crime rate</td><td><span class="kept">DRIVER</span></td><td>independent significant keeper in every wave</td></tr>
+    <tr><td class="src">Cars per household</td><td><span class="kept">DRIVER</span></td><td>composition control, negative sign (car-dense suburbs price lower)</td></tr>
+    <tr><td class="src">AADF traffic intensity</td><td><span class="kept">DRIVER</span></td><td>kept on LOAO head-to-head: dropping it worsens MAE £76.51 → £82.54</td></tr>
+    <tr><td class="src">Population density</td><td><span class="diag">GATED OUT</span></td><td>always collinear (VIF 13–60) — replaced by point-level AADF, which resolved the "it's just a density model" critique</td></tr>
+    <tr><td class="src">Flood risk</td><td><span class="diag">GATED OUT</span></td><td>wrong-signed for car premiums (r = −0.94 — it tracks rurality, which is cheap); ingested for all three nations, shown as a map diagnostic, banked as evidence for a future home-insurance line</td></tr>
+    <tr><td class="src">Road casualties / KSI</td><td><span class="diag">GATED OUT</span></td><td>no independent signal once traffic exposure is controlled (partial p ≈ 0.44)</td></tr>
+    <tr><td class="src">IMD income sub-domain</td><td><span class="diag">GATED OUT</span></td><td>VIF 33 — redundant within the deprivation family</td></tr>
+  </table></div>
+
+  <h3>Place vs composition — the model's most honest finding</h3>
+  <p>Demographics enter as <strong>controls</strong>, so each area gets three numbers: the full
+  premium, a place-only counterfactual (demographics held at the national median), and the
+  composition uplift between them. Composition alone explains more of the spread
+  (R²&nbsp;0.88) than place alone (R²&nbsp;0.76) — <em>who lives there</em> beats <em>what
+  happens there</em>. That is reported as a finding, not hidden as an inconvenience.</p>
+
+  <h3>Explainable to the pound</h3>
+  <p>Each area's premium decomposes through an exact <strong>LMDI (logarithmic-mean) waterfall</strong>:
+  a £ step per factor from the £537 baseline (all features at the median), summing to the
+  headline premium exactly — no residual, independent of factor ordering — with a
+  train/serve-consistency test guarding the served map against stale coefficients.</p>
+
+  <h3>Uncertainty, stated honestly</h3>
+  <p>Intervals come from a 200-rep cluster bootstrap (resampling anchor <em>areas</em>, not rows)
+  — but coefficient uncertainty alone gave an implausibly tight ±£241 median width, so bands are
+  widened by the out-of-sample LOAO residual variance to an honest median width of
+  <span class="num">£373</span>. Every one of the 41,729 areas ships with its
+  <code>premium_low</code>/<code>premium_high</code>.</p>
+
+  <div class="note">Sanity anchors the docs keep returning to: West-Central London prices at
+  ≈1.9× Rugby; the City of London at ≈2.4× Truro — consistent with the published index
+  geography the model calibrates against.</div>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">Pipeline</p>
+  <h2>Open data in, priced map out</h2>
+  <p>Four make-target stages, each writing intermediate Parquet files, so every step is
+  inspectable and re-runnable. One module per source, pure-function cores with isolated I/O,
+  ~one pytest file per module. All spatial maths in the British National Grid (EPSG:27700);
+  reprojection to WGS84 happens only at final map output.</p>
+  <div class="pipe">
+    <div class="stage"><div class="tag">M1 · ingest<em>src/ingest/*</em></div>
+      <p><strong>Ten source modules → data/interim/*.parquet.</strong> Each pulls one open
+      source (bulk CSV, ArcGIS REST, SPARQL, WFS, SFTP), validates it, and normalises to the
+      2011 LSOA / Data-Zone geography that all sources share.</p></div>
+    <div class="stage"><div class="tag">M2 · features<em>aggregate_to_lsoa</em></div>
+      <p><strong>Join everything onto the boundary master list</strong> — one row per area:
+      crime rates per 1k population per year, severity-weighted casualties, deprivation ranks,
+      traffic intensity, demographics. Missing features reweight per-row rather than being
+      zero-filled.</p></div>
+    <div class="stage"><div class="tag">M3 · risk<em>build_risk_index</em></div>
+      <p><strong>Percentile features + calibrated coefficients → £.</strong> Reads the
+      calibration, reconstructs each area's premium, place-only counterfactual, waterfall
+      contributions, intervals and quintile — writes <code>lsoa_risk.parquet</code> and the
+      GeoJSON the map serves.</p></div>
+    <div class="stage"><div class="tag">M4 · calibrate<em>src/calibrate/*</em></div>
+      <p><strong>The regression and its audit.</strong> Anchor-panel ingest, OLS with clustered
+      SEs, ridge cross-validation, leave-one-area-out, temporal back-test, VIF/partial-correlation
+      feature gate — then re-runs M3 and the map bake so served data can never lag the
+      coefficients.</p></div>
+    <div class="stage"><div class="tag">bake<em>showcase</em></div>
+      <p><strong>Topology-aware simplification</strong> (mapshaper) of 41,729 polygons into the
+      static GeoJSON a React + MapLibre frontend streams from GitHub Pages — no server in
+      production; the FastAPI app is a local dev convenience only.</p></div>
+  </div>
+</section>
+
+<section class="wide">
+  <p class="eyebrow" style="max-width:700px;margin-left:auto;margin-right:auto;">Data sources</p>
+  <div class="wrap"><h2>Ten open sources, one geography</h2>
+  <p>Everything is public and licensed under the Open Government Licence. The unglamorous core
+  decision: standardise on <strong>2011 census geography</strong> — the lowest common denominator
+  that deprivation indices, boundaries and Scottish Data Zones all share.</p></div>
+  <div class="tblwrap"><table>
+    <tr><th>Source</th><th>Access</th><th>Feeds</th><th>The interesting transform</th></tr>
+    <tr><td class="src">ONS / ScotGov boundaries<small>area_boundaries.parquet</small></td>
+      <td>ArcGIS REST</td><td><span class="feed">spatial backbone</span></td>
+      <td>Paginated ESRI features → ring-winding repair → unified GB schema; areas computed in EPSG:27700; <code>make_valid</code> is always the <em>last</em> geometry op (re-simplifying after it once re-broke two Scottish areas)</td></tr>
+    <tr><td class="src">data.police.uk<small>vehicle_crime.parquet</small></td>
+      <td>bulk archive</td><td><span class="feed">vehicle_crime (E+W)</span></td>
+      <td>36 months of street-level vehicle crime, already LSOA-coded → incidents per 1k residents per year</td></tr>
+    <tr><td class="src">Recorded Crime in Scotland<small>scotland_vehicle_crime.parquet</small></td>
+      <td>SPARQL</td><td><span class="feed">vehicle_crime (Scot)</span></td>
+      <td>Council-level theft-of/from-vehicle counts disaggregated to Data Zones by population share; ranked <em>within Scotland only</em> — recording definitions differ from E+W, so absolute rates are never compared cross-border</td></tr>
+    <tr><td class="src">IoD2019 / WIMD / SIMD<small>deprivation.parquet</small></td>
+      <td>CSV · ArcGIS · workbook</td><td><span class="feed">imd_crime + diagnostics</span></td>
+      <td>Three incompatible national indices → within-nation percentile ranks; the crime <em>sub-domain</em> is the premium driver (Wales has no pure crime domain — its Community Safety domain is the documented nearest analogue)</td></tr>
+    <tr><td class="src">DfT AADF count points<small>aadf.parquet</small></td>
+      <td>bulk ZIP</td><td><span class="feed">aadf_intensity</span></td>
+      <td>~22k GB traffic count points → KD-tree radius query: mean annual daily flow of points within 2 km of each area centroid (nearest-point fallback recorded for audit)</td></tr>
+    <tr><td class="src">Census 2021 / 2022<small>demographics.parquet</small></td>
+      <td>Nomis · UKDS</td><td><span class="feed">young_driver_share · cars_per_household</span></td>
+      <td>E+W age bands split uniformly-within-band for the 17–24 share; Scotland's 2022 tables publish exact single-year counts on 2011 Data Zones — no crosswalk needed</td></tr>
+    <tr><td class="src">DfT STATS19<small>collisions.parquet</small></td>
+      <td>bulk CSV</td><td><span class="feed">diagnostics only</span></td>
+      <td>Severity-weighted collisions (slight 1 / serious 3 / fatal 8); Scottish rows carry no area code natively → point-in-polygon spatial join</td></tr>
+    <tr><td class="src">EA · NRW · SEPA flood<small>flood.parquet</small></td>
+      <td>SFTP · WFS · REST</td><td><span class="feed">diagnostic only</span></td>
+      <td>High+Medium flood extents (326k England features) dissolved then areal-overlaid against every area → % of area at risk; within-nation ranked because "Medium" means 1-in-100yr to the EA and 1-in-200yr to SEPA</td></tr>
+    <tr><td class="src">DfT LA road traffic<small>traffic.parquet</small></td>
+      <td>bulk CSV</td><td><span class="feed">diagnostic only</span></td>
+      <td>The cautionary tale: local-authority traffic per resident is an <em>inverse</em>-density proxy (rural motorway corridors score highest) — demoted, and the reason point-level AADF exists</td></tr>
+    <tr><td class="src">ONSPD<small>postcode_lookup.parquet</small></td>
+      <td>bulk ZIP</td><td><span class="feed">postcode search</span></td>
+      <td>2.7M postcodes filtered to GB; one unified column maps each postcode to its LSOA or Data Zone (the newer NSPL product dropped that column in 2026 — hence ONSPD)</td></tr>
+  </table></div>
+  <div class="wrap"><p style="margin-top:16px;font-size:14px;color:var(--muted);">Calibration
+  ground truth (not a feature): a 137-row anchor panel hand-transcribed from the WTW/Confused.com
+  quarterly price index and MoneySuperMarket's published regional figures, pooled with a source
+  fixed-effect — 106 matched observations across 30 areas survive into the regression.</p></div>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">Honesty</p>
+  <h2>What it doesn't claim</h2>
+  <div class="caveats">
+    <div class="caveat"><strong>Validation grain ≠ prediction grain.</strong> The model validates at postcode-area/region grain (where published premiums exist) and predicts at LSOA grain. Per-LSOA figures are principled extrapolation — directionally strong rankings, not precise quotes.</div>
+    <div class="caveat"><strong>Small anchor sample, by design.</strong> 106 observations is what honestly exists in public. That is why the model is linear, and why LOAO / temporal back-tests / ridge CV carry the argument rather than fit statistics.</div>
+    <div class="caveat"><strong>Ecological inference.</strong> Area aggregates predict area premiums; nothing here supports individual-level conclusions.</div>
+    <div class="caveat"><strong>Known blind spot.</strong> Wealthy-but-central areas can under-price: deprivation-family signals are low there while real premiums are driven by unmodelled factors (vehicle values, congestion, claims cost).</div>
+    <div class="caveat"><strong>Scotland caveats.</strong> Crime arrives at council grain (no within-council variation) and Scottish anchors validate the place-effect at a thinner sample than E+W.</div>
+    <div class="caveat"><strong>Northern Ireland excluded</strong> — no open street-level crime source; the model would carry only half its features there.</div>
+  </div>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">Evolution</p>
+  <h2>Lessons the model was forced to learn</h2>
+  <p>The current form is the residue of arguments the data won:</p>
+  <div class="caveats">
+    <div class="caveat"><strong>Model the ratio, not the £.</strong> Absolute premiums conflate national price drift with the spatial effect; the log relative index isolates place.</div>
+    <div class="caveat"><strong>Replace proxies when the critique is valid.</strong> Population density (VIF 13–60) was swapped for measured traffic flow — LOAO MAE fell £104 → £89 and every surviving feature became independently significant.</div>
+    <div class="caveat"><strong>Give the gate veto power.</strong> The 2026-07 wave tested three candidates; the gate admitted one (IMD crime, which displaced its own parent index) and rejected two — including flood risk, whose wrong sign for <em>car</em> premiums is now banked evidence for a home-insurance line.</div>
+    <div class="caveat"><strong>Explainability must reconcile.</strong> Driver breakdowns that "gesture" at contributions were replaced by an exact decomposition that sums to the pound, with a serve-consistency test that has already caught two real staleness bugs.</div>
+    <div class="caveat"><strong>Composition dominating place is a finding.</strong> Rather than tuning it away, the model reports both numbers per area — and the place-only counterfactual became a product feature.</div>
+  </div>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">Sources &amp; access</p>
+  <h2>Where the data actually comes from</h2>
+  <p>Every source is open and OGL-licensed, but "open" spans five very different access routes —
+  from a one-click bulk download to a credentialed SFTP drop that had to be requested by email:</p>
+  <div class="caveats">
+    <div class="caveat"><strong>Bulk downloads</strong> — street-level crime archive from
+      <a href="https://data.police.uk" target="_blank" rel="noopener noreferrer">data.police.uk</a>;
+      STATS19 road-safety data and AADF traffic count points from
+      <a href="https://roadtraffic.dft.gov.uk" target="_blank" rel="noopener noreferrer">DfT road traffic statistics</a> /
+      <a href="https://www.data.gov.uk" target="_blank" rel="noopener noreferrer">data.gov.uk</a>;
+      English Indices of Deprivation 2019 from
+      <a href="https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019" target="_blank" rel="noopener noreferrer">gov.uk</a>;
+      the ONS Postcode Directory and LSOA boundaries from the
+      <a href="https://geoportal.statistics.gov.uk" target="_blank" rel="noopener noreferrer">ONS Open Geography Portal</a>.</div>
+    <div class="caveat"><strong>APIs</strong> — Scottish recorded crime via the
+      <a href="https://statistics.gov.scot" target="_blank" rel="noopener noreferrer">statistics.gov.scot</a>
+      SPARQL linked-data endpoint; Welsh WIMD via the Welsh Government's ArcGIS services (the
+      original ArcGIS organisation was decommissioned mid-project — the ingest now targets the
+      official <span class="mono">data_WG</span> org); Scottish Data Zone boundaries and SIMD from
+      <a href="https://www.gov.scot" target="_blank" rel="noopener noreferrer">gov.scot</a> /
+      <a href="https://www.opendata.nhs.scot" target="_blank" rel="noopener noreferrer">NHS Scotland open data</a>;
+      census tables via <a href="https://www.nomisweb.co.uk" target="_blank" rel="noopener noreferrer">Nomis</a>
+      (England &amp; Wales, 2021) and the UK Data Service (Scotland, 2022).</div>
+    <div class="caveat"><strong>Flood data — the hard one.</strong> Wales (NRW FRAW) streams from
+      <a href="https://datamap.gov.wales" target="_blank" rel="noopener noreferrer">DataMapWales</a> WFS and Scotland from
+      <a href="https://www.sepa.org.uk/environment/water/flooding/flood-maps/" target="_blank" rel="noopener noreferrer">SEPA's flood maps</a>
+      (whose API intermittently rejects complex geometries — the ingest retries feature-by-feature).
+      England's RoFRS/NaFRA2 extents, however, are <em>not</em> a public download: the full dataset
+      had to be <strong>requested from Defra's data services by email</strong>, which provisioned
+      credentialed SFTP access to an 83-tile geodatabase (326k flood-extent features; credentials
+      kept out of git). A reminder that "open data" sometimes still means asking a human.</div>
+    <div class="caveat"><strong>Hand transcription</strong> — the calibration anchors:
+      the <a href="https://www.confused.com/car-insurance/price-index" target="_blank" rel="noopener noreferrer">WTW/Confused.com quarterly price index</a>
+      and MoneySuperMarket's published regional premiums are transcribed by hand into a cited
+      per-row panel — the project's strict rule being that no premium figure exists in the model
+      without a published, cited source behind it.</div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <p>Python (pandas · GeoPandas · statsmodels) + React/MapLibre · deployed on GitHub Pages ·
+  all sources Open Government Licence v3 with per-source attribution in the repo's provenance
+  docs. The model also powers the postcode-district premium estimates behind
+  <a href="https://vouched.autos" target="_blank" rel="noopener noreferrer">vouched.autos</a>'s
+  First-Car Finder via a frozen data contract. Figures as of the July 2026 calibration.</p>
+</footer>
