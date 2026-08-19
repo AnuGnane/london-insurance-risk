@@ -10,7 +10,6 @@ You are building a UK/GB car-insurance risk model - read the README.md for more 
    ONS lookup and say so in code comments.
 4. **Config over constants.** Years, weights, region code, paths, normalisation method all live in
    `config/config.yaml` and are read via `src/common/config.py`. Don't hard-code them in modules.
-```
 
 ## Definition of done (per module)
 - Pure, testable functions; side effects (download / write) isolated in `main()` or `run()`.
