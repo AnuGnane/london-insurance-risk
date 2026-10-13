@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Feature, Polygon } from 'geojson';
-import type { LsoaProps } from './types';
+import type { LsoaProps, WaterfallStep } from './types';
 import {
   buildLookup,
   computeDistribution,
   dominantDriver,
+  EXPLAIN_MIN_STEP_GBP,
+  explainArea,
   featureAtPoint,
   featureBounds,
   featureToDetail,
@@ -255,5 +257,61 @@ describe('dominantDriver', () => {
   });
   it('returns null when no driver carries a contribution', () => {
     expect(dominantDriver({ lsoa11cd: 'E1' })).toBeNull();
+  });
+});
+
+describe('explainArea', () => {
+  const step = (key: string, value: number, percentile?: number, extra: Partial<WaterfallStep> = {}): WaterfallStep => ({
+    key,
+    label: key,
+    step: value,
+    percentile,
+    kind: ['young_driver_share', 'cars_per_household'].includes(key) ? 'composition' : 'place',
+    ...extra,
+  });
+
+  it('explains a cheaper area from its own waterfall', () => {
+    const d = featureToDetail(CITY);
+    expect(explainArea(d.steps!, d.premium_baseline!, d.calibrated_premium!)).toBe(
+      'Cheaper than a typical GB area mainly because of crime deprivation (1st percentile, −£145) ' +
+        'and young drivers (16th percentile, −£130); cars per household (2nd percentile) pushes it up £83.'
+    );
+  });
+
+  it('explains a dearer area with the largest factor pulling it back', () => {
+    const steps = [
+      step('young_driver_share', 142, 91),
+      step('imd_crime', 88, 80),
+      step('vehicle_crime', 30, 70),
+      step('cars_per_household', -40, 20),
+      step('aadf_intensity', -12, 40),
+    ];
+    expect(explainArea(steps, 541, 749)).toBe(
+      'Dearer than a typical GB area mainly because of young drivers (91st percentile, +£142) ' +
+        'and crime deprivation (80th percentile, +£88); cars per household (20th percentile) pulls it back £40.'
+    );
+  });
+
+  it(`names a factor only if its step is at least £${EXPLAIN_MIN_STEP_GBP}`, () => {
+    const steps = [
+      step('vehicle_crime', 25, 70),
+      step('imd_crime', EXPLAIN_MIN_STEP_GBP - 1, 60),
+      step('cars_per_household', -(EXPLAIN_MIN_STEP_GBP - 1), 40),
+    ];
+    expect(explainArea(steps, 500, 541)).toBe(
+      'Dearer than a typical GB area mainly because of vehicle crime (70th percentile, +£25).'
+    );
+  });
+
+  it('says so when nothing moves the price much', () => {
+    const steps = [step('vehicle_crime', 4, 55), step('imd_crime', -3, 45)];
+    expect(explainArea(steps, 541, 542)).toBe(
+      `Close to a typical GB area: no single factor moves it by £${EXPLAIN_MIN_STEP_GBP} or more.`
+    );
+  });
+
+  it('keeps the Scotland flag on vehicle crime', () => {
+    const steps = [step('vehicle_crime', 60, 95, { withinScotland: true })];
+    expect(explainArea(steps, 500, 560)).toContain('vehicle crime (95th percentile within Scotland, +£60)');
   });
 });
