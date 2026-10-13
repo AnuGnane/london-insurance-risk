@@ -1,6 +1,6 @@
 // Small client-side helpers. No new dependencies.
 import type { Feature, FeatureCollection, Position } from 'geojson';
-import type { AreaDetail, LsoaProps } from './types';
+import type { AreaDetail, LsoaProps, WaterfallStep } from './types';
 
 // Drivers that actually move the calibrated premium (place + composition) — these
 // carry a £ `_contrib`. Diagnostics are mapped layers the calibration evidence-gated
@@ -379,4 +379,74 @@ export function dominantDriver(
     }
   }
   return bestKey == null ? null : { key: bestKey, dir: bestSigned >= 0 ? 'up' : 'down' };
+}
+
+// ---------------------------------------------------------------------------
+// Plain-language explanation of the waterfall
+// ---------------------------------------------------------------------------
+
+/** A factor is named in the sentence only if its £ step is at least this. */
+export const EXPLAIN_MIN_STEP_GBP = 10;
+
+// Lower-case names that read inside a sentence.
+const SENTENCE_LABELS: Record<string, string> = {
+  vehicle_crime: 'vehicle crime',
+  imd_crime: 'crime deprivation',
+  aadf_intensity: 'traffic intensity',
+  young_driver_share: 'young drivers',
+  cars_per_household: 'cars per household',
+};
+
+const signedGbp = (n: number): string => `${n >= 0 ? '+' : '−'}${gbp(Math.abs(n))}`;
+
+const factorName = (s: WaterfallStep): string => SENTENCE_LABELS[s.key] ?? s.label.toLowerCase();
+
+const percentilePhrase = (s: WaterfallStep): string | null =>
+  s.percentile == null
+    ? null
+    : `${ordinalPct(s.percentile)} percentile${s.withinScotland ? ' within Scotland' : ''}`;
+
+/** "young drivers (91st percentile, +£142)" */
+const namedWithStep = (s: WaterfallStep): string => {
+  const pct = percentilePhrase(s);
+  return `${factorName(s)} (${pct ? `${pct}, ` : ''}${signedGbp(s.step)})`;
+};
+
+/**
+ * One plain sentence for a stranger: the largest one or two factors moving the
+ * price away from a typical GB area, and the largest one pulling the other way.
+ * Uses only the waterfall's own figures (no number is recomputed).
+ */
+export function explainArea(steps: WaterfallStep[], baseline: number, premium: number): string {
+  // Compare the figures as the panel shows them (whole pounds).
+  const shown = (n: number) => Math.round(Math.abs(n));
+  const big = steps
+    .filter((s) => shown(s.step) >= EXPLAIN_MIN_STEP_GBP)
+    .sort((a, b) => Math.abs(b.step) - Math.abs(a.step));
+  const ups = big.filter((s) => s.step > 0);
+  const downs = big.filter((s) => s.step < 0);
+  const gap = Math.round(premium) - Math.round(baseline);
+
+  if (Math.abs(gap) < EXPLAIN_MIN_STEP_GBP) {
+    if (ups.length && downs.length) {
+      return `Close to a typical GB area: ${namedWithStep(ups[0])} and ${namedWithStep(downs[0])} roughly cancel out.`;
+    }
+    return `Close to a typical GB area: no single factor moves it by ${gbp(EXPLAIN_MIN_STEP_GBP)} or more.`;
+  }
+
+  const dearer = gap > 0;
+  const towards = dearer ? ups : downs;
+  const against = dearer ? downs : ups;
+  const lead = `${dearer ? 'Dearer' : 'Cheaper'} than a typical GB area`;
+  let sentence = towards.length
+    ? `${lead} mainly because of ${towards.slice(0, 2).map(namedWithStep).join(' and ')}`
+    : `${lead} through several small factors, none of them ${gbp(EXPLAIN_MIN_STEP_GBP)} or more`;
+  const counter = against[0];
+  if (counter) {
+    const pct = percentilePhrase(counter);
+    sentence += `; ${factorName(counter)}${pct ? ` (${pct})` : ''} ${
+      dearer ? 'pulls it back' : 'pushes it up'
+    } ${gbp(Math.abs(counter.step))}`;
+  }
+  return `${sentence}.`;
 }

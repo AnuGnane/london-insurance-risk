@@ -30,6 +30,8 @@ const COLOR_MODES: { mode: ColorMode; label: string }[] = [
   { mode: 'vehicle_crime', label: 'Crime' },
   { mode: 'imd_crime', label: 'Crime deprivation' },
   { mode: 'aadf_intensity', label: 'Traffic' },
+  { mode: 'young_driver_share', label: 'Young drivers' },
+  { mode: 'cars_per_household', label: 'Cars/household' },
   { mode: 'deprivation', label: 'Deprivation' },
   { mode: 'flood_risk', label: 'Flood risk' },
   { mode: 'road_casualties', label: 'Casualties' },
@@ -300,6 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <DetailPanel
               data={detail}
               colorMode={colorMode}
+              onColorModeChange={onColorModeChange}
               lookup={lookup}
               nationalAvg={methodology?.national_avg}
             />
