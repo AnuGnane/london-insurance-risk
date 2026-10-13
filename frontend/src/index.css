@@ -150,9 +150,10 @@ body {
 /* ===========================================================================
    Search
    =========================================================================== */
-.search-bar { position: relative; }
+.search-bar { display: flex; gap: 8px; align-items: stretch; }
+.search-field { position: relative; flex: 1; min-width: 0; }
 .search-bar input {
-  width: 100%; padding: 12px 14px 12px 40px;
+  width: 100%; padding: 12px 38px 12px 40px;
   border: 1px solid var(--rule-strong); border-radius: var(--r-sm);
   background: var(--paper-panel);
   font-family: var(--font-sans); font-size: 0.95rem; color: var(--ink);
@@ -167,6 +168,38 @@ body {
   position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
   color: var(--ink-faint); pointer-events: none;
 }
+.search-clear {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; display: grid; place-items: center;
+  border: none; background: transparent; color: var(--ink-faint); cursor: pointer;
+  border-radius: var(--r-xs);
+}
+.search-clear:hover { color: var(--ink); }
+.search-go {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 0 14px; border: 1px solid var(--ink); border-radius: var(--r-sm);
+  background: var(--ink); color: var(--paper); cursor: pointer;
+  font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 600;
+}
+.search-go:disabled { opacity: 0.55; cursor: default; }
+.loader-sm { width: 12px; height: 12px; border-width: 2px; }
+.recents {
+  margin-top: 8px; border: 1px solid var(--rule); border-radius: var(--r-sm);
+  background: var(--paper-panel); padding: 8px 6px 4px;
+}
+.recents-head { display: flex; justify-content: space-between; align-items: center; padding: 0 6px 4px; }
+.recents-head .eyebrow { margin: 0; }
+.recents-clear {
+  border: none; background: transparent; color: var(--ink-soft); cursor: pointer;
+  font-family: var(--font-sans); font-size: 0.72rem; text-decoration: underline;
+}
+.recent {
+  display: block; width: 100%; text-align: left; padding: 8px 6px;
+  border: none; border-top: 1px solid var(--rule); background: transparent; cursor: pointer;
+  font-family: var(--font-sans); font-size: 0.875rem; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.recent:hover { background: var(--paper-wash); }
 .search-error {
   font-size: 0.8125rem; line-height: 1.45; color: var(--ink);
   padding: 10px 12px; background: var(--accent-soft);
@@ -202,6 +235,14 @@ body {
   font-weight: 500; padding: 0; margin-bottom: 16px;
 }
 .back-link:hover { color: var(--accent); }
+.detail-actions { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.share-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--rule-strong); border-radius: 999px; background: var(--paper-panel);
+  color: var(--ink-soft); cursor: pointer; padding: 3px 11px;
+  font-family: var(--font-sans); font-size: 0.72rem; font-weight: 500;
+}
+.share-btn:hover { color: var(--accent); border-color: var(--accent); }
 
 .detail-area {
   font-family: var(--font-display); font-weight: 500; font-size: 1.15rem;
@@ -637,7 +678,10 @@ body {
 
   /* Tap targets at least --tap-min (44 px) */
   .seg button, .seg-sm button { min-height: var(--tap-min); padding-left: 14px; padding-right: 14px; }
-  .rank-row, .disclosure-toggle, .back-link { min-height: var(--tap-min); }
+  .rank-row, .disclosure-toggle, .back-link, .share-btn, .search-go,
+  .recent, .recents-clear { min-height: var(--tap-min); }
+  .search-clear { width: var(--tap-min); height: var(--tap-min); right: 0; }
+  .search-bar input { padding-right: var(--tap-min); }
   .filter-indicator button { width: 32px; height: 32px; }
 
   /* Compact legend: bottom-left, clear of the zoom control and above the
