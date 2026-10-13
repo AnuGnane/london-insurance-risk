@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="How the GB car-insurance risk map works: data, model, validation and limits.">
 <title>GB Car-Insurance Risk Model</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
@@ -214,8 +219,10 @@
   price indices, and shipped as an interactive premium map. Every estimate decomposes into
   exact £ steps, ships with an honest uncertainty band, and traces to a cited source.</p>
   <div class="hero-links">
-    <a href="https://anugnane.github.io/london-insurance-risk/" target="_blank" rel="noopener noreferrer">Live map ↗</a>
+    <a href="https://anugnane.github.io/london-insurance-risk/">← Back to the map</a>
     <a href="https://vouched.autos/risk-map" target="_blank" rel="noopener noreferrer">Consumer version at vouched.autos ↗</a>
+    <a href="https://github.com/AnuGnane/london-insurance-risk/blob/main/AUDIT.md" target="_blank" rel="noopener noreferrer">Model audit ↗</a>
+    <a href="https://github.com/AnuGnane/london-insurance-risk/blob/main/DATA_PROVENANCE_AND_TRANSFORMS.md" target="_blank" rel="noopener noreferrer">Data provenance ↗</a>
   </div>
   <div class="ramp" aria-hidden="true">
     <i style="background:#D7E6E4"></i><i style="background:#A9CCC8"></i><i style="background:#6FA9A4"></i><i style="background:#3B8983"></i><i style="background:#0E6E6B"></i>
@@ -235,7 +242,7 @@
 
 <section class="wrap">
   <p class="eyebrow">The question</p>
-  <h2>Why does the same driver pay £2,000 in one postcode and £700 in another?</h2>
+  <h2>Why does the same car cost several times more to insure in one postcode than another?</h2>
   <p>Insurers price location aggressively but publish nothing about how. This model reverse-engineers
   the territorial effect from the outside: it takes the open data an insurer's territory model
   plausibly summarises — vehicle crime, area deprivation, traffic intensity, who lives there — and
@@ -270,14 +277,14 @@
   <em>no</em> more often than yes:</p>
   <div class="tblwrap"><table>
     <tr><th>Feature</th><th>Verdict</th><th>Evidence</th></tr>
-    <tr><td class="src">Young-driver share</td><td><span class="kept">DRIVER</span></td><td>strongest independent predictor (partial r ≈ +0.57) — kept as a <em>composition control</em></td></tr>
-    <tr><td class="src">IMD crime sub-domain</td><td><span class="kept">DRIVER</span></td><td>partial r +0.43, p=3.8×10⁻⁶ — <strong>replaced</strong> overall deprivation, which collapsed to p=0.78 once its crime component stood alone</td></tr>
+    <tr><td class="src">Young-driver share</td><td><span class="kept">DRIVER</span></td><td>strongest independent predictor (partial r ≈ +0.55) — kept as a <em>composition control</em></td></tr>
+    <tr><td class="src">IMD crime sub-domain</td><td><span class="kept">DRIVER</span></td><td>partial r +0.43, p=3.7×10⁻⁶ — <strong>replaced</strong> overall deprivation, which collapsed to p=0.78 once its crime component stood alone</td></tr>
     <tr><td class="src">Vehicle crime rate</td><td><span class="kept">DRIVER</span></td><td>independent significant keeper in every wave</td></tr>
     <tr><td class="src">Cars per household</td><td><span class="kept">DRIVER</span></td><td>composition control, negative sign (car-dense suburbs price lower)</td></tr>
     <tr><td class="src">AADF traffic intensity</td><td><span class="kept">DRIVER</span></td><td>kept on LOAO head-to-head: dropping it worsens MAE £76.51 → £82.54</td></tr>
-    <tr><td class="src">Population density</td><td><span class="diag">GATED OUT</span></td><td>always collinear (VIF 13–60) — replaced by point-level AADF, which resolved the "it's just a density model" critique</td></tr>
+    <tr><td class="src">Population density</td><td><span class="diag">GATED OUT</span></td><td>always collinear with the urban-intensity features — replaced by point-level AADF, which resolved the "it's just a density model" critique</td></tr>
     <tr><td class="src">Flood risk</td><td><span class="diag">GATED OUT</span></td><td>wrong-signed for car premiums (r = −0.94 — it tracks rurality, which is cheap); ingested for all three nations, shown as a map diagnostic, banked as evidence for a future home-insurance line</td></tr>
-    <tr><td class="src">Road casualties / KSI</td><td><span class="diag">GATED OUT</span></td><td>no independent signal once traffic exposure is controlled (partial p ≈ 0.44)</td></tr>
+    <tr><td class="src">Road casualties / KSI</td><td><span class="diag">GATED OUT</span></td><td>no independent signal once traffic exposure is controlled</td></tr>
     <tr><td class="src">IMD income sub-domain</td><td><span class="diag">GATED OUT</span></td><td>VIF 33 — redundant within the deprivation family</td></tr>
   </table></div>
 
@@ -285,12 +292,12 @@
   <p>Demographics enter as <strong>controls</strong>, so each area gets three numbers: the full
   premium, a place-only counterfactual (demographics held at the national median), and the
   composition uplift between them. Composition alone explains more of the spread
-  (R²&nbsp;0.88) than place alone (R²&nbsp;0.76) — <em>who lives there</em> beats <em>what
+  (R²&nbsp;0.88) than place alone (R²&nbsp;0.82) — <em>who lives there</em> beats <em>what
   happens there</em>. That is reported as a finding, not hidden as an inconvenience.</p>
 
   <h3>Explainable to the pound</h3>
   <p>Each area's premium decomposes through an exact <strong>LMDI (logarithmic-mean) waterfall</strong>:
-  a £ step per factor from the £537 baseline (all features at the median), summing to the
+  a £ step per factor from a typical-GB baseline (every feature at the median), summing to the
   headline premium exactly — no residual, independent of factor ordering — with a
   train/serve-consistency test guarding the served map against stale coefficients.</p>
 
@@ -302,7 +309,7 @@
   <code>premium_low</code>/<code>premium_high</code>.</p>
 
   <div class="note">Sanity anchors the docs keep returning to: West-Central London prices at
-  ≈1.9× Rugby; the City of London at ≈2.4× Truro — consistent with the published index
+  ≈1.9× Rugby; the City of London at ≈2.5× Truro — consistent with the published index
   geography the model calibrates against.</div>
 </section>
 
@@ -377,7 +384,7 @@
       <td>The cautionary tale: local-authority traffic per resident is an <em>inverse</em>-density proxy (rural motorway corridors score highest) — demoted, and the reason point-level AADF exists</td></tr>
     <tr><td class="src">ONSPD<small>postcode_lookup.parquet</small></td>
       <td>bulk ZIP</td><td><span class="feed">postcode search</span></td>
-      <td>2.7M postcodes filtered to GB; one unified column maps each postcode to its LSOA or Data Zone (the newer NSPL product dropped that column in 2026 — hence ONSPD)</td></tr>
+      <td>Postcodes filtered to GB; one unified column maps each postcode to its LSOA or Data Zone (the newer NSPL product dropped that column in 2026 — hence ONSPD)</td></tr>
   </table></div>
   <div class="wrap"><p style="margin-top:16px;font-size:14px;color:var(--muted);">Calibration
   ground truth (not a feature): a 137-row anchor panel hand-transcribed from the WTW/Confused.com
@@ -404,9 +411,9 @@
   <p>The current form is the residue of arguments the data won:</p>
   <div class="caveats">
     <div class="caveat"><strong>Model the ratio, not the £.</strong> Absolute premiums conflate national price drift with the spatial effect; the log relative index isolates place.</div>
-    <div class="caveat"><strong>Replace proxies when the critique is valid.</strong> Population density (VIF 13–60) was swapped for measured traffic flow — LOAO MAE fell £104 → £89 and every surviving feature became independently significant.</div>
+    <div class="caveat"><strong>Replace proxies when the critique is valid.</strong> Population density, always collinear, was swapped for measured traffic flow — LOAO MAE fell to £89 and every surviving feature became independently significant.</div>
     <div class="caveat"><strong>Give the gate veto power.</strong> The 2026-07 wave tested three candidates; the gate admitted one (IMD crime, which displaced its own parent index) and rejected two — including flood risk, whose wrong sign for <em>car</em> premiums is now banked evidence for a home-insurance line.</div>
-    <div class="caveat"><strong>Explainability must reconcile.</strong> Driver breakdowns that "gesture" at contributions were replaced by an exact decomposition that sums to the pound, with a serve-consistency test that has already caught two real staleness bugs.</div>
+    <div class="caveat"><strong>Explainability must reconcile.</strong> Driver breakdowns that "gesture" at contributions were replaced by an exact decomposition that sums to the pound, with a serve-consistency test that guards the served map against stale coefficients.</div>
     <div class="caveat"><strong>Composition dominating place is a finding.</strong> Rather than tuning it away, the model reports both numbers per area — and the place-only counterfactual became a product feature.</div>
   </div>
 </section>
@@ -456,5 +463,9 @@
   all sources Open Government Licence v3 with per-source attribution in the repo's provenance
   docs. The model also powers the postcode-district premium estimates behind
   <a href="https://vouched.autos" target="_blank" rel="noopener noreferrer">vouched.autos</a>'s
-  First-Car Finder via a frozen data contract. Figures as of the July 2026 calibration.</p>
+  First-Car Finder via a frozen data contract. Figures as of the July 2026 calibration
+  (<a href="https://github.com/AnuGnane/london-insurance-risk/blob/main/AUDIT.md" target="_blank" rel="noopener noreferrer">AUDIT.md</a>,
+  <a href="https://github.com/AnuGnane/london-insurance-risk/blob/main/DATA_PROVENANCE_AND_TRANSFORMS.md" target="_blank" rel="noopener noreferrer">DATA_PROVENANCE_AND_TRANSFORMS.md</a>).
+  <a href="https://anugnane.github.io/london-insurance-risk/">← Back to the map</a></p>
 </footer>
+</html>
