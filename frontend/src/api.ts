@@ -47,13 +47,11 @@ export async function getGeojson(
     }
   }
   onProgress(received);
-  const all = new Uint8Array(received);
-  let offset = 0;
-  for (const c of chunks) {
-    all.set(c, offset);
-    offset += c.byteLength;
-  }
-  return JSON.parse(new TextDecoder().decode(all));
+  // Hand the chunks to a Blob and drop our references, so only one copy of the
+  // body is alive while it is parsed (this matters on low-memory phones).
+  const blob = new Blob(chunks as BlobPart[]);
+  chunks.length = 0;
+  return new Response(blob).json();
 }
 
 /** Top/bottom N areas by calibrated premium, computed from the loaded GeoJSON. */

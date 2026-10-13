@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import { Sidebar } from './Sidebar';
 import type {
@@ -58,6 +59,25 @@ const MapFallback = () => (
     </div>
   </main>
 );
+
+/** If the map chunk cannot load (offline, or a stale page after a redeploy), keep
+ *  the sidebar working and say so in the map's place. */
+class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <main className="map-container" aria-label="Map of estimated car-insurance premiums">
+        <div className="map-toast map-toast-error" role="alert">
+          The map could not load. Check your connection and reload the page.
+        </div>
+      </main>
+    );
+  }
+}
 
 function App() {
   // The loaded GeoJSON is our client-side data store: it powers the map,
@@ -268,6 +288,7 @@ function App() {
         sheetExpanded={sheetExpanded}
         onToggleSheet={() => setSheetExpanded((e) => !e)}
       />
+      <MapErrorBoundary>
       <Suspense fallback={<MapFallback />}>
       <MapView
         geojson={geojson}
@@ -285,6 +306,7 @@ function App() {
         onShowDetails={() => setSheetExpanded(true)}
       />
       </Suspense>
+      </MapErrorBoundary>
     </div>
   );
 }

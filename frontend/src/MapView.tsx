@@ -6,7 +6,12 @@ import MapGL, {
   Marker,
   NavigationControl,
 } from 'react-map-gl/maplibre';
-import type { MapLayerMouseEvent, MapRef, MapSourceDataEvent } from 'react-map-gl/maplibre';
+import type {
+  ErrorEvent as MapErrorEvent,
+  MapLayerMouseEvent,
+  MapRef,
+  MapSourceDataEvent,
+} from 'react-map-gl/maplibre';
 import type { LayerSpecification } from 'maplibre-gl';
 import type { Feature, FeatureCollection } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -123,6 +128,11 @@ export const MapView: React.FC<MapViewProps> = ({
   // A basemap switch (light/dark) reloads the style and re-tiles the areas, so
   // "drawn" is tracked per basemap.
   const [drawnOn, setDrawnOn] = useState<string | null>(null);
+  const [areasError, setAreasError] = useState(false);
+  // MapLibre adds `sourceId` to errors raised while loading a source.
+  const onMapError = useCallback((e: MapErrorEvent) => {
+    if ((e as MapErrorEvent & { sourceId?: string }).sourceId === 'lsoa') setAreasError(true);
+  }, []);
   const isTouch = useMediaQuery(TOUCH_QUERY);
   const isDark = useMediaQuery(DARK_QUERY);
   // Basemap per scheme; outline colours come from index.css tokens, re-read when it flips.
@@ -281,18 +291,25 @@ export const MapView: React.FC<MapViewProps> = ({
           <div className="skeleton-pulse" />
           <div className="map-toast skeleton-toast">
             <span className="loader" aria-hidden="true" />
-            <span role="status">
-              {loadedBytes > 0
-                ? `Loading map data… ${(loadedBytes / 1e6).toFixed(1)} MB`
-                : 'Plotting 41,729 areas…'}
-            </span>
+            {/* The live region stays static; the changing byte count is not announced. */}
+            <span role="status">{loadedBytes > 0 ? 'Loading map data…' : 'Plotting 41,729 areas…'}</span>
+            {loadedBytes > 0 && (
+              <span aria-hidden="true">{(loadedBytes / 1e6).toFixed(1)} MB</span>
+            )}
           </div>
         </div>
       )}
-      {geojson && !areasDrawn && !loadError && (
+      {areasError && (
+        <div className="map-toast map-toast-error" role="alert">
+          The map areas could not load. Check your connection and reload the page.
+        </div>
+      )}
+      {geojson && !areasDrawn && !loadError && !areasError && (
         <div className="map-toast">
           <span className="loader" aria-hidden="true" />
-          <span role="status">Drawing 41,729 areas…</span>
+          <span role="status">
+            Drawing {geojson.features.length.toLocaleString('en-GB')} areas…
+          </span>
         </div>
       )}
       {loadError && <div className="map-toast map-toast-error">{loadError}</div>}
@@ -316,6 +333,7 @@ export const MapView: React.FC<MapViewProps> = ({
         onMouseLeave={isTouch ? undefined : onMouseLeave}
         onClick={onMapClick}
         onSourceData={onSourceData}
+        onError={onMapError}
         cursor="default"
       >
         <NavigationControl position="top-left" showCompass={false} />
