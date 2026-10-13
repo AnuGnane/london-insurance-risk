@@ -17,6 +17,7 @@ import {
   featureAtPoint,
 } from './utils';
 import { getGeojson, lookupPostcode, getMethodology } from './api';
+import { layoutCssVars } from './layout';
 import './index.css';
 
 const VALID_FILTERS: readonly ColorMode[] = [
@@ -56,6 +57,9 @@ function App() {
   const [colorMode, setColorMode] = useState<ColorMode>(readUrlFilter);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [marker, setMarker] = useState<[number, number] | null>(null);
+  // Phone bottom sheet: starts collapsed (masthead + search) and expands when an
+  // area is chosen from the sheet. Ignored by the desktop layout.
+  const [sheetExpanded, setSheetExpanded] = useState(false);
 
   // A shared ?area= link, captured once on mount; restored after the GeoJSON loads.
   const [initialArea] = useState(() =>
@@ -112,6 +116,7 @@ function App() {
         );
         if (feature) {
           setDetail(featureToDetail(feature.properties as LsoaProps));
+          setSheetExpanded(true);
           focusFeature(feature);
         }
       })
@@ -134,6 +139,7 @@ function App() {
         throw new Error('That postcode is outside the modelled area (GB only).');
       }
       setDetail({ ...featureToDetail(props), title: hit.postcode });
+      setSheetExpanded(true);
       focusLsoa(String(props.lsoa11cd), [hit.lng, hit.lat]);
     } catch (err: unknown) {
       setSearchError(err instanceof Error ? err.message : String(err));
@@ -159,6 +165,7 @@ function App() {
     const props = lookup.get(code)?.properties as LsoaProps | undefined;
     if (props) {
       setDetail(featureToDetail(props));
+      setSheetExpanded(true);
       focusLsoa(code, coords);
     } else if (coords) {
       // District-level ranking with no matching LSOA geometry on the client.
@@ -174,7 +181,10 @@ function App() {
   };
 
   return (
-    <div className="app-container">
+    <div
+      className={`app-container${sheetExpanded ? ' sheet-expanded' : ''}`}
+      style={layoutCssVars}
+    >
       <Sidebar
         onSearch={handleSearch}
         onSelectRanking={handleSelectRanking}
@@ -186,6 +196,8 @@ function App() {
         onColorModeChange={setColorMode}
         lookup={lookup}
         methodology={methodology}
+        sheetExpanded={sheetExpanded}
+        onToggleSheet={() => setSheetExpanded((e) => !e)}
       />
       <MapView
         geojson={geojson}
@@ -199,6 +211,7 @@ function App() {
         onHover={setHoveredLsoa}
         onClick={handleMapClick}
         onResetFilter={() => setColorMode('composite')}
+        onShowDetails={() => setSheetExpanded(true)}
       />
     </div>
   );

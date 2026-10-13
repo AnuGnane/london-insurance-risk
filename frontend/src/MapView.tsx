@@ -23,6 +23,7 @@ import {
   quintilePremiumBands,
   premiumToRampPos,
 } from './utils';
+import { fitPadding, TOUCH_QUERY, useMediaQuery } from './layout';
 
 interface MapViewProps {
   geojson: FeatureCollection | null;
@@ -36,6 +37,7 @@ interface MapViewProps {
   onHover: (lsoa: string | null) => void;
   onClick: (lsoa: string) => void;
   onResetFilter: () => void;
+  onShowDetails: () => void;
 }
 
 const SELECTED_OUTLINE = '#24211c';
@@ -74,6 +76,15 @@ function fillColor(mode: ColorMode): FillPaint['fill-color'] {
   ];
 }
 
+// Touch devices have no hover: a tap shows this compact card instead.
+interface TapInfo {
+  lng: number;
+  lat: number;
+  lsoaName: string;
+  premium: string;
+  swatch: string;
+}
+
 interface HoverInfo {
   lng: number;
   lat: number;
@@ -97,10 +108,13 @@ export const MapView: React.FC<MapViewProps> = ({
   onHover,
   onClick,
   onResetFilter,
+  onShowDetails,
 }) => {
   const mapRef = useRef<MapRef>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+  const [tapInfo, setTapInfo] = useState<TapInfo | null>(null);
+  const isTouch = useMediaQuery(TOUCH_QUERY);
 
   const lookup = useMemo(() => {
     const m = new Map<string, Feature>();
@@ -114,13 +128,19 @@ export const MapView: React.FC<MapViewProps> = ({
   const bands = useMemo(() => quintilePremiumBands(lookup), [lookup]);
 
   useEffect(() => {
-    if (!focus || !mapRef.current) return;
+    const map = mapRef.current;
+    if (!focus || !map) return;
     if (focus.bounds) {
+      // The phone sheet may have just changed size: measure the map first.
+      map.resize();
+      const el = map.getContainer();
+      const padding = fitPadding(el.clientWidth, el.clientHeight, window.innerWidth);
       // Cap the zoom: the static geometry is simplified to ~180 m, so zooming in
       // tight on one small area exposes coarse polygons — keep some context.
-      mapRef.current.fitBounds(focus.bounds, { padding: 120, maxZoom: 11, duration: 1100 });
+      map.fitBounds(focus.bounds, { padding, maxZoom: 11, duration: 1100 });
     } else if (focus.center) {
-      mapRef.current.flyTo({ center: focus.center, zoom: 11, duration: 1100 });
+      map.resize();
+      map.flyTo({ center: focus.center, zoom: 11, duration: 1100 });
     }
   }, [focus]);
 
@@ -196,9 +216,24 @@ export const MapView: React.FC<MapViewProps> = ({
   const onMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const f = e.features?.[0];
-      if (f) onClick((f.properties as LsoaProps).lsoa11cd);
+      if (!f) {
+        setTapInfo(null);
+        return;
+      }
+      const props = f.properties as LsoaProps;
+      if (isTouch) {
+        const q = Number(props.quintile);
+        setTapInfo({
+          lng: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          lsoaName: String(props.lsoa_name || props.lsoa11cd),
+          premium: gbp(props.calibrated_premium == null ? null : Number(props.calibrated_premium)),
+          swatch: quintileColor(q),
+        });
+      }
+      onClick(props.lsoa11cd);
     },
-    [onClick]
+    [onClick, isTouch]
   );
 
   const driverLabel =
@@ -234,8 +269,8 @@ export const MapView: React.FC<MapViewProps> = ({
         initialViewState={{ longitude: -2.5, latitude: 54.5, zoom: 5.2 }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         interactiveLayerIds={geojson ? ['lsoa-fill'] : []}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
+        onMouseMove={isTouch ? undefined : onMouseMove}
+        onMouseLeave={isTouch ? undefined : onMouseLeave}
         onClick={onMapClick}
         cursor="default"
       >
@@ -279,7 +314,48 @@ export const MapView: React.FC<MapViewProps> = ({
           </Marker>
         )}
 
-        {hoverInfo && (
+        {isTouch && tapInfo && (
+          <Popup
+            longitude={tapInfo.lng}
+            latitude={tapInfo.lat}
+            offset={10}
+            closeButton={false}
+            closeOnClick={false}
+            className="hover-popup tap-card"
+          >
+            <div className="tap-card-row">
+              <span className="hover-popup-name">{tapInfo.lsoaName}</span>
+              <button
+                className="tap-card-close"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTapInfo(null);
+                }}
+                aria-label="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="hover-popup-metric">
+              <span className="hover-popup-label">Est. premium</span>
+              <span className="hover-popup-value">
+                <span className="hover-popup-dot" style={{ background: tapInfo.swatch }} />
+                {tapInfo.premium}
+              </span>
+            </div>
+            <button
+              className="tap-card-details"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShowDetails();
+              }}
+            >
+              Details
+            </button>
+          </Popup>
+        )}
+
+        {!isTouch && hoverInfo && (
           <Popup
             longitude={hoverInfo.lng}
             latitude={hoverInfo.lat}

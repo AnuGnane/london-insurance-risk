@@ -72,7 +72,11 @@ body {
 /* ===========================================================================
    Layout — editorial "column" (left) + map hero (right)
    =========================================================================== */
-.app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+.app-container {
+  display: flex; width: 100vw; overflow: hidden;
+  height: 100vh;   /* fallback */
+  height: 100dvh;  /* the iOS toolbar does not crop the layout */
+}
 .map-container { flex: 1; position: relative; height: 100%; min-width: 0; }
 
 .sidebar {
@@ -90,6 +94,8 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 0 28px 28px;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(28px, env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
 }
@@ -110,6 +116,7 @@ body {
    =========================================================================== */
 .masthead {
   padding: 22px 28px 20px;
+  padding-left: max(28px, env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--rule-strong);
   position: relative;
 }
@@ -554,6 +561,31 @@ body {
   background-size: 200% 100%; animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }
 
+/* Keep map chrome clear of the notch / home indicator (0 on desktop). */
+.maplibregl-ctrl-top-left {
+  top: env(safe-area-inset-top, 0px); left: env(safe-area-inset-left, 0px);
+}
+.maplibregl-ctrl-bottom-right {
+  bottom: env(safe-area-inset-bottom, 0px); right: env(safe-area-inset-right, 0px);
+}
+
+/* Tap card (touch devices only — see MapView) */
+.tap-card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.tap-card-close {
+  border: none; background: transparent; color: var(--ink-faint); cursor: pointer;
+  width: var(--tap-min); height: var(--tap-min); margin: -14px -14px -14px 0;
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.tap-card-details {
+  width: 100%; min-height: var(--tap-min); margin-top: 8px;
+  border: 1px solid var(--rule-strong); border-radius: var(--r-sm);
+  background: var(--paper-panel); color: var(--ink); cursor: pointer;
+  font-family: var(--font-sans); font-size: 0.8rem; font-weight: 600;
+}
+
+/* Bottom-sheet handle: phone only */
+.sheet-handle { display: none; }
+
 /* Native map controls: warm them up to match */
 .maplibregl-ctrl-group {
   border-radius: var(--r-sm) !important; box-shadow: var(--shadow-md) !important;
@@ -578,19 +610,58 @@ body {
    =========================================================================== */
 @media (max-width: 820px) {
   .app-container { flex-direction: column; }
-  .map-container { height: 52vh; order: 0; }
+  /* Sheet heights come from layout.ts (--sheet-collapsed / --sheet-expanded). */
+  .map-container { flex: 1 1 auto; height: auto; min-height: 0; order: 0; }
   .sidebar {
-    width: 100%; height: 48vh; order: 1;
+    width: 100%; height: var(--sheet-collapsed); order: 1;
     border-right: none; border-top: 1px solid var(--rule-strong);
     box-shadow: 0 -6px 20px rgba(36, 33, 28, 0.06);
   }
-  .masthead { padding: 16px 20px 14px; }
+  .sheet-expanded .sidebar { height: var(--sheet-expanded); }
+  .sheet-handle {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 100%; min-height: var(--tap-min); margin-bottom: -14px;
+    border: none; background: transparent; cursor: pointer;
+  }
+  .sheet-grip { width: 40px; height: 5px; border-radius: 999px; background: var(--rule-strong); }
+  .masthead { padding: 4px 20px 14px; }
+  .masthead::before { display: none; }
   .masthead h1 { font-size: 1.45rem; }
   .masthead-standfirst { font-size: 0.875rem; }
-  .sidebar-content { padding: 0 20px 20px; }
-  .legend { bottom: 14px; left: 14px; min-width: 180px; padding: 11px 12px; }
-  .filter-indicator { top: 12px; }
+  .masthead, .sidebar-content {
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+  }
+  .sidebar-content { padding-top: 0; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Tap targets at least --tap-min (44 px) */
+  .seg button, .seg-sm button { min-height: var(--tap-min); padding-left: 14px; padding-right: 14px; }
+  .rank-row, .disclosure-toggle, .back-link { min-height: var(--tap-min); }
+  .filter-indicator button { width: 32px; height: 32px; }
+
+  /* Compact legend: bottom-left, clear of the zoom control and above the
+     attribution, which MapLibre shows as a full-width strip on narrow maps */
+  .legend {
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px)); left: calc(10px + env(safe-area-inset-left, 0px));
+    min-width: 0; width: min(180px, calc(100% - 80px)); padding: 8px 10px 4px;
+  }
+  .legend-title { margin-bottom: 6px; font-size: 0.6rem; }
+  .legend-scale { height: 18px; }
+  .legend-nodata { display: none; }
+  .sheet-expanded .legend { display: none; }  /* a short map keeps the area in view */
+
+  /* Below the zoom control, never under it */
+  .filter-indicator {
+    top: calc(10px + env(safe-area-inset-top, 0px)); left: auto; right: 10px; transform: none;
+    max-width: calc(100% - 64px); padding: 4px 6px 4px 12px;
+  }
+  .map-toast { max-width: calc(100% - 64px); }
   .hero-value { font-size: 2.6rem; }
+}
+
+/* iOS zooms into inputs under 16 px on focus */
+@media (max-width: 820px), (hover: none) {
+  .search-bar input { font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
