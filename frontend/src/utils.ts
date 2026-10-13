@@ -59,6 +59,9 @@ export const RAMP = [
   '#f6e8c8', '#efc982', '#e0a93f', '#d88c3a', '#c44536', '#9e2a2b', '#6e1e22',
 ];
 export const QUINTILE_FILL = ['#efc982', '#e0a93f', '#d88c3a', '#c44536', '#6e1e22'];
+// Legend label colour on each quintile segment (dark on the light three,
+// white on the dark two); utils.test.ts checks each pair for contrast.
+export const QUINTILE_TEXT = ['#24211c', '#24211c', '#24211c', '#ffffff', '#ffffff'];
 export const NO_DATA_COLOR = '#d9d9d9';
 export const quintileColor = (q: number): string =>
   QUINTILE_FILL[Math.min(5, Math.max(1, Math.round(q))) - 1] ?? NO_DATA_COLOR;
