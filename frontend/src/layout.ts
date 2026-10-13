@@ -1,7 +1,7 @@
 // Layout tunables for the phone sheet, touch and map framing — one module.
 // CSS media queries cannot read variables, so the two breakpoints are repeated
 // as literals in index.css; layout.test.ts fails if they drift apart.
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 /** Map on top, panel as a bottom sheet (index.css `@media (max-width: 820px)`). */
 export const PHONE_MAX_WIDTH = 820;
@@ -55,12 +55,13 @@ export function fitPadding(width: number, height: number, viewportWidth: number)
 
 /** Subscribe to a media query (SSR-free: this app is client-only). */
 export function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
       const mql = window.matchMedia(query);
       mql.addEventListener('change', onChange);
       return () => mql.removeEventListener('change', onChange);
     },
-    () => window.matchMedia(query).matches
+    [query]
   );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches);
 }

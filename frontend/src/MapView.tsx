@@ -80,6 +80,7 @@ function fillColor(mode: ColorMode): FillPaint['fill-color'] {
 interface TapInfo {
   lng: number;
   lat: number;
+  lsoa: string;
   lsoaName: string;
   premium: string;
   swatch: string;
@@ -226,6 +227,7 @@ export const MapView: React.FC<MapViewProps> = ({
         setTapInfo({
           lng: e.lngLat.lng,
           lat: e.lngLat.lat,
+          lsoa: props.lsoa11cd,
           lsoaName: String(props.lsoa_name || props.lsoa11cd),
           premium: gbp(props.calibrated_premium == null ? null : Number(props.calibrated_premium)),
           swatch: quintileColor(q),
@@ -314,7 +316,8 @@ export const MapView: React.FC<MapViewProps> = ({
           </Marker>
         )}
 
-        {isTouch && tapInfo && (
+        {/* Only while its area is still the selection (not after Back or a search). */}
+        {isTouch && tapInfo && tapInfo.lsoa === selectedLsoa && (
           <Popup
             longitude={tapInfo.lng}
             latitude={tapInfo.lat}
