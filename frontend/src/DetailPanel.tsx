@@ -130,7 +130,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
   return (
     <div className="detail">
-      <div className="detail-area">{data.title}</div>
+      <h2 className="detail-area">{data.title}</h2>
       {data.subtitle && <div className="detail-code">{data.subtitle}</div>}
 
       <p className="lede">{ledeForQuintile(data.quintile)}</p>

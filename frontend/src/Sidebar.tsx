@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const showRecents = focused && term === '' && recentSearches.length > 0;
 
   return (
-    <div className="sidebar">
+    <aside className="sidebar" aria-label="Search, rankings and area details">
       {/* Phone only (hidden on desktop by CSS): collapse / expand the bottom sheet. */}
       <button
         className="sheet-handle"
@@ -211,6 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Search className="search-icon" size={18} />
             <input
               ref={inputRef}
+              id="postcode-search"
               type="text"
               placeholder="Postcode or district, e.g. E1 6AN"
               value={term}
@@ -328,6 +329,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 };

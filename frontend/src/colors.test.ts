@@ -69,6 +69,13 @@ describe('index.css tokens', () => {
     expect(rules.filter((r) => literal.test(r))).toEqual([]);
   });
 
+  it('--ink-faint passes WCAG AA (4.5:1) on every light paper surface', () => {
+    const faint = token('--ink-faint')!;
+    for (const surface of ['--paper', '--paper-panel', '--paper-wash', '--accent-soft']) {
+      expect(contrast(faint, token(surface)!)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('define a dark scheme for the paper, ink and rule tokens', () => {
     // The body of the first dark-scheme block, up to its matching closing brace.
     const start = css.indexOf('{', css.indexOf('@media (prefers-color-scheme: dark)'));

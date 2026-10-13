@@ -15,7 +15,7 @@
   --paper-wash: #f4ece0;   /* hover wash, subtle fills */
   --ink: #24211c;          /* primary text — warm near-black */
   --ink-soft: #5c544b;     /* secondary text */
-  --ink-faint: #8a8175;    /* meta, captions, labels */
+  --ink-faint: #6c6256;    /* meta, captions, labels (≥4.5:1 on every paper surface) */
   --rule: #e6dccc;         /* hairline */
   --rule-strong: #d8ccb8;  /* panel edge */
 
@@ -125,6 +125,15 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Skip link: off-screen until focused */
+.skip-link {
+  position: absolute; left: 8px; top: -100px; z-index: 100;
+  background: var(--ink); color: var(--paper); padding: 10px 14px;
+  border-radius: var(--r-sm); font-family: var(--font-sans); font-size: 0.875rem;
+  font-weight: 600; text-decoration: none;
+}
+.skip-link:focus { top: 8px; }
 
 /* Visible to screen readers only */
 .sr-only {

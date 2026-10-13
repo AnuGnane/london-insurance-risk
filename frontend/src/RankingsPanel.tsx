@@ -22,9 +22,9 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   return (
     <div className="rankings">
       <div className="rankings-head">
-        <div className="section-title">
+        <h2 className="section-title">
           {order === 'desc' ? 'Most expensive areas' : 'Least expensive areas'}
-        </div>
+        </h2>
         <div className="seg seg-sm">
           <button
             className={order === 'desc' ? 'seg-on' : ''}
