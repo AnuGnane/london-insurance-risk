@@ -418,21 +418,29 @@ const namedWithStep = (s: WaterfallStep): string => {
  * Uses only the waterfall's own figures (no number is recomputed).
  */
 export function explainArea(steps: WaterfallStep[], baseline: number, premium: number): string {
-  const dearer = premium >= baseline;
-  const big = steps.filter((s) => Math.abs(s.step) >= EXPLAIN_MIN_STEP_GBP);
-  const towards = big
-    .filter((s) => (dearer ? s.step > 0 : s.step < 0))
+  // Compare the figures as the panel shows them (whole pounds).
+  const shown = (n: number) => Math.round(Math.abs(n));
+  const big = steps
+    .filter((s) => shown(s.step) >= EXPLAIN_MIN_STEP_GBP)
     .sort((a, b) => Math.abs(b.step) - Math.abs(a.step));
-  const against = big
-    .filter((s) => (dearer ? s.step < 0 : s.step > 0))
-    .sort((a, b) => Math.abs(b.step) - Math.abs(a.step));
+  const ups = big.filter((s) => s.step > 0);
+  const downs = big.filter((s) => s.step < 0);
+  const gap = Math.round(premium) - Math.round(baseline);
 
-  if (towards.length === 0) {
+  if (Math.abs(gap) < EXPLAIN_MIN_STEP_GBP) {
+    if (ups.length && downs.length) {
+      return `Close to a typical GB area: ${namedWithStep(ups[0])} and ${namedWithStep(downs[0])} roughly cancel out.`;
+    }
     return `Close to a typical GB area: no single factor moves it by ${gbp(EXPLAIN_MIN_STEP_GBP)} or more.`;
   }
 
-  const main = towards.slice(0, 2).map(namedWithStep).join(' and ');
-  let sentence = `${dearer ? 'Dearer' : 'Cheaper'} than a typical GB area mainly because of ${main}`;
+  const dearer = gap > 0;
+  const towards = dearer ? ups : downs;
+  const against = dearer ? downs : ups;
+  const lead = `${dearer ? 'Dearer' : 'Cheaper'} than a typical GB area`;
+  let sentence = towards.length
+    ? `${lead} mainly because of ${towards.slice(0, 2).map(namedWithStep).join(' and ')}`
+    : `${lead} through several small factors, none of them ${gbp(EXPLAIN_MIN_STEP_GBP)} or more`;
   const counter = against[0];
   if (counter) {
     const pct = percentilePhrase(counter);

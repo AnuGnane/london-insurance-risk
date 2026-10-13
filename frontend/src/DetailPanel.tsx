@@ -56,8 +56,13 @@ const DriverDots: React.FC<{
   return (
     <div className="dots">
       {groups.map((g) => (
-        <div key={g.kind} className="dots-group">
-          <div className="dots-title">{g.title}</div>
+        <div
+          key={g.kind}
+          className="dots-group"
+          role="group"
+          aria-labelledby={`dots-${g.kind}`}
+        >
+          <div className="dots-title" id={`dots-${g.kind}`}>{g.title}</div>
           {steps
             .filter((s) => s.kind === g.kind)
             .map((s) => {
@@ -90,7 +95,7 @@ const DriverDots: React.FC<{
       ))}
       <div className="dots-scale" aria-hidden="true">
         <span>0</span>
-        <span>GB median</span>
+        <span>median</span>
         <span>100</span>
       </div>
     </div>
@@ -227,11 +232,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <details className="pct-explainer">
               <summary>What is a percentile?</summary>
               <p>
-                A percentile ranks this area against every other area in Great Britain:
-                the 91st percentile scores higher than about 91% of areas, and the 50th is
-                the middle (the GB median). Crime and deprivation are ranked within
-                comparable groups, never across them, so vehicle crime in a Scottish area
-                is ranked within Scotland. Tap a factor to colour the map by it.
+                A percentile ranks this area against the other areas it is compared with:
+                the 91st percentile scores higher than about 91% of them, and the 50th is
+                the middle one. Most factors compare across Great Britain; crime and
+                deprivation are ranked within comparable groups, never across them, so
+                vehicle crime is ranked within Scotland for a Scottish area and within
+                England and Wales otherwise. Tap a factor to colour the map by it.
               </p>
             </details>
             <div className="waterfall" aria-label="Breakdown of the estimated premium by factor">

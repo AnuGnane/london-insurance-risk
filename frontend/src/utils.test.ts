@@ -303,6 +303,31 @@ describe('explainArea', () => {
     );
   });
 
+  it('does not call an area close when a factor moves it', () => {
+    const steps = [
+      step('vehicle_crime', 9, 60), step('imd_crime', 9, 60), step('aadf_intensity', 9, 60),
+      step('young_driver_share', 9, 60), step('cars_per_household', -12, 30),
+    ];
+    expect(explainArea(steps, 541, 565)).toBe(
+      'Dearer than a typical GB area through several small factors, none of them £10 or more; ' +
+        'cars per household (30th percentile) pulls it back £12.'
+    );
+  });
+
+  it('says when factors cancel out', () => {
+    const steps = [step('vehicle_crime', 80, 90), step('young_driver_share', -80, 10)];
+    expect(explainArea(steps, 541, 541)).toBe(
+      'Close to a typical GB area: vehicle crime (90th percentile, +£80) and ' +
+        'young drivers (10th percentile, −£80) roughly cancel out.'
+    );
+  });
+
+  it('applies the threshold to the pounds as shown', () => {
+    expect(explainArea([step('vehicle_crime', 9.6, 60)], 541, 551)).toBe(
+      'Dearer than a typical GB area mainly because of vehicle crime (60th percentile, +£10).'
+    );
+  });
+
   it('says so when nothing moves the price much', () => {
     const steps = [step('vehicle_crime', 4, 55), step('imd_crime', -3, 45)];
     expect(explainArea(steps, 541, 542)).toBe(
