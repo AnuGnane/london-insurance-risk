@@ -79,6 +79,11 @@ calibration or coefficients, always re-run `calibrate` (which re-runs `risk` and
   git-ignored, derived).
 - The user reviews and creates PRs themselves — use `gh` only for small, requested pushes,
   not unprompted.
+- **Holiday queue (13–23 Oct 2026):** `HOLIDAY.md` at the repo root is a package queue
+  worked by scheduled cloud routines that open, review and self-merge their own
+  `holiday/<id>` PRs under its Merging rules, which override the bullet above for those
+  branches only. Read `HOLIDAY.md` before taking a package; anything that needs `data/`
+  goes to its needs-mac lane, not into the cloud.
 - **Vouched bridge refresh rule:** every model-changing ship (anything that alters
   `reports/calibration.json` or `data/processed/lsoa_risk.parquet`) must be followed by
   regenerating the Vouched district pack: run
