@@ -11,7 +11,7 @@
  *  - getMethodology()   → static frontend/public/data/methodology.json
  */
 import type { Feature, FeatureCollection } from 'geojson';
-import type { LsoaProps, Methodology, RankingArea } from './types';
+import type { FeatureStat, LsoaProps, Methodology, RankingArea } from './types';
 
 // Vite sets BASE_URL to the configured `base` ('/' in dev, '/london-insurance-risk/'
 // for Pages) and always includes a trailing slash, so data URLs resolve in both.
@@ -83,14 +83,34 @@ export function getRankings(
   return rows.slice(0, n);
 }
 
+// The subset of the baked methodology.json that the panel reads.
+interface RawMethodology {
+  feature_basis?: string;
+  r_squared: number;
+  ridge_cv?: { cv_r_squared_mean?: number };
+  leave_one_area_out?: { mae_gbp?: number };
+  spearman_pred_vs_actual?: { rho?: number };
+  n_matched?: number;
+  n_areas?: number;
+  n_quarters?: number;
+  national_avg_latest?: number;
+  feature_analysis?: Record<string, FeatureStat>;
+  cross_source_agreement?: {
+    moneysupermarket?: {
+      rows?: { area_name: string; actual_gbp: number; predicted_gbp: number }[];
+      spearman_pred_vs_actual?: { rho?: number };
+    };
+  };
+}
+
 /** Load the trimmed calibration summary and shape it for the methodology panel. */
 export async function getMethodology(): Promise<Methodology | null> {
   try {
     const res = await fetch(dataUrl('methodology.json'));
     if (!res.ok) return null;
-    const m = await res.json();
+    const m: RawMethodology = await res.json();
     const fa: Methodology['feature_analysis'] = {};
-    for (const [k, v] of Object.entries((m.feature_analysis ?? {}) as Record<string, any>)) {
+    for (const [k, v] of Object.entries(m.feature_analysis ?? {})) {
       fa![k] = {
         bucket: v.bucket,
         partial_r: v.partial_r,
@@ -113,7 +133,7 @@ export async function getMethodology(): Promise<Methodology | null> {
       cross_source: xs
         ? {
             name: 'MoneySuperMarket',
-            rows: (xs.rows ?? []).map((r: any) => ({
+            rows: (xs.rows ?? []).map((r) => ({
               area_name: r.area_name,
               actual_gbp: r.actual_gbp,
               predicted_gbp: r.predicted_gbp,

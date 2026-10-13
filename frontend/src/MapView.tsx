@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-// @ts-ignore - react-map-gl maplibre entrypoint ships without bundled types
 import MapGL, {
   Source,
   Layer,
@@ -7,10 +6,12 @@ import MapGL, {
   Marker,
   NavigationControl,
 } from 'react-map-gl/maplibre';
-import type { FeatureCollection } from 'geojson';
+import type { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
+import type { LayerSpecification } from 'maplibre-gl';
+import type { Feature, FeatureCollection } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin, X } from 'lucide-react';
-import type { ColorMode, FocusTarget } from './types';
+import type { ColorMode, FocusTarget, LsoaProps } from './types';
 import {
   COMPONENT_LABELS,
   gbp,
@@ -39,8 +40,10 @@ interface MapViewProps {
 
 const SELECTED_OUTLINE = '#24211c';
 
+type FillPaint = NonNullable<Extract<LayerSpecification, { type: 'fill' }>['paint']>;
+
 // Discrete quintiles for the composite; a continuous percentile ramp per driver.
-function fillColor(mode: ColorMode): any {
+function fillColor(mode: ColorMode): FillPaint['fill-color'] {
   if (mode === 'composite') {
     return [
       'match',
@@ -95,13 +98,17 @@ export const MapView: React.FC<MapViewProps> = ({
   onClick,
   onResetFilter,
 }) => {
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapRef>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
 
   const lookup = useMemo(() => {
-    const m = new Map<string, any>();
-    if (geojson) for (const f of geojson.features) m.set(String((f.properties as any)?.lsoa11cd), f);
+    const m = new Map<string, Feature>();
+    if (geojson) {
+      for (const f of geojson.features) {
+        m.set(String((f.properties as LsoaProps | null)?.lsoa11cd), f);
+      }
+    }
     return m;
   }, [geojson]);
   const bands = useMemo(() => quintilePremiumBands(lookup), [lookup]);
@@ -115,7 +122,7 @@ export const MapView: React.FC<MapViewProps> = ({
     } else if (focus.center) {
       mapRef.current.flyTo({ center: focus.center, zoom: 11, duration: 1100 });
     }
-  }, [focus?.nonce]);
+  }, [focus]);
 
   const setHover = (id: number | null, on: boolean) => {
     if (id == null || !mapRef.current) return;
@@ -123,7 +130,7 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   const readHover = useCallback(
-    (props: Record<string, any>): { label: string; value: string; extra: string | null } => {
+    (props: LsoaProps): { label: string; value: string; extra: string | null } => {
       if (colorMode === 'composite') {
         return {
           label: 'Est. premium',
@@ -144,22 +151,25 @@ export const MapView: React.FC<MapViewProps> = ({
   );
 
   const onMouseMove = useCallback(
-    (e: any) => {
+    (e: MapLayerMouseEvent) => {
       const f = e.features?.[0];
       if (f) {
-        if (hoveredId !== f.id) {
+        const props = f.properties as LsoaProps;
+        // generateId on the source gives every feature a numeric id.
+        const id = f.id as number;
+        if (hoveredId !== id) {
           setHover(hoveredId, false);
-          setHover(f.id, true);
-          setHoveredId(f.id);
-          onHover(f.properties.lsoa11cd);
+          setHover(id, true);
+          setHoveredId(id);
+          onHover(props.lsoa11cd);
         }
-        const { label, value, extra } = readHover(f.properties);
-        const q = Number(f.properties.quintile);
+        const { label, value, extra } = readHover(props);
+        const q = Number(props.quintile);
         setHoverInfo({
           lng: e.lngLat.lng,
           lat: e.lngLat.lat,
-          lsoa: f.properties.lsoa11cd,
-          lsoaName: f.properties.lsoa_name || f.properties.lsoa11cd,
+          lsoa: props.lsoa11cd,
+          lsoaName: props.lsoa_name || props.lsoa11cd,
           quintile: q,
           metricLabel: label,
           metricValue: value,
@@ -184,9 +194,9 @@ export const MapView: React.FC<MapViewProps> = ({
   }, [hoveredId, onHover]);
 
   const onMapClick = useCallback(
-    (e: any) => {
+    (e: MapLayerMouseEvent) => {
       const f = e.features?.[0];
-      if (f) onClick(f.properties.lsoa11cd);
+      if (f) onClick((f.properties as LsoaProps).lsoa11cd);
     },
     [onClick]
   );
@@ -244,7 +254,6 @@ export const MapView: React.FC<MapViewProps> = ({
                   0.95,
                   0.72,
                 ],
-                // @ts-ignore — maplibre supports this property
                 'fill-color-transition': { duration: 350, delay: 0 },
               }}
             />

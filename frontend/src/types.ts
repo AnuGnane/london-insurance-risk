@@ -69,7 +69,7 @@ export interface LsoaProps {
   premium_low?: number;            // 95% CI lower bound (£)
   premium_high?: number;           // 95% CI upper bound (£)
   premium_baseline?: number;     // £ premium with every factor at the median percentile
-  [key: string]: any;            // *_val, *_pct, *_contrib per component
+  [key: string]: string | number | boolean | null | undefined; // *_val, *_pct, *_contrib per component
 }
 
 export interface WaterfallStep {
