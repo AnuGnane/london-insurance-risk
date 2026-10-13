@@ -65,11 +65,20 @@ describe('index.css tokens', () => {
       .filter(([, sel]) => /\.(wf-|chip-|hover-popup|tap-card)/.test(sel))
       .map(([, sel, body]) => `${sel.trim()} { ${body.trim()} }`);
     expect(rules.length).toBeGreaterThan(0);
-    expect(rules.filter((r) => /#[0-9a-fA-F]{3,6}\b|rgba?\(/.test(r))).toEqual([]);
+    const literal = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(|:\s*(?:white|black)\b/;
+    expect(rules.filter((r) => literal.test(r))).toEqual([]);
   });
 
   it('define a dark scheme for the paper, ink and rule tokens', () => {
-    const dark = css.slice(css.indexOf('@media (prefers-color-scheme: dark)'));
+    // The body of the first dark-scheme block, up to its matching closing brace.
+    const start = css.indexOf('{', css.indexOf('@media (prefers-color-scheme: dark)'));
+    let depth = 0;
+    let end = start;
+    for (; end < css.length; end++) {
+      if (css[end] === '{') depth++;
+      if (css[end] === '}' && --depth === 0) break;
+    }
+    const dark = css.slice(start, end);
     for (const t of ['--paper', '--paper-panel', '--ink', '--ink-soft', '--ink-faint', '--rule', '--map-area-line', '--map-selected']) {
       expect(dark).toContain(`${t}:`);
     }

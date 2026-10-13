@@ -117,10 +117,10 @@ export const MapView: React.FC<MapViewProps> = ({
   const [tapInfo, setTapInfo] = useState<TapInfo | null>(null);
   const isTouch = useMediaQuery(TOUCH_QUERY);
   const isDark = useMediaQuery(DARK_QUERY);
-  // Outline colours come from index.css tokens, re-read when the scheme flips.
+  // Basemap per scheme; outline colours come from index.css tokens, re-read when it flips.
   const mapColors = useMemo(
     () => ({
-      scheme: isDark ? 'dark' : 'light',
+      basemap: isDark ? BASEMAP_STYLE.dark : BASEMAP_STYLE.light,
       areaLine: cssToken('--map-area-line', '#fbf7f0'),
       selected: cssToken('--map-selected', '#24211c'),
     }),
@@ -284,7 +284,7 @@ export const MapView: React.FC<MapViewProps> = ({
       <MapGL
         ref={mapRef}
         initialViewState={{ longitude: -2.5, latitude: 54.5, zoom: 5.2 }}
-        mapStyle={isDark ? BASEMAP_STYLE.dark : BASEMAP_STYLE.light}
+        mapStyle={mapColors.basemap}
         interactiveLayerIds={geojson ? ['lsoa-fill'] : []}
         onMouseMove={isTouch ? undefined : onMouseMove}
         onMouseLeave={isTouch ? undefined : onMouseLeave}
@@ -439,8 +439,11 @@ export const MapView: React.FC<MapViewProps> = ({
               )}
             </div>
             <p className="sr-only">
-              Areas are coloured by estimated annual premium in five quintiles, lightest to darkest:{' '}
-              {bands.map((b) => `Q${b.q} ${gbp(b.min)} to ${gbp(b.max)}`).join('; ')}.
+              Areas are coloured by estimated annual premium in five quintiles, lightest to darkest
+              {bands.length > 0
+                ? `: ${bands.map((b) => `Q${b.q} ${gbp(b.min)} to ${gbp(b.max)}`).join('; ')}.`
+                : '.'}
+              {nationalAvg != null ? ` The GB average is ${gbp(nationalAvg)}.` : ''}
               {selectedQ ? ` The selected area is in Q${selectedQ}.` : ''} Grey means no data.
             </p>
           </>

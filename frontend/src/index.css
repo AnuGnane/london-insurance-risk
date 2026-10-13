@@ -62,6 +62,7 @@
   --hairline: rgba(0, 0, 0, 0.18);
   --hairline-soft: rgba(0, 0, 0, 0.12);
   --swatch-edge: rgba(0, 0, 0, 0.1);
+  --swatch-edge-soft: rgba(0, 0, 0, 0.08);
   --on-swatch: #fff;       /* text on a quintile swatch */
   --nodata-a: #d9d9d9;
   --nodata-b: #c4c4c4;
@@ -101,8 +102,8 @@
     --hairline: rgba(255, 255, 255, 0.2);
     --hairline-soft: rgba(255, 255, 255, 0.12);
     --swatch-edge: rgba(255, 255, 255, 0.18);
-    --nodata-a: #4a4a4a;
-    --nodata-b: #3a3a3a;
+    --swatch-edge-soft: rgba(255, 255, 255, 0.14);
+    /* --nodata-a/b stay light: the map fills no-data areas NO_DATA_COLOR in both schemes */
     --skeleton-a: #24211d;
     --skeleton-b: #2e2a25;
     --shimmer: rgba(255, 255, 255, 0.06);
@@ -120,6 +121,7 @@
   :root .maplibregl-ctrl-attrib.maplibregl-compact { background-color: rgba(27, 25, 22, 0.8); color: var(--ink-soft); }
   :root .maplibregl-ctrl-attrib a { color: var(--ink-soft); }
   :root .maplibregl-ctrl-attrib-button { filter: invert(1); }
+  :root .maplibregl-ctrl-group button + button { border-top-color: var(--rule); }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -574,7 +576,7 @@ body {
 }
 .legend-ramp-bar {
   display: flex; height: 12px; border-radius: 3px; overflow: hidden;
-  border: 1px solid var(--swatch-edge);
+  border: 1px solid var(--swatch-edge-soft);
 }
 .legend-ramp-bar .seg-fill { flex: 1; }
 .legend-quintiles { height: 16px; margin-top: 16px; }
@@ -585,7 +587,7 @@ body {
   display: grid; place-items: center;
   font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
 }
-.legend-quintiles .seg-selected { box-shadow: inset 0 0 0 2px var(--ink); text-decoration: underline; }
+.legend-quintiles .seg-selected { box-shadow: inset 0 0 0 2px currentColor; text-decoration: underline; }
 .legend-scale { position: relative; height: 26px; margin-top: 5px; }
 .legend-tick {
   position: absolute; top: 0; transform: translateX(-50%);
@@ -608,7 +610,7 @@ body {
 }
 .legend-nodata-swatch {
   width: 16px; height: 12px; border-radius: 2px; flex-shrink: 0;
-  border: 1px solid var(--swatch-edge);
+  border: 1px solid var(--swatch-edge-soft);
   background: repeating-linear-gradient(45deg, var(--nodata-a), var(--nodata-a) 2px, var(--nodata-b) 2px, var(--nodata-b) 4px);
 }
 .legend-nodata-label { font-size: 0.66rem; color: var(--ink-faint); }

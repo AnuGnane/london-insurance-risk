@@ -159,7 +159,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </span>
         <span
           className="qpill"
-          style={{ background: color, color: QUINTILE_TEXT[Math.min(5, Math.max(1, data.quintile)) - 1] }}
+          style={{ background: color, color: QUINTILE_TEXT[Math.min(5, Math.max(1, Math.round(data.quintile))) - 1] }}
         >
           Q{data.quintile} of 5
         </span>
