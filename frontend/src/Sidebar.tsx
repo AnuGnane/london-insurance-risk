@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Feature } from 'geojson';
-import { Search, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, ArrowLeft, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { DetailPanel } from './DetailPanel';
 import { RankingsPanel } from './RankingsPanel';
 import { AboutPanel } from './AboutPanel';
+import { ShareButton } from './ShareButton';
 import type { AreaDetail, ColorMode, Methodology } from './types';
 import { COMPONENT_LABELS } from './utils';
 
@@ -18,6 +19,8 @@ interface SidebarProps {
   onColorModeChange: (m: ColorMode) => void;
   lookup: Map<string, Feature>;
   methodology: Methodology | null;
+  recentSearches: string[];
+  onClearRecents: () => void;
   sheetExpanded: boolean;
   onToggleSheet: () => void;
 }
@@ -138,13 +141,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onColorModeChange,
   lookup,
   methodology,
+  recentSearches,
+  onClearRecents,
   sheetExpanded,
   onToggleSheet,
 }) => {
   const [term, setTerm] = useState('');
-  const submit = () => {
-    if (term.trim().length > 1) onSearch(term.trim());
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const search = (q: string) => {
+    if (loading || !q.trim()) return;
+    setTerm(q);
+    onSearch(q.trim());
   };
+  const showRecents = focused && term === '' && recentSearches.length > 0;
 
   return (
     <div className="sidebar">
@@ -184,18 +194,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="sidebar-content">
         <div className="section">
-          <div className="search-bar">
+          <form
+            className="search-bar"
+            role="search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              search(term);
+            }}
+          >
+            <div className="search-field">
             <Search className="search-icon" size={18} />
             <input
+              ref={inputRef}
               type="text"
-              placeholder="Search a postcode — e.g. E1 6AN"
+              placeholder="Postcode or district, e.g. E1 6AN"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               spellCheck={false}
-              aria-label="Search a postcode"
+              autoComplete="postal-code"
+              autoCapitalize="characters"
+              enterKeyHint="search"
+              aria-label="Search a postcode or postcode district"
             />
-          </div>
+            {term && (
+              <button
+                type="button"
+                className="search-clear"
+                onClick={() => {
+                  setTerm('');
+                  inputRef.current?.focus();  // back to the box, recents showing
+                }}
+                aria-label="Clear the search"
+              >
+                <X size={16} />
+              </button>
+            )}
+            </div>
+            <button
+              type="submit"
+              className="search-go"
+              disabled={loading || !term.trim()}
+              aria-busy={loading}
+            >
+              {loading ? <span className="loader loader-sm" aria-hidden="true" /> : null}
+              {loading ? 'Searching' : 'Search'}
+            </button>
+          </form>
+
+          {showRecents && (
+            // onMouseDown keeps focus in the input so the list does not vanish mid-tap.
+            <div className="recents" onMouseDown={(e) => e.preventDefault()}>
+              <div className="recents-head">
+                <span className="eyebrow">Recent</span>
+                <button type="button" className="recents-clear" onClick={onClearRecents}>
+                  clear
+                </button>
+              </div>
+              {recentSearches.map((r) => (
+                <button key={r} type="button" className="recent" onClick={() => search(r)}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div style={{ marginTop: 16 }}>
             <span className="eyebrow">Colour the map by</span>
@@ -228,9 +291,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         ) : detail ? (
           <div className="section">
-            <button className="back-link" onClick={onClear}>
-              <ArrowLeft size={14} /> Back to rankings
-            </button>
+            <div className="detail-actions">
+              <button className="back-link" onClick={onClear}>
+                <ArrowLeft size={14} /> Back to rankings
+              </button>
+              <ShareButton title={detail.title} />
+            </div>
             <DetailPanel
               data={detail}
               colorMode={colorMode}

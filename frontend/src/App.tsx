@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import { Sidebar } from './Sidebar';
 import { MapView } from './MapView';
@@ -16,7 +16,14 @@ import {
   featureToDetail,
   featureAtPoint,
 } from './utils';
-import { getGeojson, lookupPostcode, getMethodology } from './api';
+import { getGeojson, getMethodology } from './api';
+import {
+  addRecentSearch,
+  clearRecentSearches,
+  loadRecentSearches,
+  resolvePostcode,
+  type PostcodeHit,
+} from './postcode';
 import { layoutCssVars } from './layout';
 import './index.css';
 
@@ -60,18 +67,27 @@ function App() {
   // Phone bottom sheet: starts collapsed (masthead + search) and expands when an
   // area is chosen from the sheet. Ignored by the desktop layout.
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  // The postcode behind the current selection (shared as ?pc=), if it came from a search.
+  const [searchedPc, setSearchedPc] = useState<string | null>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
 
-  // A shared ?area= link, captured once on mount; restored after the GeoJSON loads.
-  const [initialArea] = useState(() =>
-    new URLSearchParams(window.location.search).get('area')
-  );
+  // A shared ?pc= / ?area= link, captured once on mount; restored after the
+  // GeoJSON loads (the postcode first, falling back to the area).
+  // Set once the visitor picks an area themselves, so a slow link restore never
+  // overrides their choice.
+  const userSelected = useRef(false);
+  const [initialLink] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return { area: params.get('area'), pc: params.get('pc') };
+  });
 
   // -----------------------------------------------------------------------
-  // Deep-linkable URLs: encode ?area=<lsoa>&filter=<mode> in the query string.
+  // Deep-linkable URLs: encode ?pc=<postcode>&area=<lsoa>&filter=<mode>.
   // -----------------------------------------------------------------------
   const updateUrl = useCallback(
-    (lsoa: string | null, mode: ColorMode) => {
+    (lsoa: string | null, mode: ColorMode, pc: string | null) => {
       const params = new URLSearchParams();
+      if (pc && lsoa) params.set('pc', pc);
       if (lsoa) params.set('area', lsoa);
       if (mode !== 'composite') params.set('filter', mode);
       const qs = params.toString();
@@ -101,53 +117,82 @@ function App() {
 
   // Keep the URL in sync whenever selection or filter changes.
   useEffect(() => {
-    updateUrl(detail?.lsoa11cd ?? null, colorMode);
-  }, [detail?.lsoa11cd, colorMode, updateUrl]);
+    updateUrl(detail?.lsoa11cd ?? null, colorMode, searchedPc);
+  }, [detail?.lsoa11cd, colorMode, searchedPc, updateUrl]);
+
+  // Show the area containing a resolved postcode (its props already carry the
+  // premium + drivers, baked into the GeoJSON). Throws if it is off the map.
+  const showPostcodeHit = useCallback(
+    (features: Feature[], hit: PostcodeHit) => {
+      const feature = featureAtPoint(features, hit.lng, hit.lat);
+      const props = feature?.properties as LsoaProps | undefined;
+      if (!feature || !props) {
+        throw new Error('That postcode is outside the modelled area (GB only).');
+      }
+      const title =
+        hit.query.kind === 'outcode' ? `${hit.label} · district centre` : hit.label;
+      setDetail({ ...featureToDetail(props), title });
+      setSearchedPc(hit.label);
+      setSheetExpanded(true);
+      focusFeature(feature, [hit.lng, hit.lat]);
+    },
+    [focusFeature]
+  );
 
   // Load the choropleth once (static file on Pages; see api.ts), then restore
-  // the area selection from the URL.
+  // the selection from the URL: the postcode if postcodes.io answers, else the area.
   useEffect(() => {
+    const restoreArea = (fc: FeatureCollection) => {
+      if (!initialLink.area || userSelected.current) return;
+      const feature = fc.features.find(
+        (f) => String((f.properties as LsoaProps | null)?.lsoa11cd) === initialLink.area
+      );
+      if (feature) {
+        setDetail(featureToDetail(feature.properties as LsoaProps));
+        setSheetExpanded(true);
+        focusFeature(feature);
+      }
+    };
     getGeojson()
       .then((fc) => {
         setGeojson(fc);
-        if (!initialArea) return;
-        const feature = fc.features.find(
-          (f) => String((f.properties as LsoaProps | null)?.lsoa11cd) === initialArea
-        );
-        if (feature) {
-          setDetail(featureToDetail(feature.properties as LsoaProps));
-          setSheetExpanded(true);
-          focusFeature(feature);
+        if (!initialLink.pc) {
+          restoreArea(fc);
+          return;
         }
+        resolvePostcode(initialLink.pc)
+          .then((hit) => {
+            if (!userSelected.current) showPostcodeHit(fc.features, hit);
+          })
+          .catch(() => restoreArea(fc));
       })
       .catch((e) => setGeoError(e.message));
     getMethodology().then((m) => m && setMethodology(m));
-  }, [initialArea, focusFeature]);
+  }, [initialLink, focusFeature, showPostcodeHit]);
 
   const handleSearch = async (postcode: string) => {
+    userSelected.current = true;
     setLoading(true);
     setSearchError(null);
     try {
-      // postcodes.io → coordinate → the area whose polygon contains it (its props
-      // already carry the premium + drivers, baked into the GeoJSON).
-      const hit = await lookupPostcode(postcode);
-      const feature = geojson
-        ? featureAtPoint(geojson.features, hit.lng, hit.lat)
-        : null;
-      const props = feature?.properties as LsoaProps | undefined;
-      if (!props) {
-        throw new Error('That postcode is outside the modelled area (GB only).');
-      }
-      setDetail({ ...featureToDetail(props), title: hit.postcode });
-      setSheetExpanded(true);
-      focusLsoa(String(props.lsoa11cd), [hit.lng, hit.lat]);
+      // postcodes.io → coordinate → the area whose polygon contains it.
+      const hit = await resolvePostcode(postcode);
+      if (!geojson) throw new Error('The map is still loading. Try again in a moment.');
+      showPostcodeHit(geojson.features, hit);
+      setRecentSearches((list) => addRecentSearch(list, hit.label));
     } catch (err: unknown) {
       setSearchError(err instanceof Error ? err.message : String(err));
       setDetail(null);
+      setSearchedPc(null);
       setMarker(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearRecents = () => {
+    clearRecentSearches();
+    setRecentSearches([]);
   };
 
   // Clicking any area on the map: hydrate the panel straight from feature
@@ -155,13 +200,17 @@ function App() {
   const handleMapClick = (lsoa11cd: string) => {
     const props = lookup.get(lsoa11cd)?.properties as LsoaProps | undefined;
     if (!props) return;
+    userSelected.current = true;
     setSearchError(null);
+    setSearchedPc(null);
     setDetail(featureToDetail(props));
     focusLsoa(lsoa11cd);
   };
 
   const handleSelectRanking = (code: string, coords?: [number, number]) => {
+    userSelected.current = true;
     setSearchError(null);
+    setSearchedPc(null);
     const props = lookup.get(code)?.properties as LsoaProps | undefined;
     if (props) {
       setDetail(featureToDetail(props));
@@ -175,7 +224,9 @@ function App() {
   };
 
   const clearDetail = () => {
+    userSelected.current = true;
     setDetail(null);
+    setSearchedPc(null);
     setSearchError(null);
     setMarker(null);
   };
@@ -196,6 +247,8 @@ function App() {
         onColorModeChange={setColorMode}
         lookup={lookup}
         methodology={methodology}
+        recentSearches={recentSearches}
+        onClearRecents={handleClearRecents}
         sheetExpanded={sheetExpanded}
         onToggleSheet={() => setSheetExpanded((e) => !e)}
       />

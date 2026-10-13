@@ -6,7 +6,7 @@
  * server. See SHOWCASE_PLAN.md.
  *
  *  - getGeojson()       → static frontend/public/data/areas.geojson
- *  - lookupPostcode()   → postcodes.io (postcode → 2011 LSOA / Data Zone code)
+ *  - resolvePostcode()  → postcodes.io, in postcode.ts (postcode → point → area)
  *  - getRankings()      → sort the already-loaded GeoJSON client-side
  *  - getMethodology()   → static frontend/public/data/methodology.json
  */
@@ -17,44 +17,11 @@ import type { FeatureStat, LsoaProps, Methodology, RankingArea } from './types';
 // for Pages) and always includes a trailing slash, so data URLs resolve in both.
 const dataUrl = (name: string): string => `${import.meta.env.BASE_URL}data/${name}`;
 
-const POSTCODES_API = 'https://api.postcodes.io/postcodes';
-
 /** Load the simplified choropleth (our client-side data store). */
 export async function getGeojson(): Promise<FeatureCollection> {
   const res = await fetch(dataUrl('areas.geojson'));
   if (!res.ok) throw new Error('Could not load the map data');
   return res.json();
-}
-
-export interface PostcodeHit {
-  postcode: string;
-  lng: number;
-  lat: number;
-}
-
-/**
- * Resolve a postcode to a coordinate via postcodes.io (free, OGL, CORS-enabled).
- * The caller finds the containing area by point-in-polygon (featureAtPoint) —
- * postcodes.io's `codes.lsoa` is now the 2021/2022 census code, which doesn't
- * match our 2011 `area_code`s, so we use coordinates instead (vintage-independent).
- */
-export async function lookupPostcode(postcode: string): Promise<PostcodeHit> {
-  const pc = postcode.trim();
-  if (!pc) throw new Error('Enter a postcode.');
-  const res = await fetch(`${POSTCODES_API}/${encodeURIComponent(pc)}`);
-  if (res.status === 404) {
-    throw new Error('No match — that postcode is outside Great Britain or not recognised.');
-  }
-  if (!res.ok) throw new Error('Something went wrong looking up that postcode.');
-  const { result } = await res.json();
-  if (result?.longitude == null || result?.latitude == null) {
-    throw new Error('That postcode has no location (it may be in Northern Ireland).');
-  }
-  return {
-    postcode: result.postcode ?? pc.toUpperCase(),
-    lng: result.longitude,
-    lat: result.latitude,
-  };
 }
 
 /** Top/bottom N areas by calibrated premium, computed from the loaded GeoJSON. */
