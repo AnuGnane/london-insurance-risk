@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Feature } from 'geojson';
-import type { RankingArea } from './types';
 import { gbp, dominantDriver, quintileColor, COMPONENT_LABELS } from './utils';
 import { getRankings } from './api';
 
@@ -15,13 +14,10 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   onSelectRanking,
   lookup,
 }) => {
-  const [rankings, setRankings] = useState<RankingArea[]>([]);
   const [order, setOrder] = useState<Order>('desc');
 
   // Rankings are derived from the already-loaded GeoJSON (no API on Pages).
-  useEffect(() => {
-    setRankings(getRankings(lookup, order, 10));
-  }, [order, lookup]);
+  const rankings = useMemo(() => getRankings(lookup, order, 10), [order, lookup]);
 
   return (
     <div className="rankings">
@@ -54,7 +50,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
 
           const feature = lookup.get(r.code);
           const driver = feature?.properties
-            ? dominantDriver(feature.properties as Record<string, any>)
+            ? dominantDriver(feature.properties)
             : null;
 
           return (

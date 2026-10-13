@@ -19,6 +19,24 @@ import {
 import { getGeojson, lookupPostcode, getMethodology } from './api';
 import './index.css';
 
+const VALID_FILTERS: readonly ColorMode[] = [
+  'vehicle_crime',
+  'imd_crime',
+  'road_casualties',
+  'deprivation',
+  'flood_risk',
+  'population_density',
+  'aadf_intensity',
+  'traffic_per_capita',
+  'ksi_collisions_per_billion_vehicle_miles',
+];
+
+/** The colour mode from a shared ?filter= link, or the premium by default. */
+function readUrlFilter(): ColorMode {
+  const f = new URLSearchParams(window.location.search).get('filter');
+  return VALID_FILTERS.find((m) => m === f) ?? 'composite';
+}
+
 function App() {
   // The loaded GeoJSON is our client-side data store: it powers the map,
   // instant click-details, and client-side fly-to (no per-click round-trips).
@@ -35,9 +53,14 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [hoveredLsoa, setHoveredLsoa] = useState<string | null>(null);
-  const [colorMode, setColorMode] = useState<ColorMode>('composite');
+  const [colorMode, setColorMode] = useState<ColorMode>(readUrlFilter);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [marker, setMarker] = useState<[number, number] | null>(null);
+
+  // A shared ?area= link, captured once on mount; restored after the GeoJSON loads.
+  const [initialArea] = useState(() =>
+    new URLSearchParams(window.location.search).get('area')
+  );
 
   // -----------------------------------------------------------------------
   // Deep-linkable URLs: encode ?area=<lsoa>&filter=<mode> in the query string.
@@ -54,73 +77,47 @@ function App() {
     []
   );
 
-  // On mount, restore state from the URL query string.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const areaParam = params.get('area');
-    const filterParam = params.get('filter') as ColorMode | null;
-    const validFilters = [
-      'vehicle_crime',
-      'imd_crime',
-      'road_casualties',
-      'deprivation',
-      'flood_risk',
-      'population_density',
-      'aadf_intensity',
-      'traffic_per_capita',
-      'ksi_collisions_per_billion_vehicle_miles',
-    ];
-    if (
-      filterParam &&
-      validFilters.includes(filterParam)
-    ) {
-      setColorMode(filterParam);
-    }
-    // Area restoration happens after geojson loads (see below).
-    if (areaParam) {
-      // Stash in a ref-like state so the geojson-load effect can pick it up.
-      setPendingArea(areaParam);
-    }
-  }, []);
+  // Fly to a feature's geometry using bounds we already hold on the client.
+  const focusFeature = useCallback(
+    (feature: Feature | undefined, exact?: [number, number]) => {
+      const bounds = feature ? featureBounds(feature) : null;
+      if (bounds) {
+        setFocus({ bounds, nonce: Date.now() });
+        setMarker(exact ?? boundsCentre(bounds));
+      } else if (exact) {
+        setFocus({ center: exact, nonce: Date.now() });
+        setMarker(exact);
+      }
+    },
+    []
+  );
 
-  const [pendingArea, setPendingArea] = useState<string | null>(null);
-
-  // Once the GeoJSON is loaded, restore area selection from the URL.
-  useEffect(() => {
-    if (!pendingArea || lookup.size === 0) return;
-    const props = lookup.get(pendingArea)?.properties as LsoaProps | undefined;
-    if (props) {
-      setDetail(featureToDetail(props));
-      focusLsoa(pendingArea);
-    }
-    setPendingArea(null);
-  }, [pendingArea, lookup]);
+  const focusLsoa = (lsoa11cd: string, exact?: [number, number]) =>
+    focusFeature(lookup.get(lsoa11cd), exact);
 
   // Keep the URL in sync whenever selection or filter changes.
   useEffect(() => {
     updateUrl(detail?.lsoa11cd ?? null, colorMode);
   }, [detail?.lsoa11cd, colorMode, updateUrl]);
 
-  // Load the choropleth once (static file on Pages; see api.ts).
+  // Load the choropleth once (static file on Pages; see api.ts), then restore
+  // the area selection from the URL.
   useEffect(() => {
     getGeojson()
-      .then((fc) => setGeojson(fc))
+      .then((fc) => {
+        setGeojson(fc);
+        if (!initialArea) return;
+        const feature = fc.features.find(
+          (f) => String((f.properties as LsoaProps | null)?.lsoa11cd) === initialArea
+        );
+        if (feature) {
+          setDetail(featureToDetail(feature.properties as LsoaProps));
+          focusFeature(feature);
+        }
+      })
       .catch((e) => setGeoError(e.message));
     getMethodology().then((m) => m && setMethodology(m));
-  }, []);
-
-  // Fly to an LSOA's geometry using bounds we already hold on the client.
-  const focusLsoa = (lsoa11cd: string, exact?: [number, number]) => {
-    const feature = lookup.get(lsoa11cd);
-    const bounds = feature ? featureBounds(feature) : null;
-    if (bounds) {
-      setFocus({ bounds, nonce: Date.now() });
-      setMarker(exact ?? boundsCentre(bounds));
-    } else if (exact) {
-      setFocus({ center: exact, nonce: Date.now() });
-      setMarker(exact);
-    }
-  };
+  }, [initialArea, focusFeature]);
 
   const handleSearch = async (postcode: string) => {
     setLoading(true);
@@ -138,8 +135,8 @@ function App() {
       }
       setDetail({ ...featureToDetail(props), title: hit.postcode });
       focusLsoa(String(props.lsoa11cd), [hit.lng, hit.lat]);
-    } catch (err: any) {
-      setSearchError(err.message);
+    } catch (err: unknown) {
+      setSearchError(err instanceof Error ? err.message : String(err));
       setDetail(null);
       setMarker(null);
     } finally {

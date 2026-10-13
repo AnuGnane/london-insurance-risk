@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from src.showcase.bake_tiles import build_tippecanoe_args, TILES_NAME
+from src.showcase.bake_tiles import build_tippecanoe_args
 
 
 def test_build_args_shape():

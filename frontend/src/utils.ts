@@ -1,5 +1,5 @@
 // Small client-side helpers. No new dependencies.
-import type { Feature, FeatureCollection } from 'geojson';
+import type { Feature, FeatureCollection, Position } from 'geojson';
 import type { AreaDetail, LsoaProps } from './types';
 
 // Drivers that actually move the calibrated premium (place + composition) — these
@@ -82,26 +82,30 @@ export const ordinalPct = (n?: number | null): string => {
 
 /** Read the quintile from a feature regardless of whether the backend
  *  named it `quintile` or `risk_bucket`. */
-export const readQuintile = (p: Record<string, any>): number =>
+export const readQuintile = (p: Record<string, unknown>): number =>
   Number(p.quintile ?? p.risk_bucket ?? 0);
 
 /** Build an O(1) lookup of lsoa code -> feature from the loaded GeoJSON. */
 export function buildLookup(fc: FeatureCollection): Map<string, Feature> {
   const m = new Map<string, Feature>();
   for (const f of fc.features) {
-    const code = (f.properties as any)?.lsoa11cd;
+    const code = (f.properties as LsoaProps | null)?.lsoa11cd;
     if (code) m.set(String(code), f);
   }
   return m;
 }
+
+// Any depth of GeoJSON coordinate nesting (Point .. MultiPolygon).
+type NestedPositions = Position | NestedPositions[];
+const isPosition = (c: NestedPositions): c is Position => typeof c[0] === 'number';
 
 /** Bounding box of a (Multi)Polygon feature: [[w,s],[e,n]]. */
 export function featureBounds(
   feature: Feature
 ): [[number, number], [number, number]] | null {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const visit = (coords: any) => {
-    if (typeof coords[0] === 'number') {
+  const visit = (coords: NestedPositions) => {
+    if (isPosition(coords)) {
       const [x, y] = coords;
       if (x < minX) minX = x;
       if (y < minY) minY = y;
@@ -111,8 +115,8 @@ export function featureBounds(
       for (const c of coords) visit(c);
     }
   };
-  const g: any = feature.geometry;
-  if (!g) return null;
+  const g = feature.geometry;
+  if (!g || g.type === 'GeometryCollection') return null;
   visit(g.coordinates);
   if (!isFinite(minX)) return null;
   return [[minX, minY], [maxX, maxY]];
@@ -124,7 +128,7 @@ export const boundsCentre = (
 ): [number, number] => [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2];
 
 /** Ray-casting point-in-ring test ([lng,lat] pairs). */
-function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+function pointInRing(lng: number, lat: number, ring: Position[]): boolean {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];
@@ -139,9 +143,9 @@ function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
 
 /** Point-in-(Multi)Polygon: inside the outer ring and outside any hole. */
 function pointInFeature(lng: number, lat: number, feature: Feature): boolean {
-  const g: any = feature.geometry;
+  const g = feature.geometry;
   if (!g) return false;
-  const polys: number[][][][] =
+  const polys: Position[][][] =
     g.type === 'MultiPolygon' ? g.coordinates
     : g.type === 'Polygon' ? [g.coordinates]
     : [];
@@ -244,7 +248,7 @@ export function quintilePremiumBands(
 ): PremiumBand[] {
   const byQ = new Map<number, { min: number; max: number }>();
   for (const f of lookup.values()) {
-    const p = f.properties as any;
+    const p = f.properties as LsoaProps | null;
     const q = Number(p?.quintile);
     const v = Number(p?.calibrated_premium);
     if (!q || !isFinite(v)) continue;
@@ -313,7 +317,7 @@ export function computeDistribution(
 ): DistributionResult | null {
   const values: number[] = [];
   for (const f of lookup.values()) {
-    const v = (f.properties as any)?.[fieldName];
+    const v = (f.properties as LsoaProps | null)?.[fieldName];
     if (v != null && isFinite(Number(v))) values.push(Number(v));
   }
   if (values.length < 10) return null;
@@ -359,7 +363,7 @@ export interface DominantDriver { key: string; dir: 'up' | 'down'; }
 // The factor that moves THIS area's premium most, in either direction, with its sign:
 // 'up' = pushes the premium up, 'down' = pulls it down.
 export function dominantDriver(
-  props: Record<string, any>
+  props: Record<string, unknown>
 ): DominantDriver | null {
   let bestKey: string | null = null;
   let bestMag = -Infinity;
