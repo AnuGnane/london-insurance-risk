@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import { Sidebar } from './Sidebar';
-import { MapView } from './MapView';
 import type {
   AreaDetail,
   ColorMode,
@@ -47,11 +47,44 @@ function readUrlFilter(): ColorMode {
   return VALID_FILTERS.find((m) => m === f) ?? 'composite';
 }
 
+// The map (react-map-gl, which in turn pulls in maplibre-gl) is its own chunk, so the
+// masthead and search paint before it loads.
+const MapView = lazy(() => import('./MapView').then((m) => ({ default: m.MapView })));
+
+/** Placeholder while the map chunk loads (the same skeleton MapView shows for data). */
+const MapFallback = () => (
+  <main className="map-container" aria-label="Map of estimated car-insurance premiums" aria-busy="true">
+    <div className="skeleton-map">
+      <div className="skeleton-pulse" />
+    </div>
+  </main>
+);
+
+/** If the map chunk cannot load (offline, or a stale page after a redeploy), keep
+ *  the sidebar working and say so in the map's place. */
+class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <main className="map-container" aria-label="Map of estimated car-insurance premiums">
+        <div className="map-toast map-toast-error" role="alert">
+          The map could not load. Check your connection and reload the page.
+        </div>
+      </main>
+    );
+  }
+}
+
 function App() {
   // The loaded GeoJSON is our client-side data store: it powers the map,
   // instant click-details, and client-side fly-to (no per-click round-trips).
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [loadedBytes, setLoadedBytes] = useState(0);
   const [methodology, setMethodology] = useState<Methodology | null>(null);
   const lookup = useMemo(
     () => (geojson ? buildLookup(geojson) : new Map<string, Feature>()),
@@ -155,7 +188,7 @@ function App() {
         focusFeature(feature);
       }
     };
-    getGeojson()
+    getGeojson(setLoadedBytes)
       .then((fc) => {
         setGeojson(fc);
         if (!initialLink.pc) {
@@ -238,6 +271,7 @@ function App() {
       className={`app-container${sheetExpanded ? ' sheet-expanded' : ''}`}
       style={layoutCssVars}
     >
+      <a className="skip-link" href="#postcode-search">Skip to postcode search</a>
       <Sidebar
         onSearch={handleSearch}
         onSelectRanking={handleSelectRanking}
@@ -254,9 +288,12 @@ function App() {
         sheetExpanded={sheetExpanded}
         onToggleSheet={() => setSheetExpanded((e) => !e)}
       />
+      <MapErrorBoundary>
+      <Suspense fallback={<MapFallback />}>
       <MapView
         geojson={geojson}
         loadError={geoError}
+        loadedBytes={loadedBytes}
         colorMode={colorMode}
         focus={focus}
         marker={marker}
@@ -268,6 +305,8 @@ function App() {
         onResetFilter={() => setColorMode('composite')}
         onShowDetails={() => setSheetExpanded(true)}
       />
+      </Suspense>
+      </MapErrorBoundary>
     </div>
   );
 }

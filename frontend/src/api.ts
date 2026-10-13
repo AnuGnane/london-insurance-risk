@@ -15,13 +15,43 @@ import type { FeatureStat, LsoaProps, Methodology, RankingArea } from './types';
 
 // Vite sets BASE_URL to the configured `base` ('/' in dev, '/london-insurance-risk/'
 // for Pages) and always includes a trailing slash, so data URLs resolve in both.
-const dataUrl = (name: string): string => `${import.meta.env.BASE_URL}data/${name}`;
+export const dataUrl = (name: string): string => `${import.meta.env.BASE_URL}data/${name}`;
 
-/** Load the simplified choropleth (our client-side data store). */
-export async function getGeojson(): Promise<FeatureCollection> {
+// How often the download readout updates (bytes received between reports).
+const PROGRESS_STEP_BYTES = 512 * 1024;
+
+/**
+ * Load the simplified choropleth (our client-side data store). `onProgress` gets
+ * the bytes received so far, for a loading readout; it is skipped when the
+ * browser cannot stream the response body.
+ */
+export async function getGeojson(
+  onProgress?: (bytes: number) => void
+): Promise<FeatureCollection> {
   const res = await fetch(dataUrl('areas.geojson'));
   if (!res.ok) throw new Error('Could not load the map data');
-  return res.json();
+  if (!onProgress || !res.body) return res.json();
+
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  let reported = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.byteLength;
+    if (received - reported >= PROGRESS_STEP_BYTES) {
+      reported = received;
+      onProgress(received);
+    }
+  }
+  onProgress(received);
+  // Hand the chunks to a Blob and drop our references, so only one copy of the
+  // body is alive while it is parsed (this matters on low-memory phones).
+  const blob = new Blob(chunks as BlobPart[]);
+  chunks.length = 0;
+  return new Response(blob).json();
 }
 
 /** Top/bottom N areas by calibrated premium, computed from the loaded GeoJSON. */

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Feature } from 'geojson';
-import { getMethodology, getRankings } from './api';
+import { getGeojson, getMethodology, getRankings } from './api';
 import type { LsoaProps } from './types';
 import { buildLookup } from './utils';
 
@@ -98,5 +98,36 @@ describe('getMethodology', () => {
   it('returns null when the network fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline'); }));
     expect(await getMethodology()).toBeNull();
+  });
+});
+
+describe('getGeojson', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const body = JSON.stringify({ type: 'FeatureCollection', features: [area('E01', { quintile: 3 })] });
+
+  it('streams the body, reports bytes received, and parses it', async () => {
+    const bytes = new TextEncoder().encode(body);
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(bytes.slice(0, 10));
+        c.enqueue(bytes.slice(10));
+        c.close();
+      },
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(stream, { status: 200 })));
+    const seen: number[] = [];
+    const fc = await getGeojson((n) => seen.push(n));
+    expect(fc.features).toHaveLength(1);
+    expect(seen.at(-1)).toBe(bytes.byteLength);
+  });
+
+  it('works without a progress callback and fails clearly on HTTP errors', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(body, { status: 200 })));
+    expect((await getGeojson()).features).toHaveLength(1);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    await expect(getGeojson()).rejects.toThrow('Could not load the map data');
   });
 });
