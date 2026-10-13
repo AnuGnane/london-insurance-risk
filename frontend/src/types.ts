@@ -114,6 +114,8 @@ export type ColorMode =
   | 'composite'
   | 'vehicle_crime'
   | 'imd_crime'
+  | 'young_driver_share'
+  | 'cars_per_household'
   | 'road_casualties'
   | 'deprivation'
   | 'flood_risk'

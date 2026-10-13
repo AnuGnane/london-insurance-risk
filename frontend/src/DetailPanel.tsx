@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Feature } from 'geojson';
-import type { AreaDetail, ColorMode } from './types';
+import type { AreaDetail, ColorMode, WaterfallStep } from './types';
 import {
   COMPONENT_LABELS,
   gbp,
@@ -8,11 +8,13 @@ import {
   computeDistribution,
   quintileColor,
   ledeForQuintile,
+  explainArea,
 } from './utils';
 
 interface DetailPanelProps {
   data: AreaDetail | null;
   colorMode: ColorMode;
+  onColorModeChange: (m: ColorMode) => void;
   lookup: Map<string, Feature>;
   nationalAvg?: number;
 }
@@ -40,9 +42,65 @@ const Sparkline: React.FC<{
   </div>
 );
 
+/** The five drivers as percentile dots on a 0–100 track (GB median at 50).
+ *  Tapping one colours the map by it; tapping it again goes back to premium. */
+const DriverDots: React.FC<{
+  steps: WaterfallStep[];
+  colorMode: ColorMode;
+  onColorModeChange: (m: ColorMode) => void;
+}> = ({ steps, colorMode, onColorModeChange }) => {
+  const groups: { title: string; kind: WaterfallStep['kind'] }[] = [
+    { title: 'Place', kind: 'place' },
+    { title: 'Who lives there', kind: 'composition' },
+  ];
+  return (
+    <div className="dots">
+      {groups.map((g) => (
+        <div key={g.kind} className="dots-group">
+          <div className="dots-title">{g.title}</div>
+          {steps
+            .filter((s) => s.kind === g.kind)
+            .map((s) => {
+              const active = colorMode === s.key;
+              const pct = s.percentile;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  className={`dot-row${active ? ' dot-row-active' : ''}`}
+                  aria-pressed={active}
+                  title={active ? 'Back to colouring by premium' : `Colour the map by ${s.label}`}
+                  onClick={() => onColorModeChange(active ? 'composite' : (s.key as ColorMode))}
+                >
+                  <span className="dot-label">
+                    {s.label}
+                    {s.withinScotland && <span className="diag-tag">within Scotland</span>}
+                  </span>
+                  <span className="dot-track" aria-hidden="true">
+                    <span className="dot-median" />
+                    {pct != null && (
+                      <span className="dot-mark" style={{ left: `${Math.min(100, Math.max(0, pct))}%` }} />
+                    )}
+                  </span>
+                  <span className="dot-pct">{ordinalPct(pct)}</span>
+                </button>
+              );
+            })}
+        </div>
+      ))}
+      <div className="dots-scale" aria-hidden="true">
+        <span>0</span>
+        <span>GB median</span>
+        <span>100</span>
+      </div>
+    </div>
+  );
+};
+
 export const DetailPanel: React.FC<DetailPanelProps> = ({
   data,
   colorMode,
+  onColorModeChange,
   lookup,
   nationalAvg,
 }) => {
@@ -158,6 +216,24 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         return (
           <div className="section" style={{ borderTop: 'none', paddingBottom: 0 }}>
             <span className="eyebrow">Why this price</span>
+            <p className="explain">
+              {explainArea(data.steps, data.premium_baseline, premium)}
+            </p>
+            <DriverDots
+              steps={data.steps}
+              colorMode={colorMode}
+              onColorModeChange={onColorModeChange}
+            />
+            <details className="pct-explainer">
+              <summary>What is a percentile?</summary>
+              <p>
+                A percentile ranks this area against every other area in Great Britain:
+                the 91st percentile scores higher than about 91% of areas, and the 50th is
+                the middle (the GB median). Crime and deprivation are ranked within
+                comparable groups, never across them, so vehicle crime in a Scottish area
+                is ranked within Scotland. Tap a factor to colour the map by it.
+              </p>
+            </details>
             <div className="waterfall" aria-label="Breakdown of the estimated premium by factor">
               <div className="wf-row wf-anchor">
                 <span className="wf-label">Typical GB area</span>
