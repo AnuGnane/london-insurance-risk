@@ -1,0 +1,40 @@
+name: CI
+
+# The holiday gate (HOLIDAY.md) on every pull request: the data-free pytest
+# subset + ruff for the Python pipeline, lint + Pages build for the frontend.
+# data/ and reports/ are git-ignored, so data-dependent tests skip here.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra dev
+      - run: uv run ruff check
+      - run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - name: Build (GitHub Pages base path)
+        run: npm run build
+        env:
+          GITHUB_PAGES: '1'
