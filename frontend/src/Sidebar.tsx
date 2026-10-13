@@ -191,6 +191,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </>
           )}
           <span>41,729 areas mapped</span>
+          <span className="sep">·</span>
+          {/* Built into dist/ by scripts/copy-methodology.mjs (not served by `npm run dev`). */}
+          <a href={`${import.meta.env.BASE_URL}methodology.html`}>How it works</a>
         </div>
       </header>
 
