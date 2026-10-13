@@ -303,7 +303,7 @@
 
   <h3>Uncertainty, stated honestly</h3>
   <p>Intervals come from a 200-rep cluster bootstrap (resampling anchor <em>areas</em>, not rows)
-  — but coefficient uncertainty alone gave an implausibly tight ±£241 median width, so bands are
+  — but coefficient uncertainty alone gave an implausibly tight £241 median width, so bands are
   widened by the out-of-sample LOAO residual variance to an honest median width of
   <span class="num">£373</span>. Every one of the 41,729 areas ships with its
   <code>premium_low</code>/<code>premium_high</code>.</p>
@@ -357,7 +357,7 @@
     <tr><th>Source</th><th>Access</th><th>Feeds</th><th>The interesting transform</th></tr>
     <tr><td class="src">ONS / ScotGov boundaries<small>area_boundaries.parquet</small></td>
       <td>ArcGIS REST</td><td><span class="feed">spatial backbone</span></td>
-      <td>Paginated ESRI features → ring-winding repair → unified GB schema; areas computed in EPSG:27700; <code>make_valid</code> is always the <em>last</em> geometry op (re-simplifying after it once re-broke two Scottish areas)</td></tr>
+      <td>Paginated ESRI features → ring-winding repair → unified GB schema; areas computed in EPSG:27700; <code>make_valid</code> is always the <em>last</em> geometry op (re-simplifying after it once re-broke Scottish areas)</td></tr>
     <tr><td class="src">data.police.uk<small>vehicle_crime.parquet</small></td>
       <td>bulk archive</td><td><span class="feed">vehicle_crime (E+W)</span></td>
       <td>36 months of street-level vehicle crime, already LSOA-coded → incidents per 1k residents per year</td></tr>
@@ -411,7 +411,7 @@
   <p>The current form is the residue of arguments the data won:</p>
   <div class="caveats">
     <div class="caveat"><strong>Model the ratio, not the £.</strong> Absolute premiums conflate national price drift with the spatial effect; the log relative index isolates place.</div>
-    <div class="caveat"><strong>Replace proxies when the critique is valid.</strong> Population density, always collinear, was swapped for measured traffic flow — LOAO MAE fell to £89 and every surviving feature became independently significant.</div>
+    <div class="caveat"><strong>Replace proxies when the critique is valid.</strong> Population density, always collinear, was swapped for measured traffic flow at count points, which answered the "it's just a density model" critique; the feature gate, not intuition, now decides what stays.</div>
     <div class="caveat"><strong>Give the gate veto power.</strong> The 2026-07 wave tested three candidates; the gate admitted one (IMD crime, which displaced its own parent index) and rejected two — including flood risk, whose wrong sign for <em>car</em> premiums is now banked evidence for a home-insurance line.</div>
     <div class="caveat"><strong>Explainability must reconcile.</strong> Driver breakdowns that "gesture" at contributions were replaced by an exact decomposition that sums to the pound, with a serve-consistency test that guards the served map against stale coefficients.</div>
     <div class="caveat"><strong>Composition dominating place is a finding.</strong> Rather than tuning it away, the model reports both numbers per area — and the place-only counterfactual became a product feature.</div>
