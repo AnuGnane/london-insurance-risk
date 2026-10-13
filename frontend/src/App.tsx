@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import { Sidebar } from './Sidebar';
 import { MapView } from './MapView';
@@ -73,6 +73,9 @@ function App() {
 
   // A shared ?pc= / ?area= link, captured once on mount; restored after the
   // GeoJSON loads (the postcode first, falling back to the area).
+  // Set once the visitor picks an area themselves, so a slow link restore never
+  // overrides their choice.
+  const userSelected = useRef(false);
   const [initialLink] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return { area: params.get('area'), pc: params.get('pc') };
@@ -140,7 +143,7 @@ function App() {
   // the selection from the URL: the postcode if postcodes.io answers, else the area.
   useEffect(() => {
     const restoreArea = (fc: FeatureCollection) => {
-      if (!initialLink.area) return;
+      if (!initialLink.area || userSelected.current) return;
       const feature = fc.features.find(
         (f) => String((f.properties as LsoaProps | null)?.lsoa11cd) === initialLink.area
       );
@@ -158,7 +161,9 @@ function App() {
           return;
         }
         resolvePostcode(initialLink.pc)
-          .then((hit) => showPostcodeHit(fc.features, hit))
+          .then((hit) => {
+            if (!userSelected.current) showPostcodeHit(fc.features, hit);
+          })
           .catch(() => restoreArea(fc));
       })
       .catch((e) => setGeoError(e.message));
@@ -166,6 +171,7 @@ function App() {
   }, [initialLink, focusFeature, showPostcodeHit]);
 
   const handleSearch = async (postcode: string) => {
+    userSelected.current = true;
     setLoading(true);
     setSearchError(null);
     try {
@@ -194,6 +200,7 @@ function App() {
   const handleMapClick = (lsoa11cd: string) => {
     const props = lookup.get(lsoa11cd)?.properties as LsoaProps | undefined;
     if (!props) return;
+    userSelected.current = true;
     setSearchError(null);
     setSearchedPc(null);
     setDetail(featureToDetail(props));
@@ -201,6 +208,7 @@ function App() {
   };
 
   const handleSelectRanking = (code: string, coords?: [number, number]) => {
+    userSelected.current = true;
     setSearchError(null);
     setSearchedPc(null);
     const props = lookup.get(code)?.properties as LsoaProps | undefined;
@@ -216,6 +224,7 @@ function App() {
   };
 
   const clearDetail = () => {
+    userSelected.current = true;
     setDetail(null);
     setSearchedPc(null);
     setSearchError(null);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Feature } from 'geojson';
 import { Search, ArrowLeft, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { DetailPanel } from './DetailPanel';
@@ -148,6 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [term, setTerm] = useState('');
   const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const search = (q: string) => {
     if (loading || !q.trim()) return;
     setTerm(q);
@@ -204,6 +205,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="search-field">
             <Search className="search-icon" size={18} />
             <input
+              ref={inputRef}
               type="text"
               placeholder="Postcode or district, e.g. E1 6AN"
               value={term}
@@ -220,7 +222,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 className="search-clear"
-                onClick={() => setTerm('')}
+                onClick={() => {
+                  setTerm('');
+                  inputRef.current?.focus();  // back to the box, recents showing
+                }}
                 aria-label="Clear the search"
               >
                 <X size={16} />

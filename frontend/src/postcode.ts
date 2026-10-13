@@ -53,7 +53,7 @@ const MESSAGES: Record<PostcodeErrorCode, string> = {
   malformed:
     "That doesn't look like a UK postcode. Try a full one like E1 6AN, or a district like SW1A.",
   northern_ireland:
-    'Northern Ireland isn’t covered: police.uk and STATS19 both omit NI, so the model is Great Britain only.',
+    'Northern Ireland isn’t covered: data.police.uk and STATS19 both omit NI, so the model is Great Britain only.',
   not_found: "We couldn't find that postcode. Check it and try again.",
   no_location: 'That postcode has no map location (it may be a PO box or newly issued).',
   rate_limited: 'Too many searches in a short time. Wait a few seconds and try again.',
