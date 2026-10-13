@@ -50,9 +50,87 @@
   --shadow-sm: 0 1px 2px rgba(36, 33, 28, 0.05), 0 1px 3px rgba(36, 33, 28, 0.06);
   --shadow-md: 0 4px 14px -4px rgba(36, 33, 28, 0.12), 0 2px 6px -2px rgba(36, 33, 28, 0.06);
   --shadow-pop: 0 10px 30px -8px rgba(36, 33, 28, 0.20);
+  --shadow-sheet: 0 -6px 20px rgba(36, 33, 28, 0.06);
+
+  /* Direction: up = dearer, down = cheaper (always paired with an arrow) --- */
+  --up: #9e2a2b;           /* text */
+  --up-bar: #c44536;
+  --down: #2f6f57;         /* text */
+  --down-bar: #4f9d7f;
+  --anchor: #6b675f;       /* waterfall baseline row */
+  --ink-mid: #667;         /* the 95% range under the hero £ */
+  --hairline: rgba(0, 0, 0, 0.18);
+  --hairline-soft: rgba(0, 0, 0, 0.12);
+  --swatch-edge: rgba(0, 0, 0, 0.1);
+  --swatch-edge-soft: rgba(0, 0, 0, 0.08);
+  --on-swatch: #fff;       /* text on a quintile swatch */
+  --nodata-a: #d9d9d9;
+  --nodata-b: #c4c4c4;
+  --skeleton-a: #f0e8db;
+  --skeleton-b: #e9ddc9;
+  --shimmer: rgba(255, 255, 255, 0.6);
+  --pin-shadow: rgba(0, 0, 0, 0.3);
+
+  /* Map chrome drawn by MapLibre (read by MapView through these tokens) ---- */
+  --map-area-line: #fbf7f0;
+  --map-selected: #24211c;
+
+  color-scheme: light dark;
+}
+
+/* Dark mode follows the system (no manual toggle). The data colours (ramp,
+   quintiles) stay the same; paper, ink, rules and chrome flip. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1b1916;
+    --paper-panel: #24211d;
+    --paper-wash: #2e2a25;
+    --ink: #f1ebe2;
+    --ink-soft: #c9c0b4;
+    --ink-faint: #a39a8e;
+    --rule: #3a352f;
+    --rule-strong: #4c463e;
+    --accent: #ff6b7d;
+    --accent-soft: #3d2126;
+    --positive: #7fcca8;
+    --up: #ff8f80;
+    --up-bar: #d9604f;
+    --down: #86d1ae;
+    --down-bar: #4f9d7f;
+    --anchor: #b0a89c;
+    --ink-mid: #b8b3c2;
+    --hairline: rgba(255, 255, 255, 0.2);
+    --hairline-soft: rgba(255, 255, 255, 0.12);
+    --swatch-edge: rgba(255, 255, 255, 0.18);
+    --swatch-edge-soft: rgba(255, 255, 255, 0.14);
+    /* --nodata-a/b stay light: the map fills no-data areas NO_DATA_COLOR in both schemes */
+    --skeleton-a: #24211d;
+    --skeleton-b: #2e2a25;
+    --shimmer: rgba(255, 255, 255, 0.06);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 14px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    --shadow-pop: 0 10px 30px -8px rgba(0, 0, 0, 0.6);
+    --shadow-sheet: 0 -6px 20px rgba(0, 0, 0, 0.4);
+    --map-area-line: #1b1916;
+    --map-selected: #f1ebe2;
+  }
+  /* MapLibre's control icons are dark SVGs; its attribution box is white. */
+  :root .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+  /* :root raises specificity over maplibre-gl.css, which loads after this file */
+  :root .maplibregl-ctrl.maplibregl-ctrl-attrib,
+  :root .maplibregl-ctrl-attrib.maplibregl-compact { background-color: rgba(27, 25, 22, 0.8); color: var(--ink-soft); }
+  :root .maplibregl-ctrl-attrib a { color: var(--ink-soft); }
+  :root .maplibregl-ctrl-attrib-button { filter: invert(1); }
+  :root .maplibregl-ctrl-group button + button { border-top-color: var(--rule); }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Visible to screen readers only */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 
 html { -webkit-text-size-adjust: 100%; }
 
@@ -267,7 +345,7 @@ body {
 }
 .hero-swatch {
   width: 12px; height: 30px; border-radius: 3px; flex-shrink: 0;
-  border: 1px solid rgba(0, 0, 0, 0.12); align-self: center;
+  border: 1px solid var(--hairline-soft); align-self: center;
 }
 .hero-caption {
   font-size: 0.72rem; color: var(--ink-faint); text-transform: uppercase;
@@ -275,7 +353,7 @@ body {
 }
 .hero-range {
   font-family: var(--font-display); font-weight: 500; font-size: 1.1rem;
-  color: var(--ink-mid, #667); margin-top: 2px; letter-spacing: -0.01em;
+  color: var(--ink-mid); margin-top: 2px; letter-spacing: -0.01em;
 }
 
 /* Index + quintile (no coloured circle) */
@@ -288,7 +366,7 @@ body {
 }
 .index-figure span { color: var(--ink-faint); font-size: 0.95rem; }
 .qpill {
-  font-size: 0.68rem; font-weight: 600; color: #fff;
+  font-size: 0.68rem; font-weight: 600; color: var(--on-swatch);  /* DetailPanel sets the contrast-checked QUINTILE_TEXT */
   padding: 2px 8px; border-radius: 999px; letter-spacing: 0.02em;
 }
 .index-caption { font-size: 0.72rem; color: var(--ink-faint); }
@@ -396,7 +474,7 @@ body {
   font-family: var(--font-display); font-size: 0.95rem; font-weight: 500;
   color: var(--ink-faint); width: 1.6ch; flex-shrink: 0; text-align: right;
 }
-.rank-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.1); }
+.rank-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid var(--swatch-edge); }
 .rank-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .rank-name {
   font-size: 0.84rem; font-weight: 500; color: var(--ink);
@@ -487,15 +565,29 @@ body {
   box-shadow: var(--shadow-md); border: 1px solid var(--rule); z-index: 5;
   min-width: 210px;
 }
+/* The quintile scale's two end labels sit half a line lower, so they never
+   collide with the four boundary ticks whatever the £ values are. */
+.legend-quintiles + .legend-scale { height: 30px; }
+.legend-quintiles + .legend-scale .legend-tick.edge-l,
+.legend-quintiles + .legend-scale .legend-tick.edge-r { top: 14px; }
 .legend-title {
   font-size: 0.64rem; font-weight: 600; color: var(--ink-faint);
   text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px;
 }
 .legend-ramp-bar {
   display: flex; height: 12px; border-radius: 3px; overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--swatch-edge-soft);
 }
 .legend-ramp-bar .seg-fill { flex: 1; }
+.legend-quintiles { height: 16px; margin-top: 16px; }
+/* With Q labels in the bar, the average marker spans the bar and its label sits above it. */
+.legend-quintiles + .legend-scale .legend-avg { top: -21px; bottom: auto; height: 21px; }
+.legend-quintiles + .legend-scale .legend-avg-label { top: -36px; background: transparent; }
+.legend-quintiles .seg-fill {
+  display: grid; place-items: center;
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
+}
+.legend-quintiles .seg-selected { box-shadow: inset 0 0 0 2px currentColor; text-decoration: underline; }
 .legend-scale { position: relative; height: 26px; margin-top: 5px; }
 .legend-tick {
   position: absolute; top: 0; transform: translateX(-50%);
@@ -518,8 +610,8 @@ body {
 }
 .legend-nodata-swatch {
   width: 16px; height: 12px; border-radius: 2px; flex-shrink: 0;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: repeating-linear-gradient(45deg, #d9d9d9, #d9d9d9 2px, #c4c4c4 2px, #c4c4c4 4px);
+  border: 1px solid var(--swatch-edge-soft);
+  background: repeating-linear-gradient(45deg, var(--nodata-a), var(--nodata-a) 2px, var(--nodata-b) 2px, var(--nodata-b) 4px);
 }
 .legend-nodata-label { font-size: 0.66rem; color: var(--ink-faint); }
 
@@ -551,13 +643,13 @@ body {
 .skeleton-map { position: absolute; inset: 0; z-index: 4; background: var(--paper-wash); }
 .skeleton-pulse {
   position: absolute; inset: 0;
-  background: linear-gradient(110deg, #f0e8db 30%, #e9ddc9 50%, #f0e8db 70%);
+  background: linear-gradient(110deg, var(--skeleton-a) 30%, var(--skeleton-b) 50%, var(--skeleton-a) 70%);
   background-size: 200% 100%; animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }
 .skeleton-toast { position: relative; z-index: 5; }
 @keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
-.map-pin { color: var(--accent); filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3)); }
+.map-pin { color: var(--accent); filter: drop-shadow(0 2px 3px var(--pin-shadow)); }
 
 /* Hover tooltip (overrides maplibre defaults) */
 .hover-popup .maplibregl-popup-content {
@@ -598,7 +690,7 @@ body {
 }
 .skel-line::after {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.6) 50%, transparent 70%);
+  background: linear-gradient(110deg, transparent 30%, var(--shimmer) 50%, transparent 70%);
   background-size: 200% 100%; animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }
 
@@ -656,7 +748,7 @@ body {
   .sidebar {
     width: 100%; height: var(--sheet-collapsed); order: 1;
     border-right: none; border-top: 1px solid var(--rule-strong);
-    box-shadow: 0 -6px 20px rgba(36, 33, 28, 0.06);
+    box-shadow: var(--shadow-sheet);
   }
   .sheet-expanded .sidebar { height: var(--sheet-expanded); }
   .sheet-handle {
@@ -691,6 +783,7 @@ body {
     bottom: calc(40px + env(safe-area-inset-bottom, 0px)); left: calc(10px + env(safe-area-inset-left, 0px));
     min-width: 0; width: min(180px, calc(100% - 80px)); padding: 8px 10px 4px;
   }
+  .legend-quintiles + .legend-scale { height: 28px; }
   .legend-title { margin-bottom: 6px; font-size: 0.6rem; }
   .legend-scale { height: 18px; }
   .legend-nodata { display: none; }
@@ -716,6 +809,9 @@ body {
 
 @media (prefers-contrast: more) {
   :root { --rule: #c9bda6; --ink-faint: #6c6256; }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root { --rule: #5a534a; --ink-faint: #c4bbaf; }
 }
 
 /* ---- Explain this score: sentence, percentile dots, percentile note ------- */
@@ -769,26 +865,27 @@ body {
 .waterfall { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .wf-row { display: grid; grid-template-columns: 1fr 64px auto; align-items: center;
   gap: 8px; padding: 4px 0; font-size: 13px; }
-.wf-label { display: flex; align-items: center; gap: 6px; color: var(--ink, #24211c);
+.wf-label { display: flex; align-items: center; gap: 6px; color: var(--ink);
   flex-wrap: wrap; }
 .wf-pct { font-size: 11px; color: var(--ink-faint); opacity: .85; }
 .wf-track { position: relative; height: 8px; }
 .wf-bar { position: absolute; top: 0; height: 8px; border-radius: 2px; }
-.wf-up { right: 50%; background: #c44536; }       /* dearer → grows left from centre */
-.wf-down { left: 50%; background: #4f9d7f; }       /* cheaper → grows right from centre */
+.wf-up { right: 50%; background: var(--up-bar); }       /* dearer → grows left from centre */
+.wf-down { left: 50%; background: var(--down-bar); }       /* cheaper → grows right from centre */
 .wf-track::before { content: ''; position: absolute; left: 50%; top: -2px; height: 12px;
-  width: 1px; background: rgba(0,0,0,.18); }
+  width: 1px; background: var(--hairline); }
 .wf-delta { font-variant-numeric: tabular-nums; font-weight: 600; }
-.wf-delta.pos { color: #9e2a2b; }
-.wf-delta.neg { color: #2f6f57; }
+.wf-arrow { font-size: 0.7em; margin-right: 3px; vertical-align: 1px; }
+.wf-delta.pos { color: var(--up); }
+.wf-delta.neg { color: var(--down); }
 .wf-anchor, .wf-total { grid-template-columns: 1fr auto; font-weight: 700; }
-.wf-anchor { color: #6b675f; border-bottom: 1px dashed rgba(0,0,0,.12); }
-.wf-total { border-top: 1px solid rgba(0,0,0,.18); margin-top: 2px; padding-top: 8px;
+.wf-anchor { color: var(--anchor); border-bottom: 1px dashed var(--hairline-soft); }
+.wf-total { border-top: 1px solid var(--hairline); margin-top: 2px; padding-top: 8px;
   font-size: 15px; }
 .wf-amount { font-variant-numeric: tabular-nums; }
 .wf-active .wf-label { font-weight: 700; }
-.chip-up { color: #9e2a2b; }
-.chip-down { color: #2f6f57; }
+.chip-up { color: var(--up); }
+.chip-down { color: var(--down); }
 
 @media (max-width: 560px) {
   .wf-row { grid-template-columns: 1fr auto; }
