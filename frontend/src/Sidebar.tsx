@@ -18,6 +18,8 @@ interface SidebarProps {
   onColorModeChange: (m: ColorMode) => void;
   lookup: Map<string, Feature>;
   methodology: Methodology | null;
+  sheetExpanded: boolean;
+  onToggleSheet: () => void;
 }
 
 const COLOR_MODES: { mode: ColorMode; label: string }[] = [
@@ -136,6 +138,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onColorModeChange,
   lookup,
   methodology,
+  sheetExpanded,
+  onToggleSheet,
 }) => {
   const [term, setTerm] = useState('');
   const submit = () => {
@@ -144,6 +148,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className="sidebar">
+      {/* Phone only (hidden on desktop by CSS): collapse / expand the bottom sheet. */}
+      <button
+        className="sheet-handle"
+        onClick={onToggleSheet}
+        aria-expanded={sheetExpanded}
+        aria-label={sheetExpanded ? 'Collapse the panel' : 'Expand the panel'}
+      >
+        <span className="sheet-grip" aria-hidden="true" />
+      </button>
       <header className="masthead">
         <div className="masthead-kicker">Territorial pricing · open-data model</div>
         <h1>The Price of Place</h1>
