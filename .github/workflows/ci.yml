@@ -1,7 +1,8 @@
 name: CI
 
 # The holiday gate (HOLIDAY.md) on every pull request: the data-free pytest
-# subset + ruff for the Python pipeline, lint + Pages build for the frontend.
+# subset + ruff for the Python pipeline, lint + unit tests + Pages build for
+# the frontend.
 # data/ and reports/ are git-ignored, so data-dependent tests skip here.
 
 on:
@@ -34,6 +35,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       - name: Build (GitHub Pages base path)
         run: npm run build
         env:
