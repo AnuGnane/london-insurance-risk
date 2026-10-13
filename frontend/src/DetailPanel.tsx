@@ -9,6 +9,7 @@ import {
   quintileColor,
   ledeForQuintile,
   explainArea,
+  QUINTILE_TEXT,
 } from './utils';
 
 interface DetailPanelProps {
@@ -156,7 +157,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           {isFinite(data.risk_index) ? data.risk_index.toFixed(0) : '—'}
           <span>/100</span>
         </span>
-        <span className="qpill" style={{ background: color }}>
+        <span
+          className="qpill"
+          style={{ background: color, color: QUINTILE_TEXT[Math.min(5, Math.max(1, data.quintile)) - 1] }}
+        >
           Q{data.quintile} of 5
         </span>
         <span className="index-caption">premium index · 0 cheapest → 100 dearest</span>
@@ -262,6 +266,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                             style={{ width: `${(Math.abs(s.step) / maxAbs) * 50}%` }} />
                     </span>
                     <span className={`wf-delta ${up ? 'pos' : 'neg'}`}>
+                      <span className="wf-arrow" aria-hidden="true">{up ? '▲' : '▼'}</span>
                       {up ? '+' : '−'}{gbp(Math.abs(s.step))}
                     </span>
                   </div>

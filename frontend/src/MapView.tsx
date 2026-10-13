@@ -22,8 +22,10 @@ import {
   quintileColor,
   quintilePremiumBands,
   premiumToRampPos,
+  QUINTILE_TEXT,
 } from './utils';
 import { fitPadding, TOUCH_QUERY, useMediaQuery } from './layout';
+import { BASEMAP_STYLE, cssToken, DARK_QUERY } from './theme';
 
 interface MapViewProps {
   geojson: FeatureCollection | null;
@@ -39,8 +41,6 @@ interface MapViewProps {
   onResetFilter: () => void;
   onShowDetails: () => void;
 }
-
-const SELECTED_OUTLINE = '#24211c';
 
 type FillPaint = NonNullable<Extract<LayerSpecification, { type: 'fill' }>['paint']>;
 
@@ -116,6 +116,16 @@ export const MapView: React.FC<MapViewProps> = ({
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const [tapInfo, setTapInfo] = useState<TapInfo | null>(null);
   const isTouch = useMediaQuery(TOUCH_QUERY);
+  const isDark = useMediaQuery(DARK_QUERY);
+  // Outline colours come from index.css tokens, re-read when the scheme flips.
+  const mapColors = useMemo(
+    () => ({
+      scheme: isDark ? 'dark' : 'light',
+      areaLine: cssToken('--map-area-line', '#fbf7f0'),
+      selected: cssToken('--map-selected', '#24211c'),
+    }),
+    [isDark]
+  );
 
   const lookup = useMemo(() => {
     const m = new Map<string, Feature>();
@@ -241,6 +251,11 @@ export const MapView: React.FC<MapViewProps> = ({
   const driverLabel =
     colorMode === 'composite' ? 'Estimated annual premium' : COMPONENT_LABELS[colorMode] || colorMode;
 
+  // The selected area's quintile, marked on the legend.
+  const selectedQ = selectedLsoa
+    ? Number((lookup.get(selectedLsoa)?.properties as LsoaProps | undefined)?.quintile) || null
+    : null;
+
   // Legend ticks for the composite £ scale.
   const avgPos = nationalAvg != null && bands.length ? premiumToRampPos(nationalAvg, bands) : null;
 
@@ -269,7 +284,7 @@ export const MapView: React.FC<MapViewProps> = ({
       <MapGL
         ref={mapRef}
         initialViewState={{ longitude: -2.5, latitude: 54.5, zoom: 5.2 }}
-        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+        mapStyle={isDark ? BASEMAP_STYLE.dark : BASEMAP_STYLE.light}
         interactiveLayerIds={geojson ? ['lsoa-fill'] : []}
         onMouseMove={isTouch ? undefined : onMouseMove}
         onMouseLeave={isTouch ? undefined : onMouseLeave}
@@ -297,13 +312,13 @@ export const MapView: React.FC<MapViewProps> = ({
             <Layer
               id="lsoa-lines"
               type="line"
-              paint={{ 'line-color': '#fbf7f0', 'line-width': 0.4, 'line-opacity': 0.45 }}
+              paint={{ 'line-color': mapColors.areaLine, 'line-width': 0.4, 'line-opacity': 0.45 }}
             />
             <Layer
               id="lsoa-selected"
               type="line"
               filter={['==', ['get', 'lsoa11cd'], selectedLsoa ?? '__none__']}
-              paint={{ 'line-color': SELECTED_OUTLINE, 'line-width': 2.5 }}
+              paint={{ 'line-color': mapColors.selected, 'line-width': 2.5 }}
             />
           </Source>
         )}
@@ -381,18 +396,24 @@ export const MapView: React.FC<MapViewProps> = ({
         )}
       </MapGL>
 
-      {/* £-keyed legend */}
-      <div className="legend">
+      {/* £-keyed legend: readable without colour (Q labels, £ ranges, a text alternative) */}
+      <div className="legend" role="group" aria-label="Map legend">
         <div className="legend-title">{driverLabel}</div>
 
         {colorMode === 'composite' ? (
           <>
-            <div className="legend-ramp-bar">
+            <div className="legend-ramp-bar legend-quintiles" aria-hidden="true">
               {QUINTILE_FILL.map((c, i) => (
-                <span key={i} className="seg-fill" style={{ background: c }} />
+                <span
+                  key={i}
+                  className={`seg-fill${selectedQ === i + 1 ? ' seg-selected' : ''}`}
+                  style={{ background: c, color: QUINTILE_TEXT[i] }}
+                >
+                  Q{i + 1}
+                </span>
               ))}
             </div>
-            <div className="legend-scale">
+            <div className="legend-scale" aria-hidden="true">
               {avgPos != null && (
                 <>
                   <span className="legend-avg" style={{ left: `${avgPos * 100}%` }} />
@@ -400,6 +421,9 @@ export const MapView: React.FC<MapViewProps> = ({
                     {nationalAvg != null ? `${gbp(nationalAvg)} avg` : 'avg'}
                   </span>
                 </>
+              )}
+              {bands.length > 0 && (
+                <span className="legend-tick edge-l" style={{ left: 0 }}>{gbp(bands[0].min)}</span>
               )}
               {bands.slice(0, 4).map((b, i) => (
                 <span
@@ -410,23 +434,36 @@ export const MapView: React.FC<MapViewProps> = ({
                   {gbp(b.max)}
                 </span>
               ))}
+              {bands.length === 5 && (
+                <span className="legend-tick edge-r" style={{ left: '100%' }}>{gbp(bands[4].max)}</span>
+              )}
             </div>
+            <p className="sr-only">
+              Areas are coloured by estimated annual premium in five quintiles, lightest to darkest:{' '}
+              {bands.map((b) => `Q${b.q} ${gbp(b.min)} to ${gbp(b.max)}`).join('; ')}.
+              {selectedQ ? ` The selected area is in Q${selectedQ}.` : ''} Grey means no data.
+            </p>
           </>
         ) : (
           <>
             <div
               className="legend-ramp-bar"
+              aria-hidden="true"
               style={{ background: `linear-gradient(to right, ${RAMP.join(',')})` }}
             />
-            <div className="legend-scale">
+            <div className="legend-scale" aria-hidden="true">
               <span className="legend-tick edge-l" style={{ left: 0 }}>0th</span>
               <span className="legend-tick" style={{ left: '50%' }}>50th</span>
               <span className="legend-tick edge-r" style={{ left: '100%' }}>100th pct</span>
             </div>
+            <p className="sr-only">
+              Areas are coloured by {driverLabel} percentile, from the 0th (lightest) to the
+              100th (darkest). Grey means no data.
+            </p>
           </>
         )}
 
-        <div className="legend-nodata">
+        <div className="legend-nodata" aria-hidden="true">
           <span className="legend-nodata-swatch" />
           <span className="legend-nodata-label">No data</span>
         </div>
