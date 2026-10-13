@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
+      - 'docs/PROJECT_SUMMARY.html'   # published as methodology.html by the build
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 

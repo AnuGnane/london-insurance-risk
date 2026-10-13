@@ -8,8 +8,9 @@ index, MoneySuperMarket regional figures).
 **Live map → https://anugnane.github.io/london-insurance-risk/** (static, GitHub Pages —
 search any GB postcode).
 
-A one-page write-up of the whole project, readable in a browser with no build step, lives
-at [`docs/PROJECT_SUMMARY.html`](docs/PROJECT_SUMMARY.html).
+A one-page write-up of the whole project lives at
+[`docs/PROJECT_SUMMARY.html`](docs/PROJECT_SUMMARY.html), published beside the map as
+**https://anugnane.github.io/london-insurance-risk/methodology.html** (the map's "How it works" link).
 
 This is a **territorial risk proxy, not a quote engine**: it uses no individual driver or
 vehicle details. The 0–100 `risk_index` is simply the calibrated premium on a percentile
@@ -213,7 +214,7 @@ data/                     git-ignored — never commit
 
 | Doc | What's in it |
 |---|---|
-| [`docs/PROJECT_SUMMARY.html`](docs/PROJECT_SUMMARY.html) | Shareable one-page write-up — open it in any browser |
+| [`docs/PROJECT_SUMMARY.html`](docs/PROJECT_SUMMARY.html) | Shareable one-page write-up — live at [methodology.html](https://anugnane.github.io/london-insurance-risk/methodology.html) |
 | [`AUDIT.md`](AUDIT.md) | Model verification: coefficients, tail reconstructions, sign checks, uncertainty, the 2026-07 evidence gate |
 | [`DATA_PROVENANCE_AND_TRANSFORMS.md`](DATA_PROVENANCE_AND_TRANSFORMS.md) | Every source, why it was chosen, the exact transform and normalisation |
 | [`docs/superpowers/info/PROJECT_TECHNICAL_OVERVIEW.md`](docs/superpowers/info/PROJECT_TECHNICAL_OVERVIEW.md) | Model maths, architecture, evolution decisions |
