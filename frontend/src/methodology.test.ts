@@ -48,12 +48,14 @@ describe('PROJECT_SUMMARY.html stat cards', () => {
     expect(card(/leave-one-area-out MAE/)[0]).toBe(`£${formatFigure(m.leave_one_area_out.mae_gbp, 2)}`);
   });
 
-  it('Spearman agrees with methodology.json to its last shown digit', () => {
-    // The page (with README and AUDIT) prints the third decimal truncated, not rounded,
-    // so this card is held to within one unit of that digit (see the R-16 PR's ruling).
+  it('Spearman matches methodology.json (stopgap: rounded or truncated)', () => {
+    // A known mismatch, left for Anu to rule on (R-16 PR): the page, README.md:26 and
+    // AUDIT.md:203 show 0.974, but rho rounds to 0.975. Every other figure on the page
+    // is rounded. Until the ruling, the card may show rho rounded or truncated to three
+    // places, and nothing else, so a later change to rho still fails here.
+    const rho: number = m.spearman_pred_vs_actual.rho;
     const shown = card(/Spearman/)[0];
-    expect(shown).toMatch(/^\d\.\d{3}$/);
-    expect(Math.abs(Number(shown) - m.spearman_pred_vs_actual.rho)).toBeLessThan(0.001);
+    expect([formatFigure(rho, 3), (Math.trunc(rho * 1000) / 1000).toFixed(3)]).toContain(shown);
   });
 
   it('the area count and its nation split match areas.geojson', () => {
