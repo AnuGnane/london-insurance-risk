@@ -6,7 +6,7 @@ import { RankingsPanel } from './RankingsPanel';
 import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { COMPONENT_LABELS } from './utils';
+import { COMPONENT_LABELS, type Nation } from './utils';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -23,6 +23,8 @@ interface SidebarProps {
   onClearRecents: () => void;
   sheetExpanded: boolean;
   onToggleSheet: () => void;
+  nation: Nation | null;
+  onNationChange: (n: Nation | null) => void;
 }
 
 const COLOR_MODES: { mode: ColorMode; label: string }[] = [
@@ -147,6 +149,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClearRecents,
   sheetExpanded,
   onToggleSheet,
+  nation,
+  onNationChange,
 }) => {
   const [term, setTerm] = useState('');
   const [focused, setFocused] = useState(false);
@@ -313,7 +317,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         ) : (
           <div className="section">
-            <RankingsPanel onSelectRanking={onSelectRanking} lookup={lookup} />
+            <RankingsPanel
+              onSelectRanking={onSelectRanking}
+              lookup={lookup}
+              nation={nation}
+              onNationChange={onNationChange}
+            />
           </div>
         )}
 

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Feature } from 'geojson';
-import { getGeojson, getMethodology, getRankings } from './api';
+import { countRankable, getGeojson, getMethodology, getRankings } from './api';
 import type { LsoaProps } from './types';
 import { buildLookup } from './utils';
 
@@ -37,6 +37,47 @@ describe('getRankings', () => {
       calibrated_premium: 900,
     });
     expect(mid.name).toBe('E03');
+  });
+});
+
+describe('getRankings by nation', () => {
+  // Twelve areas per nation, so a nation's ten is a real cut. English areas are
+  // dearest overall: an unfiltered top ten would hold no Welsh or Scottish area.
+  const features: Feature[] = [];
+  const base = { E: 2000, W: 1000, S: 0 } as const;
+  for (const prefix of ['E', 'W', 'S'] as const) {
+    for (let i = 0; i < 12; i++) {
+      const code = `${prefix}0100${String(i).padStart(4, '0')}`;
+      features.push(area(code, { calibrated_premium: base[prefix] + 500 + i, quintile: 3 }));
+    }
+  }
+  features.push(area('N01000001', { calibrated_premium: 9999, quintile: 5 }));
+  const lookup = buildLookup({ type: 'FeatureCollection', features });
+
+  it.each(['england', 'wales', 'scotland'] as const)(
+    'gives %s its own ten, dearest first',
+    (nation) => {
+      const rows = getRankings(lookup, 'desc', 10, nation);
+      const prefix = nation.charAt(0).toUpperCase();
+      expect(rows).toHaveLength(10);
+      expect(rows.every((r) => r.code.startsWith(prefix))).toBe(true);
+      expect(rows[0].code).toBe(`${prefix}01000011`);
+    }
+  );
+  it('cuts after filtering for the cheapest too', () => {
+    const rows = getRankings(lookup, 'asc', 10, 'wales');
+    expect(rows.map((r) => r.code)).toEqual(
+      Array.from({ length: 10 }, (_, i) => `W0100${String(i).padStart(4, '0')}`)
+    );
+  });
+  it('leaves All (no nation) unchanged, unknown prefixes included', () => {
+    const rows = getRankings(lookup, 'desc', 10);
+    expect(rows[0].code).toBe('N01000001');
+    expect(rows.slice(1).every((r) => r.code.startsWith('E'))).toBe(true);
+  });
+  it('counts the areas each list ranks from', () => {
+    expect(countRankable(lookup)).toBe(37);
+    expect(countRankable(lookup, 'wales')).toBe(12);
   });
 });
 

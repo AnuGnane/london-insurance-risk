@@ -1,29 +1,96 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import type { Feature } from 'geojson';
-import { gbp, dominantDriver, quintileColor, COMPONENT_LABELS } from './utils';
-import { getRankings } from './api';
+import {
+  gbp,
+  dominantDriver,
+  quintileColor,
+  COMPONENT_LABELS,
+  NATIONS,
+  type Nation,
+} from './utils';
+import { countRankable, getRankings } from './api';
 
 interface RankingsPanelProps {
   onSelectRanking: (code: string, coords?: [number, number]) => void;
   lookup: Map<string, Feature>;
+  nation: Nation | null;
+  onNationChange: (n: Nation | null) => void;
 }
 
 type Order = 'desc' | 'asc';
 
+// The chip row: All, then each nation (null = all of GB).
+const NATION_CHIPS: readonly { id: Nation | null; label: string }[] = [
+  { id: null, label: 'All' },
+  ...NATIONS.map((n) => ({ id: n.id, label: n.label })),
+];
+
 export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   onSelectRanking,
   lookup,
+  nation,
+  onNationChange,
 }) => {
   const [order, setOrder] = useState<Order>('desc');
+  const chipRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Rankings are derived from the already-loaded GeoJSON (no API on Pages).
-  const rankings = useMemo(() => getRankings(lookup, order, 10), [order, lookup]);
+  const rankings = useMemo(
+    () => getRankings(lookup, order, 10, nation ?? undefined),
+    [order, lookup, nation]
+  );
+  const nationLabel = NATIONS.find((n) => n.id === nation)?.label;
+  const areaCount = useMemo(
+    () => (nation ? countRankable(lookup, nation) : 0),
+    [lookup, nation]
+  );
+
+  // Radio-group keys: arrows move the selection (and focus) along the chips.
+  const onChipKey = (e: KeyboardEvent, index: number) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const next = (index + step + NATION_CHIPS.length) % NATION_CHIPS.length;
+    onNationChange(NATION_CHIPS[next].id);
+    chipRefs.current[next]?.focus();
+  };
 
   return (
     <div className="rankings">
+      <div
+        className="seg seg-sm nation-chips"
+        role="radiogroup"
+        aria-label="Rank areas in"
+      >
+        {NATION_CHIPS.map((c, i) => {
+          const on = c.id === nation;
+          return (
+            <button
+              key={c.label}
+              ref={(el) => {
+                chipRefs.current[i] = el;
+              }}
+              role="radio"
+              aria-checked={on}
+              tabIndex={on ? 0 : -1}
+              className={on ? 'seg-on' : ''}
+              onClick={() => onNationChange(c.id)}
+              onKeyDown={(e) => onChipKey(e, i)}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
       <div className="rankings-head">
         <h2 className="section-title">
           {order === 'desc' ? 'Most expensive areas' : 'Least expensive areas'}
+          {nationLabel && areaCount > 0 && (
+            <span className="rankings-scope">
+              {nationLabel} · {areaCount.toLocaleString('en-GB')} areas
+            </span>
+          )}
         </h2>
         <div className="seg seg-sm">
           <button

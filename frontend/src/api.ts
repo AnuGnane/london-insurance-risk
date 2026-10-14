@@ -12,6 +12,7 @@
  */
 import type { Feature, FeatureCollection } from 'geojson';
 import type { FeatureStat, LsoaProps, Methodology, RankingArea } from './types';
+import { nationOf, type Nation } from './utils';
 
 // Vite sets BASE_URL to the configured `base` ('/' in dev, '/london-insurance-risk/'
 // for Pages) and always includes a trailing slash, so data URLs resolve in both.
@@ -54,16 +55,25 @@ export async function getGeojson(
   return new Response(blob).json();
 }
 
-/** Top/bottom N areas by calibrated premium, computed from the loaded GeoJSON. */
+/** Whether a feature can be ranked: it has a premium and, when a nation is
+ *  given, its area code belongs to that nation. */
+const rankable = (p: LsoaProps | null, nation?: Nation): p is LsoaProps =>
+  p?.calibrated_premium != null && (!nation || nationOf(String(p.lsoa11cd)) === nation);
+
+/**
+ * Top/bottom N areas by calibrated premium, computed from the loaded GeoJSON.
+ * `nation` restricts the list before the top-N cut, so each nation gets its own ten.
+ */
 export function getRankings(
   lookup: Map<string, Feature>,
   order: 'asc' | 'desc',
-  n = 10
+  n = 10,
+  nation?: Nation
 ): RankingArea[] {
   const rows: RankingArea[] = [];
   for (const f of lookup.values()) {
-    const p = f.properties as LsoaProps;
-    if (p?.calibrated_premium == null) continue;
+    const p = f.properties as LsoaProps | null;
+    if (!rankable(p, nation)) continue;
     rows.push({
       code: String(p.lsoa11cd),
       name: p.lsoa_name ? String(p.lsoa_name) : String(p.lsoa11cd),
@@ -78,6 +88,15 @@ export function getRankings(
       : (a.calibrated_premium ?? 0) - (b.calibrated_premium ?? 0)
   );
   return rows.slice(0, n);
+}
+
+/** How many areas `getRankings` ranks from (all GB, or one nation). */
+export function countRankable(lookup: Map<string, Feature>, nation?: Nation): number {
+  let count = 0;
+  for (const f of lookup.values()) {
+    if (rankable(f.properties as LsoaProps | null, nation)) count++;
+  }
+  return count;
 }
 
 // The subset of the baked methodology.json that the panel reads.
