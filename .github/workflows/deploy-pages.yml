@@ -38,6 +38,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      # Chromium for the build-time share card (scripts/og-image.mjs). If it cannot
+      # install, the card is skipped and the build still succeeds.
+      - name: Install Chromium for the og:image
+        run: npx playwright install --with-deps chromium
+        continue-on-error: true
+        timeout-minutes: 5
       - name: Build (GitHub Pages base path)
         run: npm run build
         env:
