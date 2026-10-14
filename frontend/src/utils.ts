@@ -488,3 +488,64 @@ export function compareSummary(a: CompareSide, b: CompareSide): string {
   const [dearer, cheaper] = a.premium > b.premium ? [a, b] : [b, a];
   return `${dearer.name} is ${gbp(gap)} a year dearer than ${cheaper.name}.`;
 }
+
+/** One side of a waterfall comparison: the area's name, its steps and premium. */
+export interface ExplainSide { name: string; steps: WaterfallStep[]; premium: number; }
+
+/**
+ * One plain sentence for two areas: which is dearer, by how much, and the one or
+ * two drivers that account for most of the gap. The LMDI steps are additive, so a
+ * driver's share of the gap is the difference of the two areas' steps for it
+ * (AUDIT.md §4). A driver ranked within different groups for the two areas
+ * (vehicle crime for a Scottish and an English or Welsh area) says so.
+ */
+export function explainDifference(a: ExplainSide, b: ExplainSide): string {
+  const gap = Math.round(a.premium) - Math.round(b.premium);
+  const [dearer, cheaper] = gap >= 0 ? [a, b] : [b, a];
+  const shown = (n: number) => Math.round(Math.abs(n));
+
+  const diffs = dearer.steps
+    .map((s) => {
+      const other = cheaper.steps.find((o) => o.key === s.key);
+      return other ? { s, other, diff: s.step - other.step } : null;
+    })
+    .filter((d): d is { s: WaterfallStep; other: WaterfallStep; diff: number } => d != null)
+    .filter((d) => shown(d.diff) >= EXPLAIN_MIN_STEP_GBP)
+    .sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
+
+  // "vehicle crime", flagged when the two areas are ranked in different groups.
+  const name = (d: { s: WaterfallStep; other: WaterfallStep }): string => {
+    const base = factorName(d.s);
+    if (!!d.s.withinScotland === !!d.other.withinScotland) {
+      return d.s.withinScotland ? `${base} (both ranked within Scotland)` : base;
+    }
+    const [scot, rest] = d.s.withinScotland ? [dearer, cheaper] : [cheaper, dearer];
+    return `${base} (ranked within Scotland for ${scot.name}, within England and Wales for ${rest.name})`;
+  };
+  // One bracket: "vehicle crime (+£180; ranked within Scotland for …)".
+  const named = (d: { s: WaterfallStep; other: WaterfallStep; diff: number }) => {
+    const n = name(d);
+    const open = n.indexOf(' (');
+    return open < 0
+      ? `${n} (${signedGbp(d.diff)})`
+      : `${n.slice(0, open)} (${signedGbp(d.diff)}; ${n.slice(open + 2)}`;
+  };
+
+  const ups = diffs.filter((d) => d.diff > 0);
+  const downs = diffs.filter((d) => d.diff < 0);
+
+  if (Math.abs(gap) < EXPLAIN_MIN_STEP_GBP) {
+    const lead = `${a.name} and ${b.name} cost about the same`;
+    if (ups.length && downs.length) {
+      return `${lead}: ${name(ups[0])} and ${name(downs[0])} roughly cancel out.`;
+    }
+    return `${lead}: no single factor separates them by ${gbp(EXPLAIN_MIN_STEP_GBP)} or more.`;
+  }
+
+  const lead = `${dearer.name} costs ${gbp(Math.abs(gap))} a year more than ${cheaper.name}`;
+  let sentence = ups.length
+    ? `${lead}, mainly because of ${ups.slice(0, 2).map(named).join(' and ')}`
+    : `${lead} through several small differences, none of them ${gbp(EXPLAIN_MIN_STEP_GBP)} or more`;
+  if (downs[0]) sentence += `; ${name(downs[0])} pulls the other way ${gbp(Math.abs(downs[0].diff))}`;
+  return `${sentence}.`;
+}
