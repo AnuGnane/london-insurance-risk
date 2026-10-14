@@ -43,7 +43,7 @@ and the five `*_contrib`.
 | Map need | Fields | In the tiles |
 |---|---|---|
 | Base fill (premium quintile) | `quintile` (`MapView.tsx` `fillColor('composite')`) | yes, never null |
-| Colour modes (`?filter=`) | `<mode>_pct` | yes, all twelve |
+| Colour modes (`?filter=`) | `<mode>_pct` | yes, all eleven (`imd_income_pct` is also there, unused by any mode) |
 | Hover popup | `lsoa11cd`, `lsoa_name`, `quintile`, `calibrated_premium`, the mode's `*_pct` | yes |
 | Tap card | `lsoa11cd`, `lsoa_name`, `quintile`, `calibrated_premium` | yes |
 | Selection / compare outlines | `lsoa11cd` | yes |
@@ -80,7 +80,8 @@ GeoJSON, belongs to several areas, and it is coloured by one of them. So:
 - **As a first paint at national zoom, the tiles are good enough.** The colours are real
   baked quintiles, rural and suburban areas are near-complete, and the city cores read as
   the right band of colour. The map opens at zoom 5.2 (`MapView.tsx` `initialViewState`).
-- **As something to hover, tap or select at z4 to z8, they are not.** A tap could land on
+- **As something to hover, tap or select at z4 to z8, they are not.** (The metadata's
+  `strategies` record `coalesced_as_needed` at z4 to z8 only.) A tap could land on
   a merged polygon and name an area the visitor did not tap. So the tile layer must not be
   interactive below z9, or interaction must keep coming from the GeoJSON layer, as it does today.
 
@@ -88,19 +89,19 @@ GeoJSON, belongs to several areas, and it is coloured by one of them. So:
 
 Over the GB bounds:
 
-| Zoom | Tiles | Decoded | ~Gzipped | Largest tile ~gzipped |
+| Zoom | Tiles | Decoded | ~Gzipped | Largest tile ~gzipped (KiB) |
 |---|---|---|---|---|
 | 4 | 3 | 1.2 MB | 0.60 MB | 394 kB |
 | 5 | 3 | 1.3 MB | 0.65 MB | 433 kB |
 | 6 | 10 | 2.2 MB | 1.17 MB | 426 kB |
 | 7 | 24 | 3.2 MB | 1.76 MB | 413 kB |
 | 8 | 65 | 6.8 MB | 3.70 MB | 401 kB |
-| 12 (sampled) | — | 25–52 kB | — | — |
+| 12 (three sampled tiles) | — | 25–52 KiB each | — | — |
 
 The opening view needs the z5 tiles, about 0.65 MB gzipped plus the header and root
 directory (a few kB), against the ~8 MB gzipped `areas.geojson` it waits for today
-(`HOLIDAY.md`). The biggest single tiles (~0.4 MB) are the South-of-England ones, so the
-first colour lands after roughly one ~0.4 MB fetch on a phone.
+(`HOLIDAY.md`). The biggest single tiles (~0.4 MB) are the South-of-England ones: the
+first colour lands after one of those, and the whole opening view after all three z5 tiles.
 
 ## Verdict
 
@@ -117,19 +118,22 @@ interaction on the GeoJSON.
 2. **Source and layers.** Add a vector source `lsoa-tiles` with
    `url: 'pmtiles://' + dataUrl('lsoa-risk.pmtiles')` and `promoteId: 'lsoa11cd'`. Draw
    a fill `lsoa-tiles-fill` (source-layer `lsoa`) with the same `fillColor(colorMode)`
-   expression (it reads only `quintile` / `*_pct`, all present), plus a hairline layer.
+   expression (it reads `quintile` / `*_pct`, all present; its `risk_bucket` fallback is in neither file and never needed, as `quintile` is never null), plus a hairline layer.
    Mount them from the first render, before the GeoJSON has loaded.
 3. **Swap when the GeoJSON is drawn.** Keep today's GeoJSON `Source` and its layers
    unchanged. When `areasDrawn` turns true (the existing `onSourceData` signal), hide the
-   tile layers (`visibility: none`), or keep them under the GeoJSON fill, which covers
-   them exactly. The end state is then identical to today: the panel, rankings, hover,
+   tile layers (`visibility: none`). Do not leave them under the GeoJSON fill: that fill
+   is translucent (`fill-opacity` 0.72, 0.95 on hover), and at z4 to z8 the coalesced tile
+   polygons do not line up with the GeoJSON ones, so they would tint through. The end state is then identical to today: the panel, rankings, hover,
    tap card, selection and compare outlines and `?filter=` all keep reading the GeoJSON
    and its lookup.
 4. **Interaction before the swap.** Leave `interactiveLayerIds` on the GeoJSON layer only,
    so nothing is hoverable or tappable on the coarse tiles. The R-8 readouts ("Loading map
    data…", "Drawing…") keep showing until the GeoJSON is drawn, so the visitor knows
    details are still coming. Optional later: make `lsoa-tiles-fill` interactive at
-   `minzoom: 9` only, where every area is present.
+   `minzoom: 9` only. Check that first: the archive metadata's `strategies` record
+   `tiny_polygons` reductions at every zoom from 9 to 12, so a few very small areas may be
+   merged even there (the z9 claim above rests on sampled tiles).
 5. **Light/dark.** The basemap switch reloads the style (R-6). The tile source and layers
    are declared as `react-map-gl` children like the GeoJSON ones, so they are re-added
    with it. `areasDrawn` is tracked per basemap, so the tiles show again until the GeoJSON
