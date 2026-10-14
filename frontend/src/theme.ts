@@ -16,3 +16,12 @@ export function cssToken(name: string, fallback: string): string {
     return fallback;
   }
 }
+
+/** The areas' fill and hairlines, shared by the streamed tiles and the GeoJSON so
+ *  the swap from one to the other shows no step. */
+export const AREA_STYLE = {
+  fillOpacity: 0.72,
+  fillOpacityHover: 0.95,
+  lineWidth: 0.4,
+  lineOpacity: 0.45,
+} as const;

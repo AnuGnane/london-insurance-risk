@@ -31,9 +31,9 @@ import {
   premiumToRampPos,
   QUINTILE_TEXT,
 } from './utils';
-import { dataUrl } from './api';
+import { dataUrl, tilesUrl } from './api';
 import { fitPadding, TOUCH_QUERY, useMediaQuery } from './layout';
-import { BASEMAP_STYLE, cssToken, DARK_QUERY } from './theme';
+import { AREA_STYLE, BASEMAP_STYLE, cssToken, DARK_QUERY } from './theme';
 
 interface MapViewProps {
   geojson: FeatureCollection | null;
@@ -61,7 +61,7 @@ interface MapViewProps {
 // never interactive and are hidden once the GeoJSON is drawn; see
 // docs/superpowers/specs/2026-10-15-pmtiles-first-paint.md.
 addProtocol('pmtiles', new Protocol().tile);
-const TILES_URL = `pmtiles://${new URL(dataUrl('lsoa-risk.pmtiles'), window.location.href).href}`;
+const TILES_URL = tilesUrl(dataUrl('lsoa-risk.pmtiles'), window.location.href);
 
 type FillPaint = NonNullable<Extract<LayerSpecification, { type: 'fill' }>['paint']>;
 
@@ -409,14 +409,18 @@ export const MapView: React.FC<MapViewProps> = ({
             type="fill"
             source-layer="lsoa"
             layout={{ visibility: areasDrawn ? 'none' : 'visible' }}
-            paint={{ 'fill-color': fillColor(colorMode), 'fill-opacity': 0.72 }}
+            paint={{ 'fill-color': fillColor(colorMode), 'fill-opacity': AREA_STYLE.fillOpacity }}
           />
           <Layer
             id="lsoa-tiles-lines"
             type="line"
             source-layer="lsoa"
             layout={{ visibility: areasDrawn ? 'none' : 'visible' }}
-            paint={{ 'line-color': mapColors.areaLine, 'line-width': 0.4, 'line-opacity': 0.45 }}
+            paint={{
+              'line-color': mapColors.areaLine,
+              'line-width': AREA_STYLE.lineWidth,
+              'line-opacity': AREA_STYLE.lineOpacity,
+            }}
           />
         </Source>
 
@@ -430,7 +434,12 @@ export const MapView: React.FC<MapViewProps> = ({
                 // Transparent until drawn, so it never tints over the tiles; then
                 // the tiles hide and this takes over.
                 'fill-opacity': areasDrawn
-                  ? ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.72]
+                  ? [
+                      'case',
+                      ['boolean', ['feature-state', 'hover'], false],
+                      AREA_STYLE.fillOpacityHover,
+                      AREA_STYLE.fillOpacity,
+                    ]
                   : 0,
                 'fill-color-transition': { duration: 350, delay: 0 },
               }}
@@ -440,8 +449,8 @@ export const MapView: React.FC<MapViewProps> = ({
               type="line"
               paint={{
                 'line-color': mapColors.areaLine,
-                'line-width': 0.4,
-                'line-opacity': areasDrawn ? 0.45 : 0,
+                'line-width': AREA_STYLE.lineWidth,
+                'line-opacity': areasDrawn ? AREA_STYLE.lineOpacity : 0,
               }}
             />
             <Layer
