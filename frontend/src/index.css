@@ -75,6 +75,7 @@
   --map-area-line: #fbf7f0;
   --map-selected: #24211c;
   --map-compare: #1f5f8b;   /* the second area in a comparison (dashed) */
+  --focus-ring: var(--accent); /* keyboard focus outline */
 
   color-scheme: light dark;
 }
@@ -778,7 +779,16 @@ body {
 /* ===========================================================================
    Focus visibility (a11y) — never remove the outline
    =========================================================================== */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 2px; }
+/* The focused map: a ring inside its edge and a crosshair on the area Enter selects */
+.map-container .maplibregl-canvas:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; border-radius: 0; }
+.map-container:has(.maplibregl-canvas:focus-visible)::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px;
+  margin: -9px 0 0 -9px; pointer-events: none; z-index: 2;
+  background:
+    linear-gradient(var(--focus-ring), var(--focus-ring)) center / 2px 100% no-repeat,
+    linear-gradient(var(--focus-ring), var(--focus-ring)) center / 100% 2px no-repeat;
+}
 .seg button:focus-visible, .rank-row:focus-visible { outline-offset: -2px; }
 
 /* ===========================================================================

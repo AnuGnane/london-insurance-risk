@@ -10,6 +10,7 @@ import {
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
+import { useRovingList } from './keyboard';
 
 interface RankingsPanelProps {
   onSelectRanking: (code: string, coords?: [number, number]) => void;
@@ -45,6 +46,10 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
     () => (nation ? countRankable(lookup, nation) : 0),
     [lookup, nation]
   );
+
+  // The list is one tab stop: arrows, Home/End and type-ahead move within it.
+  const names = useMemo(() => rankings.map((r) => r.name), [rankings]);
+  const roving = useRovingList(names, `${order}:${nation ?? 'all'}`);
 
   // Radio-group keys: arrows move the selection (and focus) along the chips.
   const onChipKey = (e: KeyboardEvent, index: number) => {
@@ -108,7 +113,10 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
         </div>
       </div>
 
-      <div>
+      <div
+        role="listbox"
+        aria-label={`${order === 'desc' ? 'Most' : 'Least'} expensive areas${nationLabel ? ` in ${nationLabel}` : ''}`}
+      >
         {rankings.map((r, i) => {
           const coords =
             r.lng != null && r.lat != null
@@ -124,6 +132,9 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
             <button
               key={r.code}
               className="rank-row"
+              role="option"
+              aria-selected={i === roving.active}
+              {...roving.itemProps(i)}
               onClick={() => onSelectRanking(r.code, coords)}
             >
               <span className="rank-num">{i + 1}</span>
