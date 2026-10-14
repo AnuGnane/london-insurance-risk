@@ -78,7 +78,7 @@ a **place-only** counterfactual (composition held at the national median), and t
 place alone. That's reported as a finding, not tuned away.
 
 **Explainable to the pound.** The detail panel renders an exact, order-invariant **LMDI
-(logarithmic-mean) waterfall**: a signed £ step per factor from the £537 baseline (every
+(logarithmic-mean) waterfall**: a signed £ step per factor from the £541 baseline (the current fit, re-confirmed by `make calibrate` on 2026-10-15; every
 feature at the median) to the area's estimate, with `baseline + Σ steps == premium`, no
 residual. A serve-consistency test guards the served map against stale coefficients.
 

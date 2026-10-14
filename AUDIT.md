@@ -30,7 +30,7 @@ formula produces when every feature sits at the median (pct = 50).
 | young\_driver\_share\_pct | +0.009450 | more young drivers → higher premium |
 | cars\_per\_household\_pct | −0.004429 | more cars per household → lower premium |
 | national\_avg | £558.55 | WTW/Confused.com price index anchor |
-| **Baseline (all pct = 50)** | **£537** | reference point for the waterfall |
+| **Baseline (all pct = 50)** | **£537** | reference point for the waterfall (this 2026-06-21 fit; the current fit, with `imd_crime_pct` in place of `deprivation_pct` and re-confirmed by `make calibrate` on 2026-10-15, bakes **£541**, the figure the live map shows) |
 
 ---
 
@@ -43,7 +43,7 @@ characteristics.
 **Cheapest: Wiltshire 039C — £193**
 
 This LSOA sits near the bottom percentile on every place driver and has an exceptionally low
-young-driver share. Starting from the baseline of £537:
+young-driver share. Starting from this fit's baseline of £537:
 
 | Factor | Percentile | £ step |
 |---|---|---|
