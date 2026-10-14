@@ -11,6 +11,7 @@ const distDir = path('../dist/');
 const out = `${distDir}og.png`;
 // Web fonts load from Google Fonts; past this the card renders with fallbacks.
 const FONT_WAIT_MS = 8000;
+const LAUNCH_TIMEOUT_MS = 30000;
 
 if (!existsSync(distDir)) {
   console.error('og-image: dist/ is missing; run vite build first');
@@ -22,13 +23,17 @@ try {
   const methodology = JSON.parse(readFileSync(path('../public/data/methodology.json'), 'utf8'));
   const css = readFileSync(path('../src/index.css'), 'utf8');
   const { chromium } = await import('playwright');
-  browser = await chromium.launch();
+  browser = await chromium.launch({ timeout: LAUNCH_TIMEOUT_MS });
   const page = await browser.newPage({ viewport: OG_SIZE });
   await page.setContent(ogHtml(methodology, css), { waitUntil: 'load', timeout: FONT_WAIT_MS }).catch(() => {});
+  let timer;
   await Promise.race([
-    page.evaluate(() => document.fonts.ready),
-    new Promise((r) => setTimeout(r, FONT_WAIT_MS)),
+    page.evaluate(() => document.fonts.ready).catch(() => {}),
+    new Promise((r) => {
+      timer = setTimeout(r, FONT_WAIT_MS);
+    }),
   ]);
+  clearTimeout(timer);
   await page.screenshot({ path: out });
   console.log('og-image: dist/og.png');
 } catch (e) {
