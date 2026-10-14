@@ -12,7 +12,9 @@ import type {
   MapRef,
   MapSourceDataEvent,
 } from 'react-map-gl/maplibre';
+import { addProtocol } from 'maplibre-gl';
 import type { LayerSpecification } from 'maplibre-gl';
+import { Protocol } from 'pmtiles';
 import type { Feature, FeatureCollection } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin, X } from 'lucide-react';
@@ -29,9 +31,9 @@ import {
   premiumToRampPos,
   QUINTILE_TEXT,
 } from './utils';
-import { dataUrl } from './api';
+import { dataUrl, tilesUrl } from './api';
 import { fitPadding, TOUCH_QUERY, useMediaQuery } from './layout';
-import { BASEMAP_STYLE, cssToken, DARK_QUERY } from './theme';
+import { AREA_STYLE, BASEMAP_STYLE, cssToken, DARK_QUERY } from './theme';
 
 interface MapViewProps {
   geojson: FeatureCollection | null;
@@ -52,6 +54,14 @@ interface MapViewProps {
   onResetFilter: () => void;
   onShowDetails: () => void;
 }
+
+// First paint: the committed PMTiles archive (layer `lsoa`, every areas.geojson
+// attribute) colours the map from a few range requests, long before the GeoJSON
+// download ends. At zoom 4 to 8 the tiles thin out dense cities, so they are
+// never interactive and are hidden once the GeoJSON is drawn; see
+// docs/superpowers/specs/2026-10-15-pmtiles-first-paint.md.
+addProtocol('pmtiles', new Protocol().tile);
+const TILES_URL = tilesUrl(dataUrl('lsoa-risk.pmtiles'), window.location.href);
 
 type FillPaint = NonNullable<Extract<LayerSpecification, { type: 'fill' }>['paint']>;
 
@@ -157,9 +167,14 @@ export const MapView: React.FC<MapViewProps> = ({
     [isDark]
   );
   const areasDrawn = drawnOn === mapColors.basemap;
+  // The streamed tiles, tracked per basemap the same way.
+  const [tilesOn, setTilesOn] = useState<string | null>(null);
+  const tilesDrawn = tilesOn === mapColors.basemap;
   const onSourceData = useCallback(
     (e: MapSourceDataEvent) => {
-      if (e.sourceId === 'lsoa' && e.isSourceLoaded) setDrawnOn(mapColors.basemap);
+      if (!e.isSourceLoaded) return;
+      if (e.sourceId === 'lsoa') setDrawnOn(mapColors.basemap);
+      if (e.sourceId === 'lsoa-tiles') setTilesOn(mapColors.basemap);
     },
     [mapColors.basemap]
   );
@@ -328,9 +343,11 @@ export const MapView: React.FC<MapViewProps> = ({
       onKeyDown={onMapKeyDown}
     >
       {!geojson && !loadError && (
-        <div className="skeleton-map">
-          <div className="skeleton-pulse" />
-          <div className="map-toast skeleton-toast">
+        // Once the streamed tiles have coloured the map, the skeleton steps aside
+        // and only the download readout stays.
+        <div className={tilesDrawn ? undefined : 'skeleton-map'}>
+          {!tilesDrawn && <div className="skeleton-pulse" />}
+          <div className={`map-toast${tilesDrawn ? '' : ' skeleton-toast'}`}>
             <span className="loader" aria-hidden="true" />
             {/* The live region stays static; the changing byte count is not announced. */}
             <span role="status">{loadedBytes > 0 ? 'Loading map data…' : 'Plotting 41,729 areas…'}</span>
@@ -385,6 +402,28 @@ export const MapView: React.FC<MapViewProps> = ({
       >
         <NavigationControl position="top-left" showCompass={false} />
 
+        {/* Drawn first, below the GeoJSON layers; not in interactiveLayerIds. */}
+        <Source id="lsoa-tiles" type="vector" url={TILES_URL}>
+          <Layer
+            id="lsoa-tiles-fill"
+            type="fill"
+            source-layer="lsoa"
+            layout={{ visibility: areasDrawn ? 'none' : 'visible' }}
+            paint={{ 'fill-color': fillColor(colorMode), 'fill-opacity': AREA_STYLE.fillOpacity }}
+          />
+          <Layer
+            id="lsoa-tiles-lines"
+            type="line"
+            source-layer="lsoa"
+            layout={{ visibility: areasDrawn ? 'none' : 'visible' }}
+            paint={{
+              'line-color': mapColors.areaLine,
+              'line-width': AREA_STYLE.lineWidth,
+              'line-opacity': AREA_STYLE.lineOpacity,
+            }}
+          />
+        </Source>
+
         {geojson && (
           <Source id="lsoa" type="geojson" data={dataUrl('areas.geojson')} generateId>
             <Layer
@@ -392,19 +431,27 @@ export const MapView: React.FC<MapViewProps> = ({
               type="fill"
               paint={{
                 'fill-color': fillColor(colorMode),
-                'fill-opacity': [
-                  'case',
-                  ['boolean', ['feature-state', 'hover'], false],
-                  0.95,
-                  0.72,
-                ],
+                // Transparent until drawn, so it never tints over the tiles; then
+                // the tiles hide and this takes over.
+                'fill-opacity': areasDrawn
+                  ? [
+                      'case',
+                      ['boolean', ['feature-state', 'hover'], false],
+                      AREA_STYLE.fillOpacityHover,
+                      AREA_STYLE.fillOpacity,
+                    ]
+                  : 0,
                 'fill-color-transition': { duration: 350, delay: 0 },
               }}
             />
             <Layer
               id="lsoa-lines"
               type="line"
-              paint={{ 'line-color': mapColors.areaLine, 'line-width': 0.4, 'line-opacity': 0.45 }}
+              paint={{
+                'line-color': mapColors.areaLine,
+                'line-width': AREA_STYLE.lineWidth,
+                'line-opacity': areasDrawn ? AREA_STYLE.lineOpacity : 0,
+              }}
             />
             <Layer
               id="lsoa-selected"

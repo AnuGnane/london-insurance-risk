@@ -18,6 +18,11 @@ import { nationOf, type Nation } from './utils';
 // for Pages) and always includes a trailing slash, so data URLs resolve in both.
 export const dataUrl = (name: string): string => `${import.meta.env.BASE_URL}data/${name}`;
 
+/** The `pmtiles://` source URL for a data file: absolute against the page, so it
+ *  resolves under the Pages base path whatever the page's query string. */
+export const tilesUrl = (path: string, pageHref: string): string =>
+  `pmtiles://${new URL(path, pageHref).href}`;
+
 // How often the download readout updates (bytes received between reports).
 const PROGRESS_STEP_BYTES = 512 * 1024;
 

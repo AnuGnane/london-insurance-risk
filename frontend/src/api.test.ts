@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Feature } from 'geojson';
-import { countRankable, getGeojson, getMethodology, getRankings } from './api';
+import { countRankable, getGeojson, getMethodology, getRankings, tilesUrl } from './api';
 import type { LsoaProps } from './types';
 import { buildLookup } from './utils';
 
@@ -170,5 +170,19 @@ describe('getGeojson', () => {
     expect((await getGeojson()).features).toHaveLength(1);
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
     await expect(getGeojson()).rejects.toThrow('Could not load the map data');
+  });
+});
+
+describe('tilesUrl', () => {
+  it('resolves under the Pages base path, whatever the query string', () => {
+    const href = 'https://anugnane.github.io/london-insurance-risk/?area=E01000001&filter=imd_crime';
+    expect(tilesUrl('/london-insurance-risk/data/lsoa-risk.pmtiles', href)).toBe(
+      'pmtiles://https://anugnane.github.io/london-insurance-risk/data/lsoa-risk.pmtiles'
+    );
+  });
+  it('resolves at the root in local dev', () => {
+    expect(tilesUrl('/data/lsoa-risk.pmtiles', 'http://localhost:5173/')).toBe(
+      'pmtiles://http://localhost:5173/data/lsoa-risk.pmtiles'
+    );
   });
 });

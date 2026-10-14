@@ -683,6 +683,8 @@ body {
   display: flex; align-items: center; gap: 10px;
 }
 .map-toast-error { color: var(--accent); border-color: var(--accent-soft); }
+/* With a colour mode on, the filter chip holds the top centre: toasts sit below it */
+.map-container:has(.filter-indicator) .map-toast { top: 72px; }
 
 .skeleton-map { position: absolute; inset: 0; z-index: 4; background: var(--paper-wash); }
 .skeleton-pulse {
