@@ -12,6 +12,8 @@ import {
   featureAtPoint,
   featureBounds,
   featureToDetail,
+  formatFigure,
+  formatSci,
   nationOf,
   gbp,
   MODEL_DRIVERS,
@@ -448,5 +450,19 @@ describe('explainDifference', () => {
     );
     const scot2 = side('Dundee 003A', 600, [step('vehicle_crime', 0, { withinScotland: true })]);
     expect(explainDifference(scot, scot2)).toContain('vehicle crime (+£200; both ranked within Scotland)');
+  });
+});
+
+describe('formatFigure and formatSci', () => {
+  it('prints fixed decimals with en-GB thousands', () => {
+    expect(formatFigure(41729)).toBe('41,729');
+    expect(formatFigure(76.5125991586128, 2)).toBe('76.51');
+    expect(formatFigure(0.9303542987008188, 3)).toBe('0.930');
+    expect(formatFigure(2.49, 1)).toBe('2.5');
+  });
+  it('prints a small p-value with a superscript power', () => {
+    expect(formatSci(3.7458013911795408e-6)).toBe('3.7×10⁻⁶');
+    expect(formatSci(0.0024198407878440143)).toBe('2.4×10⁻³');
+    expect(formatSci(1234, 2)).toBe('1.23×10³');
   });
 });

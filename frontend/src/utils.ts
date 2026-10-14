@@ -549,3 +549,18 @@ export function explainDifference(a: ExplainSide, b: ExplainSide): string {
   if (downs[0]) sentence += `; ${name(downs[0])} pulls the other way ${gbp(Math.abs(downs[0].diff))}`;
   return `${sentence}.`;
 }
+
+/** A figure as the write-up prints it: fixed decimals, en-GB thousands ("41,729", "76.51"). */
+export const formatFigure = (n: number, dp = 0): string =>
+  n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+const SUPERSCRIPT: Record<string, string> = {
+  '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+};
+
+/** A small p-value as the write-up prints it: 3.7458e-6 -> "3.7×10⁻⁶". */
+export function formatSci(n: number, dp = 1): string {
+  const [mantissa, exp] = n.toExponential(dp).split('e');
+  const power = String(Number(exp)).split('').map((c) => SUPERSCRIPT[c] ?? c).join('');
+  return `${mantissa}×10${power}`;
+}
