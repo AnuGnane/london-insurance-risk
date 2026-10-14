@@ -15,6 +15,8 @@ import {
   boundsCentre,
   featureToDetail,
   featureAtPoint,
+  NATIONS,
+  type Nation,
 } from './utils';
 import { getGeojson, getMethodology } from './api';
 import {
@@ -45,6 +47,12 @@ const VALID_FILTERS: readonly ColorMode[] = [
 function readUrlFilter(): ColorMode {
   const f = new URLSearchParams(window.location.search).get('filter');
   return VALID_FILTERS.find((m) => m === f) ?? 'composite';
+}
+
+/** The rankings' nation from a shared ?nation= link, or all of GB (null). */
+function readUrlNation(): Nation | null {
+  const n = new URLSearchParams(window.location.search).get('nation');
+  return NATIONS.find((x) => x.id === n)?.id ?? null;
 }
 
 // The map (react-map-gl, which in turn pulls in maplibre-gl) is its own chunk, so the
@@ -97,6 +105,8 @@ function App() {
 
   const [hoveredLsoa, setHoveredLsoa] = useState<string | null>(null);
   const [colorMode, setColorMode] = useState<ColorMode>(readUrlFilter);
+  // The rankings' nation filter (the map stays GB-wide); null = all of GB.
+  const [nation, setNation] = useState<Nation | null>(readUrlNation);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [marker, setMarker] = useState<[number, number] | null>(null);
   // Phone bottom sheet: starts collapsed (masthead + search) and expands when an
@@ -117,14 +127,15 @@ function App() {
   });
 
   // -----------------------------------------------------------------------
-  // Deep-linkable URLs: encode ?pc=<postcode>&area=<lsoa>&filter=<mode>.
+  // Deep-linkable URLs: encode ?pc=<postcode>&area=<lsoa>&filter=<mode>&nation=<id>.
   // -----------------------------------------------------------------------
   const updateUrl = useCallback(
-    (lsoa: string | null, mode: ColorMode, pc: string | null) => {
+    (lsoa: string | null, mode: ColorMode, pc: string | null, nat: Nation | null) => {
       const params = new URLSearchParams();
       if (pc && lsoa) params.set('pc', pc);
       if (lsoa) params.set('area', lsoa);
       if (mode !== 'composite') params.set('filter', mode);
+      if (nat) params.set('nation', nat);
       const qs = params.toString();
       const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
       window.history.replaceState(null, '', url);
@@ -150,10 +161,10 @@ function App() {
   const focusLsoa = (lsoa11cd: string, exact?: [number, number]) =>
     focusFeature(lookup.get(lsoa11cd), exact);
 
-  // Keep the URL in sync whenever selection or filter changes.
+  // Keep the URL in sync whenever selection, filter or nation changes.
   useEffect(() => {
-    updateUrl(detail?.lsoa11cd ?? null, colorMode, searchedPc);
-  }, [detail?.lsoa11cd, colorMode, searchedPc, updateUrl]);
+    updateUrl(detail?.lsoa11cd ?? null, colorMode, searchedPc, nation);
+  }, [detail?.lsoa11cd, colorMode, searchedPc, nation, updateUrl]);
 
   // Show the area containing a resolved postcode (its props already carry the
   // premium + drivers, baked into the GeoJSON). Throws if it is off the map.
@@ -287,6 +298,8 @@ function App() {
         onClearRecents={handleClearRecents}
         sheetExpanded={sheetExpanded}
         onToggleSheet={() => setSheetExpanded((e) => !e)}
+        nation={nation}
+        onNationChange={setNation}
       />
       <MapErrorBoundary>
       <Suspense fallback={<MapFallback />}>

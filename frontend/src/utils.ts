@@ -88,6 +88,23 @@ export const ordinalPct = (n?: number | null): string => {
 export const readQuintile = (p: Record<string, unknown>): number =>
   Number(p.quintile ?? p.risk_bucket ?? 0);
 
+/** The three modelled nations (Northern Ireland is excluded: no open crime source). */
+export type Nation = 'england' | 'wales' | 'scotland';
+
+/** Nations in display order, with the first letter of their area codes
+ *  (ONS/NRS GSS codes: E01… England, W01… Wales, S01… Scotland). */
+export const NATIONS: readonly { id: Nation; label: string; prefix: string }[] = [
+  { id: 'england', label: 'England', prefix: 'E' },
+  { id: 'wales', label: 'Wales', prefix: 'W' },
+  { id: 'scotland', label: 'Scotland', prefix: 'S' },
+];
+
+/** The nation an area code belongs to, from its first letter; undefined if unknown. */
+export function nationOf(code: string | null | undefined): Nation | undefined {
+  const first = code?.charAt(0).toUpperCase();
+  return NATIONS.find((n) => n.prefix === first)?.id;
+}
+
 /** Build an O(1) lookup of lsoa code -> feature from the loaded GeoJSON. */
 export function buildLookup(fc: FeatureCollection): Map<string, Feature> {
   const m = new Map<string, Feature>();

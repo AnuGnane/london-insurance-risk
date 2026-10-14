@@ -472,6 +472,11 @@ body {
   font-family: var(--font-display); font-weight: 600; font-size: 1.02rem;
   color: var(--ink);
 }
+.rankings-scope {
+  display: block; font-family: var(--font-sans); font-weight: 500;
+  font-size: 0.72rem; color: var(--ink-faint); margin-top: 2px;
+}
+.nation-chips { margin-bottom: 10px; }
 .rank-row {
   width: 100%; display: flex; align-items: center; gap: 12px;
   padding: 11px 6px; border: none; border-top: 1px solid var(--rule);

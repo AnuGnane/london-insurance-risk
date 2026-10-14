@@ -10,6 +10,7 @@ import {
   featureAtPoint,
   featureBounds,
   featureToDetail,
+  nationOf,
   gbp,
   MODEL_DRIVERS,
   ordinalPct,
@@ -338,5 +339,19 @@ describe('explainArea', () => {
   it('keeps the Scotland flag on vehicle crime', () => {
     const steps = [step('vehicle_crime', 60, 95, { withinScotland: true })];
     expect(explainArea(steps, 500, 560)).toContain('vehicle crime (95th percentile within Scotland, +£60)');
+  });
+});
+
+describe('nationOf', () => {
+  it('reads the nation from the first letter of the area code', () => {
+    expect(nationOf('E01000001')).toBe('england');
+    expect(nationOf('W01000001')).toBe('wales');
+    expect(nationOf('S01006506')).toBe('scotland');
+  });
+  it('returns undefined for an unknown prefix or no code', () => {
+    expect(nationOf('N01000001')).toBeUndefined();
+    expect(nationOf('95AA01S1')).toBeUndefined();
+    expect(nationOf('')).toBeUndefined();
+    expect(nationOf(undefined)).toBeUndefined();
   });
 });
