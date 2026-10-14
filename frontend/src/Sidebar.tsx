@@ -25,6 +25,10 @@ interface SidebarProps {
   onToggleSheet: () => void;
   nation: Nation | null;
   onNationChange: (n: Nation | null) => void;
+  compare: AreaDetail | null;
+  comparing: boolean;
+  onCompareToggle: () => void;
+  onCompareClear: () => void;
 }
 
 const COLOR_MODES: { mode: ColorMode; label: string }[] = [
@@ -151,6 +155,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleSheet,
   nation,
   onNationChange,
+  compare,
+  comparing,
+  onCompareToggle,
+  onCompareClear,
 }) => {
   const [term, setTerm] = useState('');
   const [focused, setFocused] = useState(false);
@@ -313,6 +321,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onColorModeChange={onColorModeChange}
               lookup={lookup}
               nationalAvg={methodology?.national_avg}
+              compare={compare}
+              comparing={comparing}
+              onCompareToggle={onCompareToggle}
+              onCompareClear={onCompareClear}
             />
           </div>
         ) : (

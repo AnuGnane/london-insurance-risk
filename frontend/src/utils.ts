@@ -470,3 +470,21 @@ export function explainArea(steps: WaterfallStep[], baseline: number, premium: n
   }
   return `${sentence}.`;
 }
+
+/** One side of a two-area comparison: the panel's title and its premium. */
+export interface CompareSide { name: string; premium?: number | null; }
+
+/**
+ * One sentence comparing two areas' estimated premiums: which is dearer and by
+ * how many £ (the difference of the two baked premiums, rounded as `gbp` rounds).
+ */
+export function compareSummary(a: CompareSide, b: CompareSide): string {
+  if (a.premium == null || b.premium == null) {
+    const missing = a.premium == null ? a.name : b.name;
+    return `${missing} has no premium estimate, so the two cannot be compared.`;
+  }
+  const gap = Math.round(Math.abs(a.premium - b.premium));
+  if (gap === 0) return `${a.name} and ${b.name} have the same estimated premium.`;
+  const [dearer, cheaper] = a.premium > b.premium ? [a, b] : [b, a];
+  return `${dearer.name} is ${gbp(gap)} a year dearer than ${cheaper.name}.`;
+}

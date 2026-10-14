@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Feature } from 'geojson';
+import { X } from 'lucide-react';
 import type { AreaDetail, ColorMode, WaterfallStep } from './types';
 import {
   COMPONENT_LABELS,
@@ -9,6 +10,7 @@ import {
   quintileColor,
   ledeForQuintile,
   explainArea,
+  compareSummary,
   QUINTILE_TEXT,
 } from './utils';
 
@@ -18,7 +20,32 @@ interface DetailPanelProps {
   onColorModeChange: (m: ColorMode) => void;
   lookup: Map<string, Feature>;
   nationalAvg?: number;
+  /** The second area of a comparison, if one is pinned. */
+  compare: AreaDetail | null;
+  /** "Compare with…" is armed, waiting for a map tap or a search. */
+  comparing: boolean;
+  onCompareToggle: () => void;
+  onCompareClear: () => void;
 }
+
+/** The two areas' names and premiums side by side, keyed to their map outlines. */
+const ComparePair: React.FC<{ a: AreaDetail; b: AreaDetail }> = ({ a, b }) => (
+  <div className="compare-pair">
+    {[a, b].map((d, i) => (
+      <div key={d.lsoa11cd} className="compare-cell">
+        <span className={`compare-key${i ? ' compare-key-b' : ''}`} aria-hidden="true" />
+        <span className="compare-name">{d.title}</span>
+        <span className="compare-premium">{gbp(d.calibrated_premium)}</span>
+      </div>
+    ))}
+    <p className="compare-sentence">
+      {compareSummary(
+        { name: a.title, premium: a.calibrated_premium },
+        { name: b.title, premium: b.calibrated_premium }
+      )}
+    </p>
+  </div>
+);
 
 /** 20-bar histogram with the selected bin + an optional national-average notch. */
 const Sparkline: React.FC<{
@@ -109,6 +136,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   onColorModeChange,
   lookup,
   nationalAvg,
+  compare,
+  comparing,
+  onCompareToggle,
+  onCompareClear,
 }) => {
   const premium = data?.calibrated_premium;
 
@@ -132,6 +163,26 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     <div className="detail">
       <h2 className="detail-area">{data.title}</h2>
       {data.subtitle && <div className="detail-code">{data.subtitle}</div>}
+
+      {compare && <ComparePair a={data} b={compare} />}
+      <div className="compare-actions">
+        <button
+          className={`compare-btn${comparing ? ' compare-armed' : ''}`}
+          aria-pressed={comparing}
+          onClick={onCompareToggle}
+        >
+          {comparing
+            ? 'Tap an area or search a postcode… (cancel)'
+            : compare
+              ? 'Compare with another…'
+              : 'Compare with…'}
+        </button>
+        {compare && (
+          <button className="compare-clear" onClick={onCompareClear} aria-label="Stop comparing">
+            <X size={14} />
+          </button>
+        )}
+      </div>
 
       <p className="lede">{ledeForQuintile(data.quintile)}</p>
 

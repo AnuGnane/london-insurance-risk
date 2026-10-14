@@ -42,6 +42,10 @@ interface MapViewProps {
   marker: [number, number] | null;
   hoveredLsoa: string | null;
   selectedLsoa: string | null;
+  /** The second area of a comparison (?area2=), outlined dashed. */
+  compareLsoa: string | null;
+  /** "Compare with…" is armed: the next tap or search picks the second area. */
+  comparing: boolean;
   nationalAvg?: number;
   onHover: (lsoa: string | null) => void;
   onClick: (lsoa: string) => void;
@@ -113,6 +117,8 @@ export const MapView: React.FC<MapViewProps> = ({
   focus,
   marker,
   selectedLsoa,
+  compareLsoa,
+  comparing,
   nationalAvg,
   onHover,
   onClick,
@@ -141,6 +147,7 @@ export const MapView: React.FC<MapViewProps> = ({
       basemap: isDark ? BASEMAP_STYLE.dark : BASEMAP_STYLE.light,
       areaLine: cssToken('--map-area-line', '#fbf7f0'),
       selected: cssToken('--map-selected', '#24211c'),
+      compare: cssToken('--map-compare', '#1f5f8b'),
     }),
     [isDark]
   );
@@ -313,6 +320,11 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
       )}
       {loadError && <div className="map-toast map-toast-error">{loadError}</div>}
+      {comparing && geojson && areasDrawn && (
+        <div className="map-toast">
+          <span role="status">Comparing: tap an area, or search a postcode</span>
+        </div>
+      )}
 
       {colorMode !== 'composite' && (
         <div className="filter-indicator">
@@ -364,6 +376,16 @@ export const MapView: React.FC<MapViewProps> = ({
               type="line"
               filter={['==', ['get', 'lsoa11cd'], selectedLsoa ?? '__none__']}
               paint={{ 'line-color': mapColors.selected, 'line-width': 2.5 }}
+            />
+            <Layer
+              id="lsoa-compare"
+              type="line"
+              filter={['==', ['get', 'lsoa11cd'], compareLsoa ?? '__none__']}
+              paint={{
+                'line-color': mapColors.compare,
+                'line-width': 2.5,
+                'line-dasharray': [2, 1],
+              }}
             />
           </Source>
         )}
