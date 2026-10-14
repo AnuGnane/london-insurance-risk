@@ -10,6 +10,7 @@ import {
   quintileColor,
   ledeForQuintile,
   explainArea,
+  explainDifference,
   compareSummary,
   QUINTILE_TEXT,
 } from './utils';
@@ -70,19 +71,36 @@ const Sparkline: React.FC<{
   </div>
 );
 
+/** Marks for the two areas of a comparison: told apart by shape, not colour alone. */
+const SIDE_MARK = ['●', '◆'] as const;
+
+/** "● City of London 001A  ◆ Westminster 017A" — the key to the paired marks. */
+const CompareKey: React.FC<{ names: [string, string] }> = ({ names }) => (
+  <div className="compare-legend">
+    {names.map((n, i) => (
+      <span key={i}>
+        <span className={`side-mark side-mark-${i ? 'b' : 'a'}`} aria-hidden="true">{SIDE_MARK[i]}</span>
+        {n}
+      </span>
+    ))}
+  </div>
+);
+
 /** The five drivers as percentile dots on a 0–100 track (GB median at 50).
- *  Tapping one colours the map by it; tapping it again goes back to premium. */
+ *  Tapping one colours the map by it; tapping it again goes back to premium.
+ *  With `others` (a comparison), the second area's percentile is a diamond. */
 const DriverDots: React.FC<{
   steps: WaterfallStep[];
+  others?: WaterfallStep[];
   colorMode: ColorMode;
   onColorModeChange: (m: ColorMode) => void;
-}> = ({ steps, colorMode, onColorModeChange }) => {
+}> = ({ steps, others, colorMode, onColorModeChange }) => {
   const groups: { title: string; kind: WaterfallStep['kind'] }[] = [
     { title: 'Place', kind: 'place' },
     { title: 'Who lives there', kind: 'composition' },
   ];
   return (
-    <div className="dots">
+    <div className={`dots${others ? ' dots-pair' : ''}`}>
       {groups.map((g) => (
         <div
           key={g.kind}
@@ -96,6 +114,8 @@ const DriverDots: React.FC<{
             .map((s) => {
               const active = colorMode === s.key;
               const pct = s.percentile;
+              const other = others?.find((o) => o.key === s.key);
+              const pct2 = other?.percentile;
               return (
                 <button
                   key={s.key}
@@ -107,15 +127,27 @@ const DriverDots: React.FC<{
                 >
                   <span className="dot-label">
                     {s.label}
-                    {s.withinScotland && <span className="diag-tag">within Scotland</span>}
+                    {(s.withinScotland || other?.withinScotland) && (
+                      <span className="diag-tag">
+                        within Scotland
+                        {other && s.withinScotland !== other.withinScotland
+                          ? ` (${s.withinScotland ? SIDE_MARK[0] : SIDE_MARK[1]})`
+                          : ''}
+                      </span>
+                    )}
                   </span>
                   <span className="dot-track" aria-hidden="true">
                     <span className="dot-median" />
                     {pct != null && (
                       <span className="dot-mark" style={{ left: `${Math.min(100, Math.max(0, pct))}%` }} />
                     )}
+                    {pct2 != null && (
+                      <span className="dot-mark dot-mark-b" style={{ left: `${Math.min(100, Math.max(0, pct2))}%` }} />
+                    )}
                   </span>
-                  <span className="dot-pct">{ordinalPct(pct)}</span>
+                  <span className="dot-pct">
+                    {other ? `${ordinalPct(pct)} / ${ordinalPct(pct2)}` : ordinalPct(pct)}
+                  </span>
                 </button>
               );
             })}
@@ -272,15 +304,74 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
       {/* Premium waterfall — exact, order-invariant bridge from the typical-GB baseline */}
       {data.steps && data.premium_baseline != null && premium != null && (() => {
-        const maxAbs = Math.max(1, ...data.steps.map((s) => Math.abs(s.step)));
+        // A comparison pairs every row with the second area's (same drivers, same order).
+        const cmp =
+          compare?.steps && compare.premium_baseline != null && compare.calibrated_premium != null
+            ? {
+                steps: compare.steps,
+                baseline: compare.premium_baseline,
+                premium: compare.calibrated_premium,
+              }
+            : null;
+        const maxAbs = Math.max(
+          1,
+          ...[...data.steps, ...(cmp?.steps ?? [])].map((s) => Math.abs(s.step))
+        );
+        const names: [string, string] = [data.title, compare?.title ?? ''];
+        const bar = (s: WaterfallStep, side: 0 | 1) => {
+          const up = s.step >= 0;
+          return (
+            <span
+              key={side}
+              className={`wf-bar ${up ? 'wf-up' : 'wf-down'}${side ? ' wf-bar-b' : ''}`}
+              style={{ width: `${(Math.abs(s.step) / maxAbs) * 50}%` }}
+            />
+          );
+        };
+        const delta = (s: WaterfallStep, side?: 0 | 1) => {
+          const up = s.step >= 0;
+          return (
+            <span key={side ?? 0} className={`wf-delta ${up ? 'pos' : 'neg'}`}>
+              {side != null && (
+                <span className={`side-mark side-mark-${side ? 'b' : 'a'}`} aria-hidden="true">
+                  {SIDE_MARK[side]}
+                </span>
+              )}
+              <span className="wf-arrow" aria-hidden="true">{up ? '▲' : '▼'}</span>
+              {up ? '+' : '−'}{gbp(Math.abs(s.step))}
+            </span>
+          );
+        };
+        const amounts = (a: number, b: number, style?: React.CSSProperties) =>
+          cmp ? (
+            <span className="wf-amount wf-pair">
+              <span style={style}>
+                <span className="side-mark side-mark-a" aria-hidden="true">{SIDE_MARK[0]}</span>
+                {gbp(a)}
+              </span>
+              <span>
+                <span className="side-mark side-mark-b" aria-hidden="true">{SIDE_MARK[1]}</span>
+                {gbp(b)}
+              </span>
+            </span>
+          ) : (
+            <span className="wf-amount" style={style}>{gbp(a)}</span>
+          );
         return (
           <div className="section" style={{ borderTop: 'none', paddingBottom: 0 }}>
             <span className="eyebrow">Why this price</span>
             <p className="explain">
-              {explainArea(data.steps, data.premium_baseline, premium)}
+              {cmp
+                ? explainDifference(
+                    { name: data.title, steps: data.steps, premium },
+                    { name: names[1], steps: cmp.steps, premium: cmp.premium }
+                  )
+                : explainArea(data.steps, data.premium_baseline, premium)}
             </p>
+            {cmp && <CompareKey names={names} />}
             <DriverDots
               steps={data.steps}
+              others={cmp?.steps}
               colorMode={colorMode}
               onColorModeChange={onColorModeChange}
             />
@@ -295,37 +386,48 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 England and Wales otherwise. Tap a factor to colour the map by it.
               </p>
             </details>
-            <div className="waterfall" aria-label="Breakdown of the estimated premium by factor">
+            <div
+              className={`waterfall${cmp ? ' waterfall-pair' : ''}`}
+              aria-label={
+                cmp
+                  ? `Breakdown of the estimated premiums by factor: ${SIDE_MARK[0]} ${names[0]}, ${SIDE_MARK[1]} ${names[1]}`
+                  : 'Breakdown of the estimated premium by factor'
+              }
+            >
               <div className="wf-row wf-anchor">
                 <span className="wf-label">Typical GB area</span>
-                <span className="wf-amount">{gbp(data.premium_baseline)}</span>
+                {amounts(data.premium_baseline, cmp?.baseline ?? 0)}
               </div>
               {data.steps.map((s) => {
                 const active = colorMode !== 'composite' && s.key === colorMode;
-                const up = s.step >= 0;
+                const other = cmp?.steps.find((o) => o.key === s.key);
                 return (
                   <div key={s.key} className={`wf-row wf-step${active ? ' wf-active' : ''}`}>
                     <span className="wf-label">
                       {s.label}
-                      {s.percentile != null && (
+                      {s.percentile != null && !cmp && (
                         <span className="wf-pct">{ordinalPct(s.percentile)} pct</span>
                       )}
-                      {s.withinScotland && <span className="diag-tag">within Scotland</span>}
+                      {s.withinScotland && !cmp && <span className="diag-tag">within Scotland</span>}
                     </span>
                     <span className="wf-track">
-                      <span className={`wf-bar ${up ? 'wf-up' : 'wf-down'}`}
-                            style={{ width: `${(Math.abs(s.step) / maxAbs) * 50}%` }} />
+                      {bar(s, 0)}
+                      {other && bar(other, 1)}
                     </span>
-                    <span className={`wf-delta ${up ? 'pos' : 'neg'}`}>
-                      <span className="wf-arrow" aria-hidden="true">{up ? '▲' : '▼'}</span>
-                      {up ? '+' : '−'}{gbp(Math.abs(s.step))}
-                    </span>
+                    {other ? (
+                      <span className="wf-deltas">
+                        {delta(s, 0)}
+                        {delta(other, 1)}
+                      </span>
+                    ) : (
+                      delta(s)
+                    )}
                   </div>
                 );
               })}
               <div className="wf-row wf-total">
-                <span className="wf-label">This area</span>
-                <span className="wf-amount" style={{ color }}>{gbp(premium)}</span>
+                <span className="wf-label">{cmp ? 'These areas' : 'This area'}</span>
+                {amounts(premium, cmp?.premium ?? 0, { color })}
               </div>
             </div>
             <p className="drivers-note">

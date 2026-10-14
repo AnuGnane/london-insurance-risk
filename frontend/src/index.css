@@ -931,6 +931,27 @@ body {
 .chip-up { color: var(--up); }
 .chip-down { color: var(--down); }
 
+/* ---- Two areas compared: ● the main area, ◆ the second (shape, not colour alone) */
+.compare-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 8px;
+  font-size: 0.72rem; color: var(--ink-soft);
+}
+.side-mark { margin-right: 4px; color: var(--ink); }
+.side-mark-b { color: var(--map-compare); }
+.dots-pair .dot-row, .dots-pair .dots-scale { grid-template-columns: minmax(0, 1fr) 96px 6.4em; }
+.dot-mark-b {
+  border-radius: 1px; transform: rotate(45deg); background: var(--map-compare);
+}
+.dot-row-active .dot-mark-b { background: var(--map-compare); outline: 1px solid var(--accent); }
+.waterfall-pair .wf-track { height: 14px; }
+.waterfall-pair .wf-bar { height: 6px; }
+.waterfall-pair .wf-bar-b { top: 8px; background: transparent; border: 1.5px solid; box-sizing: border-box; }
+.waterfall-pair .wf-up.wf-bar-b { border-color: var(--up-bar); }
+.waterfall-pair .wf-down.wf-bar-b { border-color: var(--down-bar); }
+.waterfall-pair .wf-track::before { top: -2px; height: 18px; }
+.wf-deltas, .wf-pair { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.wf-deltas .wf-delta { font-size: 12px; }
+
 @media (max-width: 560px) {
   .wf-row { grid-template-columns: 1fr auto; }
   .wf-track { display: none; }            /* keep the signed £ + percentile, drop the bar */
