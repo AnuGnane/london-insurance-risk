@@ -109,6 +109,11 @@ interface HoverInfo {
   extra: string | null;
 }
 
+/** The map's accessible name, with the keyboard hint (also on MapLibre's canvas,
+ *  which is what holds focus). */
+const MAP_LABEL =
+  'Map of estimated car-insurance premiums. Arrow keys pan, plus and minus zoom, Enter selects the area at the centre.';
+
 export const MapView: React.FC<MapViewProps> = ({
   geojson,
   loadError,
@@ -256,19 +261,14 @@ export const MapView: React.FC<MapViewProps> = ({
     onHover(null);
   }, [hoveredId, onHover]);
 
-  const onMapClick = useCallback(
-    (e: MapLayerMouseEvent) => {
-      const f = e.features?.[0];
-      if (!f) {
-        setTapInfo(null);
-        return;
-      }
-      const props = f.properties as LsoaProps;
+  // One selection path for a tap, a click and Enter on the focused map.
+  const selectAt = useCallback(
+    (props: LsoaProps, lng: number, lat: number) => {
       if (isTouch) {
         const q = Number(props.quintile);
         setTapInfo({
-          lng: e.lngLat.lng,
-          lat: e.lngLat.lat,
+          lng,
+          lat,
           lsoa: props.lsoa11cd,
           lsoaName: String(props.lsoa_name || props.lsoa11cd),
           premium: gbp(props.calibrated_premium == null ? null : Number(props.calibrated_premium)),
@@ -278,6 +278,36 @@ export const MapView: React.FC<MapViewProps> = ({
       onClick(props.lsoa11cd);
     },
     [onClick, isTouch]
+  );
+
+  const onMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      if (!f) {
+        setTapInfo(null);
+        return;
+      }
+      selectAt(f.properties as LsoaProps, e.lngLat.lng, e.lngLat.lat);
+    },
+    [selectAt]
+  );
+
+  // Keyboard: MapLibre pans with the arrows and zooms with +/- once its canvas has
+  // focus; Enter selects the area under the centre of the map, as a tap would.
+  const onMapKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      const map = mapRef.current;
+      const canvas = map?.getCanvas();
+      if (!map || e.target !== canvas || !map.getLayer('lsoa-fill')) return;
+      const centre = map.project(map.getCenter());
+      const f = map.queryRenderedFeatures(centre, { layers: ['lsoa-fill'] })[0];
+      if (!f) return;
+      e.preventDefault();
+      const c = map.getCenter();
+      selectAt(f.properties as LsoaProps, c.lng, c.lat);
+    },
+    [selectAt]
   );
 
   const driverLabel =
@@ -292,7 +322,11 @@ export const MapView: React.FC<MapViewProps> = ({
   const avgPos = nationalAvg != null && bands.length ? premiumToRampPos(nationalAvg, bands) : null;
 
   return (
-    <main className="map-container" aria-label="Map of estimated car-insurance premiums">
+    <main
+      className="map-container"
+      aria-label={MAP_LABEL}
+      onKeyDown={onMapKeyDown}
+    >
       {!geojson && !loadError && (
         <div className="skeleton-map">
           <div className="skeleton-pulse" />
@@ -346,6 +380,7 @@ export const MapView: React.FC<MapViewProps> = ({
         onClick={onMapClick}
         onSourceData={onSourceData}
         onError={onMapError}
+        onLoad={(e) => e.target.getCanvas().setAttribute('aria-label', MAP_LABEL)}
         cursor="default"
       >
         <NavigationControl position="top-left" showCompass={false} />
