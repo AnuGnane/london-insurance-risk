@@ -3,6 +3,7 @@ import type { Feature, Polygon } from 'geojson';
 import type { LsoaProps, WaterfallStep } from './types';
 import {
   buildLookup,
+  compareSummary,
   computeDistribution,
   dominantDriver,
   EXPLAIN_MIN_STEP_GBP,
@@ -353,5 +354,33 @@ describe('nationOf', () => {
     expect(nationOf('95AA01S1')).toBeUndefined();
     expect(nationOf('')).toBeUndefined();
     expect(nationOf(undefined)).toBeUndefined();
+  });
+});
+
+describe('compareSummary', () => {
+  it('names the dearer area and the £ gap, whichever side it is on', () => {
+    const a = { name: 'City of London 001A', premium: 1210.4 };
+    const b = { name: 'Westminster 018C', premium: 980.2 };
+    const expected = 'City of London 001A is £230 a year dearer than Westminster 018C.';
+    expect(compareSummary(a, b)).toBe(expected);
+    expect(compareSummary(b, a)).toBe(expected);
+  });
+  it('formats thousands the way gbp does', () => {
+    expect(compareSummary({ name: 'A', premium: 400 }, { name: 'B', premium: 1578 })).toBe(
+      'B is £1,178 a year dearer than A.'
+    );
+  });
+  it('calls a gap that rounds to £0 the same premium', () => {
+    expect(compareSummary({ name: 'A', premium: 500.2 }, { name: 'B', premium: 500.4 })).toBe(
+      'A and B have the same estimated premium.'
+    );
+  });
+  it('says so when either side has no premium', () => {
+    expect(compareSummary({ name: 'A' }, { name: 'B', premium: 500 })).toBe(
+      'A has no premium estimate, so the two cannot be compared.'
+    );
+    expect(compareSummary({ name: 'A', premium: 500 }, { name: 'B', premium: null })).toBe(
+      'B has no premium estimate, so the two cannot be compared.'
+    );
   });
 });

@@ -74,6 +74,7 @@
   /* Map chrome drawn by MapLibre (read by MapView through these tokens) ---- */
   --map-area-line: #fbf7f0;
   --map-selected: #24211c;
+  --map-compare: #1f5f8b;   /* the second area in a comparison (dashed) */
 
   color-scheme: light dark;
 }
@@ -113,6 +114,7 @@
     --shadow-sheet: 0 -6px 20px rgba(0, 0, 0, 0.4);
     --map-area-line: #1b1916;
     --map-selected: #f1ebe2;
+    --map-compare: #7fb8e0;
   }
   /* MapLibre's control icons are dark SVGs; its attribution box is white. */
   :root .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
@@ -338,6 +340,33 @@ body {
 .detail-code {
   font-size: 0.72rem; color: var(--ink-faint); margin-top: 2px;
 }
+
+/* Compare two areas: names and premiums side by side, keyed to the map outlines */
+.compare-pair {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;
+}
+.compare-cell {
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 10px;
+  border: 1px solid var(--rule); border-radius: var(--r-xs); background: var(--paper-panel);
+}
+.compare-key { display: block; width: 24px; border-top: 2.5px solid var(--map-selected); margin-bottom: 4px; }
+.compare-key-b { border-top-style: dashed; border-top-color: var(--map-compare); }
+.compare-name { font-size: 0.75rem; color: var(--ink-soft); line-height: 1.3; }
+.compare-premium { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; color: var(--ink); }
+.compare-sentence { grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink); line-height: 1.45; margin: 0; }
+.compare-actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.compare-btn {
+  border: 1px solid var(--rule-strong); border-radius: 999px; background: var(--paper-panel);
+  color: var(--ink-soft); cursor: pointer; padding: 3px 11px;
+  font-family: var(--font-sans); font-size: 0.72rem; font-weight: 500;
+}
+.compare-btn:hover { color: var(--accent); border-color: var(--accent); }
+.compare-btn.compare-armed { border-color: var(--map-compare); color: var(--ink); border-style: dashed; }
+.compare-clear {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: var(--ink-soft); cursor: pointer; padding: 4px;
+}
+.compare-clear:hover { color: var(--accent); }
 
 /* Plain-language lede (quintile-aware) */
 .lede {
@@ -784,10 +813,11 @@ body {
 
   /* Tap targets at least --tap-min (44 px) */
   .seg button, .seg-sm button { min-height: var(--tap-min); padding-left: 14px; padding-right: 14px; }
-  .rank-row, .disclosure-toggle, .back-link, .share-btn, .search-go,
+  .rank-row, .disclosure-toggle, .back-link, .share-btn, .search-go, .compare-btn,
   .recent, .recents-clear, .dot-row { min-height: var(--tap-min); }
   .pct-explainer summary { min-height: var(--tap-min); display: flex; align-items: center; }
   .search-clear { width: var(--tap-min); height: var(--tap-min); right: 0; }
+  .compare-clear { width: var(--tap-min); height: var(--tap-min); }
   .search-bar input { padding-right: var(--tap-min); }
   .filter-indicator button { width: 32px; height: 32px; }
 

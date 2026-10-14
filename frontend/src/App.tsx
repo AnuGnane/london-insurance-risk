@@ -107,6 +107,14 @@ function App() {
   const [colorMode, setColorMode] = useState<ColorMode>(readUrlFilter);
   // The rankings' nation filter (the map stays GB-wide); null = all of GB.
   const [nation, setNation] = useState<Nation | null>(readUrlNation);
+  // Compare two areas: the second area (?area2=), and whether "Compare with…" is
+  // armed so the next map tap or search picks it instead of the main area.
+  // The second area is pinned against one main area (`forArea`): pick another main
+  // area and the comparison goes, so it never reappears against an area not chosen.
+  const [compare, setCompare] = useState<{ forArea: string; detail: AreaDetail } | null>(
+    null
+  );
+  const [comparing, setComparing] = useState(false);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [marker, setMarker] = useState<[number, number] | null>(null);
   // Phone bottom sheet: starts collapsed (masthead + search) and expands when an
@@ -123,17 +131,25 @@ function App() {
   const userSelected = useRef(false);
   const [initialLink] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return { area: params.get('area'), pc: params.get('pc') };
+    return { area: params.get('area'), area2: params.get('area2'), pc: params.get('pc') };
   });
 
   // -----------------------------------------------------------------------
-  // Deep-linkable URLs: encode ?pc=<postcode>&area=<lsoa>&filter=<mode>&nation=<id>.
+  // Deep-linkable URLs: encode
+  // ?pc=<postcode>&area=<lsoa>&area2=<lsoa>&filter=<mode>&nation=<id>.
   // -----------------------------------------------------------------------
   const updateUrl = useCallback(
-    (lsoa: string | null, mode: ColorMode, pc: string | null, nat: Nation | null) => {
+    (
+      lsoa: string | null,
+      lsoa2: string | null,
+      mode: ColorMode,
+      pc: string | null,
+      nat: Nation | null
+    ) => {
       const params = new URLSearchParams();
       if (pc && lsoa) params.set('pc', pc);
       if (lsoa) params.set('area', lsoa);
+      if (lsoa && lsoa2) params.set('area2', lsoa2);
       if (mode !== 'composite') params.set('filter', mode);
       if (nat) params.set('nation', nat);
       const qs = params.toString();
@@ -158,13 +174,34 @@ function App() {
     []
   );
 
+  // Fly to a feature without moving the pin (a comparison's second area).
+  const flyToFeature = useCallback((feature: Feature) => {
+    const bounds = featureBounds(feature);
+    if (bounds) setFocus({ bounds, nonce: Date.now() });
+  }, []);
+
   const focusLsoa = (lsoa11cd: string, exact?: [number, number]) =>
     focusFeature(lookup.get(lsoa11cd), exact);
 
+  // The comparison only stands beside a main area, and never against itself.
+  const activeCompare =
+    detail &&
+    compare &&
+    compare.forArea === detail.lsoa11cd &&
+    compare.detail.lsoa11cd !== detail.lsoa11cd
+      ? compare.detail
+      : null;
+
   // Keep the URL in sync whenever selection, filter or nation changes.
   useEffect(() => {
-    updateUrl(detail?.lsoa11cd ?? null, colorMode, searchedPc, nation);
-  }, [detail?.lsoa11cd, colorMode, searchedPc, nation, updateUrl]);
+    updateUrl(
+      detail?.lsoa11cd ?? null,
+      activeCompare?.lsoa11cd ?? null,
+      colorMode,
+      searchedPc,
+      nation
+    );
+  }, [detail?.lsoa11cd, activeCompare?.lsoa11cd, colorMode, searchedPc, nation, updateUrl]);
 
   // Show the area containing a resolved postcode (its props already carry the
   // premium + drivers, baked into the GeoJSON). Throws if it is off the map.
@@ -199,9 +236,21 @@ function App() {
         focusFeature(feature);
       }
     };
+    // The second area of a shared comparison (shown once the main area is back).
+    const restoreCompare = (fc: FeatureCollection) => {
+      const { area, area2 } = initialLink;
+      if (!area || !area2 || userSelected.current) return;
+      const feature = fc.features.find(
+        (f) => String((f.properties as LsoaProps | null)?.lsoa11cd) === area2
+      );
+      if (feature) {
+        setCompare({ forArea: area, detail: featureToDetail(feature.properties as LsoaProps) });
+      }
+    };
     getGeojson(setLoadedBytes)
       .then((fc) => {
         setGeojson(fc);
+        restoreCompare(fc);
         if (!initialLink.pc) {
           restoreArea(fc);
           return;
@@ -220,20 +269,48 @@ function App() {
     userSelected.current = true;
     setLoading(true);
     setSearchError(null);
+    // Armed "Compare with…": the result becomes the second area, the main one stays.
+    const asCompare = comparing && detail != null;
     try {
       // postcodes.io → coordinate → the area whose polygon contains it.
       const hit = await resolvePostcode(postcode);
       if (!geojson) throw new Error('The map is still loading. Try again in a moment.');
-      showPostcodeHit(geojson.features, hit);
+      if (asCompare) showCompareHit(geojson.features, hit);
+      else showPostcodeHit(geojson.features, hit);
       setRecentSearches((list) => addRecentSearch(list, hit.label));
     } catch (err: unknown) {
       setSearchError(err instanceof Error ? err.message : String(err));
+      if (asCompare) return;
       setDetail(null);
       setSearchedPc(null);
       setMarker(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  // A postcode search while "Compare with…" is armed: pin its area as the second one.
+  // The map flies to it, but the pin stays on the main area.
+  const showCompareHit = (features: Feature[], hit: PostcodeHit) => {
+    const feature = featureAtPoint(features, hit.lng, hit.lat);
+    const props = feature?.properties as LsoaProps | undefined;
+    if (!feature || !props) {
+      throw new Error('That postcode is outside the modelled area (GB only).');
+    }
+    if (String(props.lsoa11cd) === detail?.lsoa11cd) {
+      throw new Error('That postcode is in the area already shown. Try another.');
+    }
+    const title =
+      hit.query.kind === 'outcode' ? `${hit.label} · district centre` : hit.label;
+    pinCompare({ ...featureToDetail(props), title });
+    flyToFeature(feature);
+  };
+
+  const pinCompare = (d: AreaDetail) => {
+    if (!detail) return;
+    setCompare({ forArea: detail.lsoa11cd, detail: d });
+    setComparing(false);
+    setSheetExpanded(true);
   };
 
   const handleClearRecents = () => {
@@ -248,6 +325,11 @@ function App() {
     if (!props) return;
     userSelected.current = true;
     setSearchError(null);
+    if (comparing && detail) {
+      // The main area cannot be its own comparison: stay armed for another tap.
+      if (lsoa11cd !== detail.lsoa11cd) pinCompare(featureToDetail(props));
+      return;
+    }
     setSearchedPc(null);
     setDetail(featureToDetail(props));
     focusLsoa(lsoa11cd);
@@ -275,6 +357,8 @@ function App() {
     setSearchedPc(null);
     setSearchError(null);
     setMarker(null);
+    setCompare(null);
+    setComparing(false);
   };
 
   return (
@@ -300,6 +384,14 @@ function App() {
         onToggleSheet={() => setSheetExpanded((e) => !e)}
         nation={nation}
         onNationChange={setNation}
+        compare={activeCompare}
+        comparing={comparing && detail != null}
+        onCompareToggle={() => setComparing((c) => !c)}
+        onCompareClear={() => {
+          userSelected.current = true;
+          setCompare(null);
+          setComparing(false);
+        }}
       />
       <MapErrorBoundary>
       <Suspense fallback={<MapFallback />}>
@@ -312,6 +404,8 @@ function App() {
         marker={marker}
         hoveredLsoa={hoveredLsoa}
         selectedLsoa={detail?.lsoa11cd ?? null}
+        compareLsoa={activeCompare?.lsoa11cd ?? null}
+        comparing={comparing && detail != null}
         nationalAvg={methodology?.national_avg}
         onHover={setHoveredLsoa}
         onClick={handleMapClick}

@@ -86,7 +86,7 @@ describe('index.css tokens', () => {
       if (css[end] === '}' && --depth === 0) break;
     }
     const dark = css.slice(start, end);
-    for (const t of ['--paper', '--paper-panel', '--ink', '--ink-soft', '--ink-faint', '--rule', '--map-area-line', '--map-selected']) {
+    for (const t of ['--paper', '--paper-panel', '--ink', '--ink-soft', '--ink-faint', '--rule', '--map-area-line', '--map-selected', '--map-compare']) {
       expect(dark).toContain(`${t}:`);
     }
   });
