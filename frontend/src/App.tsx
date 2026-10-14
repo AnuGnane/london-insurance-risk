@@ -109,7 +109,11 @@ function App() {
   const [nation, setNation] = useState<Nation | null>(readUrlNation);
   // Compare two areas: the second area (?area2=), and whether "Compare with…" is
   // armed so the next map tap or search picks it instead of the main area.
-  const [compare, setCompare] = useState<AreaDetail | null>(null);
+  // The second area is pinned against one main area (`forArea`): pick another main
+  // area and the comparison goes, so it never reappears against an area not chosen.
+  const [compare, setCompare] = useState<{ forArea: string; detail: AreaDetail } | null>(
+    null
+  );
   const [comparing, setComparing] = useState(false);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [marker, setMarker] = useState<[number, number] | null>(null);
@@ -170,12 +174,23 @@ function App() {
     []
   );
 
+  // Fly to a feature without moving the pin (a comparison's second area).
+  const flyToFeature = useCallback((feature: Feature) => {
+    const bounds = featureBounds(feature);
+    if (bounds) setFocus({ bounds, nonce: Date.now() });
+  }, []);
+
   const focusLsoa = (lsoa11cd: string, exact?: [number, number]) =>
     focusFeature(lookup.get(lsoa11cd), exact);
 
   // The comparison only stands beside a main area, and never against itself.
   const activeCompare =
-    detail && compare && compare.lsoa11cd !== detail.lsoa11cd ? compare : null;
+    detail &&
+    compare &&
+    compare.forArea === detail.lsoa11cd &&
+    compare.detail.lsoa11cd !== detail.lsoa11cd
+      ? compare.detail
+      : null;
 
   // Keep the URL in sync whenever selection, filter or nation changes.
   useEffect(() => {
@@ -223,11 +238,14 @@ function App() {
     };
     // The second area of a shared comparison (shown once the main area is back).
     const restoreCompare = (fc: FeatureCollection) => {
-      if (!initialLink.area2 || userSelected.current) return;
+      const { area, area2 } = initialLink;
+      if (!area || !area2 || userSelected.current) return;
       const feature = fc.features.find(
-        (f) => String((f.properties as LsoaProps | null)?.lsoa11cd) === initialLink.area2
+        (f) => String((f.properties as LsoaProps | null)?.lsoa11cd) === area2
       );
-      if (feature) setCompare(featureToDetail(feature.properties as LsoaProps));
+      if (feature) {
+        setCompare({ forArea: area, detail: featureToDetail(feature.properties as LsoaProps) });
+      }
     };
     getGeojson(setLoadedBytes)
       .then((fc) => {
@@ -272,20 +290,25 @@ function App() {
   };
 
   // A postcode search while "Compare with…" is armed: pin its area as the second one.
+  // The map flies to it, but the pin stays on the main area.
   const showCompareHit = (features: Feature[], hit: PostcodeHit) => {
     const feature = featureAtPoint(features, hit.lng, hit.lat);
     const props = feature?.properties as LsoaProps | undefined;
     if (!feature || !props) {
       throw new Error('That postcode is outside the modelled area (GB only).');
     }
+    if (String(props.lsoa11cd) === detail?.lsoa11cd) {
+      throw new Error('That postcode is in the area already shown. Try another.');
+    }
     const title =
       hit.query.kind === 'outcode' ? `${hit.label} · district centre` : hit.label;
     pinCompare({ ...featureToDetail(props), title });
-    focusFeature(feature, [hit.lng, hit.lat]);
+    flyToFeature(feature);
   };
 
   const pinCompare = (d: AreaDetail) => {
-    setCompare(d);
+    if (!detail) return;
+    setCompare({ forArea: detail.lsoa11cd, detail: d });
     setComparing(false);
     setSheetExpanded(true);
   };
