@@ -522,8 +522,14 @@ export function explainDifference(a: ExplainSide, b: ExplainSide): string {
     const [scot, rest] = d.s.withinScotland ? [dearer, cheaper] : [cheaper, dearer];
     return `${base} (ranked within Scotland for ${scot.name}, within England and Wales for ${rest.name})`;
   };
-  const named = (d: { s: WaterfallStep; other: WaterfallStep; diff: number }) =>
-    `${name(d)} (${signedGbp(d.diff)})`;
+  // One bracket: "vehicle crime (+£180; ranked within Scotland for …)".
+  const named = (d: { s: WaterfallStep; other: WaterfallStep; diff: number }) => {
+    const n = name(d);
+    const open = n.indexOf(' (');
+    return open < 0
+      ? `${n} (${signedGbp(d.diff)})`
+      : `${n.slice(0, open)} (${signedGbp(d.diff)}; ${n.slice(open + 2)}`;
+  };
 
   const ups = diffs.filter((d) => d.diff > 0);
   const downs = diffs.filter((d) => d.diff < 0);

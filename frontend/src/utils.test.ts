@@ -406,7 +406,8 @@ describe('explainDifference', () => {
   });
 
   it('names the two largest drivers and the one pulling the other way', () => {
-    const a = side('A', 800, [
+    // The steps' differences add up to the premium gap, as LMDI steps do.
+    const a = side('A', 760, [
       step('young_driver_share', 120),
       step('imd_crime', 80),
       step('aadf_intensity', 15),
@@ -419,7 +420,7 @@ describe('explainDifference', () => {
       step('cars_per_household', 15),
     ]);
     expect(explainDifference(a, b)).toBe(
-      'A costs £200 a year more than B, mainly because of young drivers (+£110) and crime deprivation (+£80); cars per household pulls the other way £45.'
+      'A costs £160 a year more than B, mainly because of young drivers (+£110) and crime deprivation (+£80); cars per household pulls the other way £45.'
     );
   });
 
@@ -443,9 +444,9 @@ describe('explainDifference', () => {
     const eng = side('Leeds 044C', 700, [step('vehicle_crime', 20)]);
     expect(explainDifference(scot, eng)).toBe(
       'Glasgow 012B costs £200 a year more than Leeds 044C, mainly because of vehicle crime ' +
-        '(ranked within Scotland for Glasgow 012B, within England and Wales for Leeds 044C) (+£180).'
+        '(+£180; ranked within Scotland for Glasgow 012B, within England and Wales for Leeds 044C).'
     );
     const scot2 = side('Dundee 003A', 600, [step('vehicle_crime', 0, { withinScotland: true })]);
-    expect(explainDifference(scot, scot2)).toContain('vehicle crime (both ranked within Scotland) (+£200)');
+    expect(explainDifference(scot, scot2)).toContain('vehicle crime (+£200; both ranked within Scotland)');
   });
 });

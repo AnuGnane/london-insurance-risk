@@ -92,9 +92,11 @@ const CompareKey: React.FC<{ names: [string, string] }> = ({ names }) => (
 const DriverDots: React.FC<{
   steps: WaterfallStep[];
   others?: WaterfallStep[];
+  /** The two areas' names, for screen readers, when comparing. */
+  names?: [string, string];
   colorMode: ColorMode;
   onColorModeChange: (m: ColorMode) => void;
-}> = ({ steps, others, colorMode, onColorModeChange }) => {
+}> = ({ steps, others, names, colorMode, onColorModeChange }) => {
   const groups: { title: string; kind: WaterfallStep['kind'] }[] = [
     { title: 'Place', kind: 'place' },
     { title: 'Who lives there', kind: 'composition' },
@@ -130,9 +132,18 @@ const DriverDots: React.FC<{
                     {(s.withinScotland || other?.withinScotland) && (
                       <span className="diag-tag">
                         within Scotland
-                        {other && s.withinScotland !== other.withinScotland
-                          ? ` (${s.withinScotland ? SIDE_MARK[0] : SIDE_MARK[1]})`
-                          : ''}
+                        {other && s.withinScotland !== other.withinScotland && (
+                          <>
+                            <span aria-hidden="true">
+                              {` (${s.withinScotland ? SIDE_MARK[0] : SIDE_MARK[1]})`}
+                            </span>
+                            {names && (
+                              <span className="sr-only">
+                                {` for ${s.withinScotland ? names[0] : names[1]}`}
+                              </span>
+                            )}
+                          </>
+                        )}
                       </span>
                     )}
                   </span>
@@ -145,9 +156,16 @@ const DriverDots: React.FC<{
                       <span className="dot-mark dot-mark-b" style={{ left: `${Math.min(100, Math.max(0, pct2))}%` }} />
                     )}
                   </span>
-                  <span className="dot-pct">
-                    {other ? `${ordinalPct(pct)} / ${ordinalPct(pct2)}` : ordinalPct(pct)}
-                  </span>
+                  {other && names ? (
+                    <span className="dot-pct">
+                      <span aria-hidden="true">{`${ordinalPct(pct)} / ${ordinalPct(pct2)}`}</span>
+                      <span className="sr-only">
+                        {`${names[0]} ${ordinalPct(pct)} percentile, ${names[1]} ${ordinalPct(pct2)} percentile`}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="dot-pct">{ordinalPct(pct)}</span>
+                  )}
                 </button>
               );
             })}
@@ -333,9 +351,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           return (
             <span key={side ?? 0} className={`wf-delta ${up ? 'pos' : 'neg'}`}>
               {side != null && (
-                <span className={`side-mark side-mark-${side ? 'b' : 'a'}`} aria-hidden="true">
-                  {SIDE_MARK[side]}
-                </span>
+                <>
+                  <span className={`side-mark side-mark-${side ? 'b' : 'a'}`} aria-hidden="true">
+                    {SIDE_MARK[side]}
+                  </span>
+                  <span className="sr-only">{`${names[side]}: `}</span>
+                </>
               )}
               <span className="wf-arrow" aria-hidden="true">{up ? '▲' : '▼'}</span>
               {up ? '+' : '−'}{gbp(Math.abs(s.step))}
@@ -347,10 +368,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <span className="wf-amount wf-pair">
               <span style={style}>
                 <span className="side-mark side-mark-a" aria-hidden="true">{SIDE_MARK[0]}</span>
+                <span className="sr-only">{`${names[0]}: `}</span>
                 {gbp(a)}
               </span>
               <span>
                 <span className="side-mark side-mark-b" aria-hidden="true">{SIDE_MARK[1]}</span>
+                <span className="sr-only">{`${names[1]}: `}</span>
                 {gbp(b)}
               </span>
             </span>
@@ -372,6 +395,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <DriverDots
               steps={data.steps}
               others={cmp?.steps}
+              names={cmp ? names : undefined}
               colorMode={colorMode}
               onColorModeChange={onColorModeChange}
             />
