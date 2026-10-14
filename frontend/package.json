@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/copy-methodology.mjs",
+    "build": "tsc -b && vite build && node scripts/copy-methodology.mjs && node scripts/og-image.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"
@@ -28,6 +28,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "mapshaper": "^0.7.27",
+    "playwright": "1.56.1",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
