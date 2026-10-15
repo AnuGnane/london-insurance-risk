@@ -5,6 +5,7 @@ import { DetailPanel } from './DetailPanel';
 import { RankingsPanel } from './RankingsPanel';
 import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
+import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
 import { COMPONENT_LABELS, type Nation } from './utils';
 import { examplePairs } from './api';
@@ -48,6 +49,14 @@ const COLOR_MODES: { mode: ColorMode; label: string }[] = [
   { mode: 'traffic_per_capita', label: 'Traffic/capita' },
   { mode: 'ksi_collisions_per_billion_vehicle_miles', label: 'KSI rate' },
 ];
+
+const COLOR_OPTIONS: readonly SegmentedOption<ColorMode>[] = COLOR_MODES.map(
+  ({ mode, label }) => ({
+    value: mode,
+    label,
+    title: mode === 'composite' ? 'Estimated premium' : COMPONENT_LABELS[mode],
+  })
+);
 
 const fmt = (n: number | undefined, dp: number): string =>
   n == null ? '—' : n.toFixed(dp);
@@ -331,18 +340,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <div style={{ marginTop: 16 }}>
             <span className="eyebrow">Colour the map by</span>
-            <div className="seg">
-              {COLOR_MODES.map(({ mode, label }) => (
-                <button
-                  key={mode}
-                  className={colorMode === mode ? 'seg-on' : ''}
-                  onClick={() => onColorModeChange(mode)}
-                  title={mode === 'composite' ? 'Estimated premium' : COMPONENT_LABELS[mode]}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              label="Colour the map by"
+              options={COLOR_OPTIONS}
+              value={colorMode}
+              onChange={onColorModeChange}
+            />
           </div>
 
           {error && (

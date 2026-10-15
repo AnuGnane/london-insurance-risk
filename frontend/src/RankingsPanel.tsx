@@ -1,5 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import { useMemo, useState } from 'react';
 import type { Feature } from 'geojson';
 import {
   gbp,
@@ -10,7 +9,8 @@ import {
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
-import { nextIndex, useRovingList } from './keyboard';
+import { useRovingList } from './keyboard';
+import { Segmented, type SegmentedOption } from './Segmented';
 
 interface RankingsPanelProps {
   onSelectRanking: (code: string, coords?: [number, number]) => void;
@@ -22,9 +22,14 @@ interface RankingsPanelProps {
 type Order = 'desc' | 'asc';
 
 // The chip row: All, then each nation (null = all of GB).
-const NATION_CHIPS: readonly { id: Nation | null; label: string }[] = [
-  { id: null, label: 'All' },
-  ...NATIONS.map((n) => ({ id: n.id, label: n.label })),
+const NATION_CHIPS: readonly SegmentedOption<Nation | null>[] = [
+  { value: null, label: 'All' },
+  ...NATIONS.map((n) => ({ value: n.id, label: n.label })),
+];
+
+const ORDERS: readonly SegmentedOption<Order>[] = [
+  { value: 'desc', label: 'Most' },
+  { value: 'asc', label: 'Least' },
 ];
 
 export const RankingsPanel: React.FC<RankingsPanelProps> = ({
@@ -34,7 +39,6 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   onNationChange,
 }) => {
   const [order, setOrder] = useState<Order>('desc');
-  const chipRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Rankings are derived from the already-loaded GeoJSON (no API on Pages).
   const rankings = useMemo(
@@ -51,44 +55,15 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   const names = useMemo(() => rankings.map((r) => r.name), [rankings]);
   const roving = useRovingList(names, `${order}:${nation ?? 'all'}`);
 
-  // Radio-group keys: arrows move the selection (and focus) along the chips,
-  // wrapping round; Home/End go to the first and last chip.
-  const onChipKey = (e: KeyboardEvent, index: number) => {
-    const key = { ArrowRight: 'ArrowDown', ArrowLeft: 'ArrowUp' }[e.key] ?? e.key;
-    const next = nextIndex(key, index, NATION_CHIPS.length, { wrap: true });
-    if (next == null) return;
-    e.preventDefault();
-    onNationChange(NATION_CHIPS[next].id);
-    chipRefs.current[next]?.focus();
-  };
-
   return (
     <div className="rankings">
-      <div
-        className="seg seg-sm nation-chips"
-        role="radiogroup"
-        aria-label="Rank areas in"
-      >
-        {NATION_CHIPS.map((c, i) => {
-          const on = c.id === nation;
-          return (
-            <button
-              key={c.label}
-              ref={(el) => {
-                chipRefs.current[i] = el;
-              }}
-              role="radio"
-              aria-checked={on}
-              tabIndex={on ? 0 : -1}
-              className={on ? 'seg-on' : ''}
-              onClick={() => onNationChange(c.id)}
-              onKeyDown={(e) => onChipKey(e, i)}
-            >
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
+      <Segmented
+        className="seg-sm nation-chips"
+        label="Rank areas in"
+        options={NATION_CHIPS}
+        value={nation}
+        onChange={onNationChange}
+      />
       <div className="rankings-head">
         <h2 className="section-title">
           {order === 'desc' ? 'Most expensive areas' : 'Least expensive areas'}
@@ -99,20 +74,13 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
               : null}
           </span>
         </h2>
-        <div className="seg seg-sm">
-          <button
-            className={order === 'desc' ? 'seg-on' : ''}
-            onClick={() => setOrder('desc')}
-          >
-            Most
-          </button>
-          <button
-            className={order === 'asc' ? 'seg-on' : ''}
-            onClick={() => setOrder('asc')}
-          >
-            Least
-          </button>
-        </div>
+        <Segmented
+          className="seg-sm"
+          label="Order"
+          options={ORDERS}
+          value={order}
+          onChange={setOrder}
+        />
       </div>
 
       <div
