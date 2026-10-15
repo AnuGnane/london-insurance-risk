@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Feature } from 'geojson';
-import { Search, ArrowLeft, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { Search, ArrowLeft, ChevronDown, ChevronRight, LocateFixed, X } from 'lucide-react';
 import { DetailPanel } from './DetailPanel';
 import { RankingsPanel } from './RankingsPanel';
 import { AboutPanel } from './AboutPanel';
@@ -13,6 +13,7 @@ interface SidebarProps {
   onSearch: (postcode: string) => void;
   onSelectRanking: (code: string, coords?: [number, number]) => void;
   onSelectPair: (a: string, b: string) => void;
+  onNearMe: () => Promise<void>;
   onClear: () => void;
   detail: AreaDetail | null;
   error: string | null;
@@ -144,6 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSearch,
   onSelectRanking,
   onSelectPair,
+  onNearMe,
   onClear,
   detail,
   error,
@@ -175,6 +177,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // The landing's one-tap comparisons, once the areas have loaded (empty before).
   const pairs = useMemo(() => examplePairs(lookup), [lookup]);
   const [pairSaid, setPairSaid] = useState('');
+  const [locating, setLocating] = useState(false);
+  const nearMe = async () => {
+    if (locating) return;  // not `disabled`: that would drop keyboard focus
+    setLocating(true);
+    setPairSaid('Finding your location…');
+    try {
+      await onNearMe();
+    } finally {
+      setLocating(false);
+      setPairSaid('');
+    }
+  };
 
   return (
     <aside className="sidebar" aria-label="Search, rankings and area details">
@@ -288,6 +302,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div style={{ marginTop: 12 }}>
               <span className="eyebrow">Try</span>
               <div className="seg seg-sm">
+                <button
+                  type="button"
+                  onClick={nearMe}
+                  aria-busy={locating}
+                  title="Show the area you are in (your location is not stored)"
+                >
+                  <LocateFixed size={12} aria-hidden="true" style={{ verticalAlign: '-1px' }} />{' '}
+                  {locating ? 'Locating…' : 'Near me'}
+                </button>
                 {pairs.map((p) => (
                   <button
                     key={p.label}

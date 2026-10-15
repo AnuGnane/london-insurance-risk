@@ -176,7 +176,7 @@ function pointInRing(lng: number, lat: number, ring: Position[]): boolean {
 }
 
 /** Point-in-(Multi)Polygon: inside the outer ring and outside any hole. */
-function pointInFeature(lng: number, lat: number, feature: Feature): boolean {
+export function pointInFeature(lng: number, lat: number, feature: Feature): boolean {
   const g = feature.geometry;
   if (!g) return false;
   const polys: Position[][][] =
