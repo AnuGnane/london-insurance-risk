@@ -20,6 +20,7 @@ import {
   type Nation,
 } from './utils';
 import { getGeojson, getMethodology } from './api';
+import { findMyArea } from './locate';
 import {
   addRecentSearch,
   clearRecentSearches,
@@ -352,6 +353,23 @@ function App() {
     }
   };
 
+  // "Near me": the device's area as the main one. Like a ranking tap it sets no
+  // postcode, so the URL gains only ?area=, never a coordinate; nothing is stored.
+  const handleNearMe = async () => {
+    if (!geojson) return;
+    setSearchError(null);
+    try {
+      const feature = await findMyArea(navigator.geolocation, geojson.features);
+      userSelected.current = true;
+      setSearchedPc(null);
+      setDetail({ ...featureToDetail(feature.properties as LsoaProps), title: 'Your location' });
+      setSheetExpanded(true);
+      focusFeature(feature);
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : 'Could not find your location.');
+    }
+  };
+
   // A "Try" pair from the landing: the first area as the main one (as a ranking tap
   // sets it), the second pinned as its comparison, and the view framed on both.
   const handleSelectPair = (a: string, b: string) => {
@@ -384,6 +402,7 @@ function App() {
         onSearch={handleSearch}
         onSelectRanking={handleSelectRanking}
         onSelectPair={handleSelectPair}
+        onNearMe={handleNearMe}
         onClear={clearDetail}
         detail={detail}
         error={searchError}

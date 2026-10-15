@@ -17,6 +17,16 @@ export const SHEET_HEIGHT = { collapsed: '40%', expanded: '70%' } as const;
 /** Minimum tap target on touch layouts (Apple HIG / WCAG 2.5.5), CSS px. */
 export const TAP_TARGET_MIN_PX = 44;
 
+/** "Near me": how far (degrees) a located point may sit from the nearest area's
+ *  bounds centre when no area contains it, before it counts as outside GB. */
+export const NEAR_ME_MAX_DEGREES = 0.1;
+
+/** "Near me": how long to wait for a position fix, ms. */
+export const NEAR_ME_TIMEOUT_MS = 10_000;
+
+/** "Near me": how old a cached fix may be and still be used, ms. */
+export const NEAR_ME_MAX_AGE_MS = 60_000;
+
 /** CSS custom properties that carry these values into index.css. */
 export const layoutCssVars = {
   '--sheet-collapsed': SHEET_HEIGHT.collapsed,
