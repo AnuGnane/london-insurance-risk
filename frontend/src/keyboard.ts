@@ -8,17 +8,23 @@ export const TYPEAHEAD_RESET_MS = 600;
 
 /**
  * Where a navigation key moves the active index in a list of `count` items:
- * Up/Down one step (stopping at the ends), Home/End to the ends. `null` when the
- * key is not a navigation key or the list is empty.
+ * Up/Down one step (stopping at the ends, or going round them with `wrap`),
+ * Home/End to the ends. `null` when the key is not a navigation key or the list
+ * is empty.
  */
-export function nextIndex(key: string, current: number, count: number): number | null {
+export function nextIndex(
+  key: string,
+  current: number,
+  count: number,
+  { wrap = false }: { wrap?: boolean } = {}
+): number | null {
   if (count <= 0) return null;
   const last = count - 1;
   switch (key) {
     case 'ArrowDown':
-      return Math.min(last, current + 1);
+      return wrap ? (current + 1) % count : Math.min(last, current + 1);
     case 'ArrowUp':
-      return Math.max(0, current - 1);
+      return wrap ? (current - 1 + count) % count : Math.max(0, current - 1);
     case 'Home':
       return 0;
     case 'End':
