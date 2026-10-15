@@ -179,6 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [pairSaid, setPairSaid] = useState('');
   const [locating, setLocating] = useState(false);
   const nearMe = async () => {
+    if (locating) return;  // not `disabled`: that would drop keyboard focus
     setLocating(true);
     setPairSaid('Finding your location…');
     try {
@@ -304,7 +305,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   onClick={nearMe}
-                  disabled={locating}
                   aria-busy={locating}
                   title="Show the area you are in (your location is not stored)"
                 >
