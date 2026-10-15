@@ -142,6 +142,20 @@ export function featureBounds(
   return [[minX, minY], [maxX, maxY]];
 }
 
+/** One bbox around two features (a comparison framed together); null if either has none. */
+export function unionBounds(
+  a: Feature | undefined,
+  b: Feature | undefined
+): [[number, number], [number, number]] | null {
+  const ba = a ? featureBounds(a) : null;
+  const bb = b ? featureBounds(b) : null;
+  if (!ba || !bb) return null;
+  return [
+    [Math.min(ba[0][0], bb[0][0]), Math.min(ba[0][1], bb[0][1])],
+    [Math.max(ba[1][0], bb[1][0]), Math.max(ba[1][1], bb[1][1])],
+  ];
+}
+
 /** Centre of a bbox — used to drop a marker on the selected area. */
 export const boundsCentre = (
   b: [[number, number], [number, number]]
