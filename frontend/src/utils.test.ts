@@ -496,7 +496,10 @@ describe('explainDifference', () => {
         '(+£180; ranked within Scotland for Glasgow 012B, within England and Wales for Leeds 044C).'
     );
     const scot2 = side('Dundee 003A', 600, [step('vehicle_crime', 0, { rankedWithin: 'Scotland' })]);
-    expect(explainDifference(scot, scot2)).toContain('vehicle crime (+£200; both ranked within Scotland)');
+    expect(explainDifference(scot, scot2)).toContain('vehicle crime (+£200; both ranked within Scotland)');    const untagged = side('Leeds 044C', 700, [step('vehicle_crime', 20)]);
+    expect(explainDifference(scot, untagged)).toContain(
+      'vehicle crime (+£180; ranked within Scotland for Glasgow 012B)'
+    );
   });
 
   it('says when crime deprivation is ranked in different nations', () => {
