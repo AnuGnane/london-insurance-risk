@@ -30,6 +30,7 @@ import {
   quintilePremiumBands,
   premiumToRampPos,
   QUINTILE_TEXT,
+  tapFeedback,
 } from './utils';
 import { dataUrl, tilesUrl } from './api';
 import { fitPadding, TOUCH_QUERY, useMediaQuery } from './layout';
@@ -144,6 +145,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const [tapInfo, setTapInfo] = useState<TapInfo | null>(null);
+  // A tap that landed before the areas could answer it (see tapFeedback).
+  const [tapNote, setTapNote] = useState<string | null>(null);
   // MapLibre's worker fetches and tiles the GeoJSON itself (from the HTTP cache the
   // app's own fetch just filled), so the areas appear a moment after the panel.
   // A basemap switch (light/dark) reloads the style and re-tiles the areas, so
@@ -167,6 +170,8 @@ export const MapView: React.FC<MapViewProps> = ({
     [isDark]
   );
   const areasDrawn = drawnOn === mapColors.basemap;
+  // Once the areas are drawn a tap answers itself, so the note goes.
+  const shownTapNote = areasDrawn ? null : tapNote;
   // The streamed tiles, tracked per basemap the same way.
   const [tilesOn, setTilesOn] = useState<string | null>(null);
   const tilesDrawn = tilesOn === mapColors.basemap;
@@ -300,11 +305,12 @@ export const MapView: React.FC<MapViewProps> = ({
       const f = e.features?.[0];
       if (!f) {
         setTapInfo(null);
+        setTapNote(tapFeedback(areasDrawn, tilesDrawn, loadedBytes));
         return;
       }
       selectAt(f.properties as LsoaProps, e.lngLat.lng, e.lngLat.lat);
     },
-    [selectAt]
+    [selectAt, areasDrawn, tilesDrawn, loadedBytes]
   );
 
   // Keyboard: MapLibre pans with the arrows and zooms with +/- once its canvas has
@@ -349,8 +355,10 @@ export const MapView: React.FC<MapViewProps> = ({
           {!tilesDrawn && <div className="skeleton-pulse" />}
           <div className={`map-toast${tilesDrawn ? '' : ' skeleton-toast'}`}>
             <span className="loader" aria-hidden="true" />
-            {/* The live region stays static; the changing byte count is not announced. */}
-            <span role="status">{loadedBytes > 0 ? 'Loading map data…' : 'Plotting 41,729 areas…'}</span>
+            {/* The live region changes only on a tap; the changing byte count is not announced. */}
+            <span role="status">
+              {shownTapNote ?? (loadedBytes > 0 ? 'Loading map data…' : 'Plotting 41,729 areas…')}
+            </span>
             {loadedBytes > 0 && (
               <span aria-hidden="true">{(loadedBytes / 1e6).toFixed(1)} MB</span>
             )}
