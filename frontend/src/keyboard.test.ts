@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextIndex, typeAheadIndex } from './keyboard';
+import { nextIndex, segmentedIndex, typeAheadIndex } from './keyboard';
 
 describe('nextIndex', () => {
   it('steps down and up, stopping at the ends', () => {
@@ -26,6 +26,25 @@ describe('nextIndex', () => {
     expect(nextIndex('Home', 2, 4, wrap)).toBe(0);
     expect(nextIndex('End', 1, 4, wrap)).toBe(3);
     expect(nextIndex('ArrowDown', 0, 0, wrap)).toBeNull();
+  });
+});
+
+describe('segmentedIndex', () => {
+  it('moves with all four arrows and goes round the ends', () => {
+    expect(segmentedIndex('ArrowRight', 0, 4)).toBe(1);
+    expect(segmentedIndex('ArrowDown', 0, 4)).toBe(1);
+    expect(segmentedIndex('ArrowLeft', 2, 4)).toBe(1);
+    expect(segmentedIndex('ArrowUp', 2, 4)).toBe(1);
+    expect(segmentedIndex('ArrowRight', 3, 4)).toBe(0);
+    expect(segmentedIndex('ArrowLeft', 0, 4)).toBe(3);
+  });
+
+  it('jumps with Home and End, and ignores other keys', () => {
+    expect(segmentedIndex('Home', 2, 12)).toBe(0);
+    expect(segmentedIndex('End', 2, 12)).toBe(11);
+    expect(segmentedIndex('Enter', 2, 12)).toBeNull();
+    expect(segmentedIndex(' ', 2, 12)).toBeNull();
+    expect(segmentedIndex('ArrowRight', 0, 0)).toBeNull();
   });
 });
 

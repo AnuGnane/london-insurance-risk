@@ -35,6 +35,16 @@ export function nextIndex(
 }
 
 /**
+ * Where a key moves the choice in a segmented control (a radio group) of `count`
+ * items: Left/Up back one and Right/Down on one, going round the ends, Home/End
+ * to the ends. `null` for any other key or an empty group.
+ */
+export function segmentedIndex(key: string, current: number, count: number): number | null {
+  const vertical = { ArrowRight: 'ArrowDown', ArrowLeft: 'ArrowUp' }[key] ?? key;
+  return nextIndex(vertical, current, count, { wrap: true });
+}
+
+/**
  * The first label starting with `query` (case-insensitive), searching from the
  * item after `from` and wrapping round; for a query that extends the current
  * item's own match (typing "sw" on "Swansea"), the current item stays. `null`
