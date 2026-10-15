@@ -12,6 +12,7 @@ import type {
 import {
   buildLookup,
   featureBounds,
+  unionBounds,
   boundsCentre,
   featureToDetail,
   featureAtPoint,
@@ -351,6 +352,18 @@ function App() {
     }
   };
 
+  // A "Try" pair from the landing: the first area as the main one (as a ranking tap
+  // sets it), the second pinned as its comparison, and the view framed on both.
+  const handleSelectPair = (a: string, b: string) => {
+    const bProps = lookup.get(b)?.properties as LsoaProps | undefined;
+    if (!lookup.has(a) || !bProps) return;
+    handleSelectRanking(a);
+    setCompare({ forArea: a, detail: featureToDetail(bProps) });
+    setComparing(false);
+    const bounds = unionBounds(lookup.get(a), lookup.get(b));
+    if (bounds) setFocus({ bounds, nonce: Date.now() });
+  };
+
   const clearDetail = () => {
     userSelected.current = true;
     setDetail(null);
@@ -370,6 +383,7 @@ function App() {
       <Sidebar
         onSearch={handleSearch}
         onSelectRanking={handleSelectRanking}
+        onSelectPair={handleSelectPair}
         onClear={clearDetail}
         detail={detail}
         error={searchError}

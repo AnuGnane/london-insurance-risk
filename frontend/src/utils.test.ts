@@ -21,6 +21,7 @@ import {
   premiumToRampPos,
   quintilePremiumBands,
   tapFeedback,
+  unionBounds,
   WATERFALL_ORDER,
 } from './utils';
 
@@ -91,6 +92,17 @@ describe('ordinalPct', () => {
   it('shows a dash for missing or non-finite values', () => {
     expect(ordinalPct(null)).toBe('—');
     expect(ordinalPct(NaN)).toBe('—');
+  });
+});
+
+describe('unionBounds', () => {
+  it('frames two areas together', () => {
+    expect(
+      unionBounds(area('A', [square(-1, 50, 0, 51)]), area('B', [square(-4, 55, -3, 57)]))
+    ).toEqual([[-4, 50], [0, 57]]);
+  });
+  it('returns null when either side has no bounds', () => {
+    expect(unionBounds(area('A', [square(0, 0, 1, 1)]), undefined)).toBeNull();
   });
 });
 

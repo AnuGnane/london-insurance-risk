@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Feature } from 'geojson';
-import { countRankable, getGeojson, getMethodology, getRankings, tilesUrl } from './api';
+import { countRankable, examplePairs, getGeojson, getMethodology, getRankings, tilesUrl } from './api';
 import type { LsoaProps } from './types';
 import { buildLookup } from './utils';
 
@@ -184,5 +184,55 @@ describe('tilesUrl', () => {
     expect(tilesUrl('/data/lsoa-risk.pmtiles', 'http://localhost:5173/')).toBe(
       'pmtiles://http://localhost:5173/data/lsoa-risk.pmtiles'
     );
+  });
+});
+
+describe('examplePairs', () => {
+  const lookup = buildLookup({
+    type: 'FeatureCollection',
+    features: [
+      area('E01000001', { lsoa_name: 'Dear England', calibrated_premium: 1200 }),
+      area('E01000002', { lsoa_name: 'Mid England', calibrated_premium: 700 }),
+      area('W01000001', { lsoa_name: 'Dear Wales', calibrated_premium: 800 }),
+      area('W01000002', { lsoa_name: 'Cheap Wales', calibrated_premium: 450 }),
+      area('S01000001', { lsoa_name: 'Dear Scotland', calibrated_premium: 750 }),
+      area('S01000002', { lsoa_name: 'Cheap Scotland', calibrated_premium: 300 }),
+      area('S01000003', { lsoa_name: 'No premium' }),
+    ],
+  });
+
+  it('pairs the dearest area with the cheapest, then Wales with Scotland', () => {
+    expect(
+      examplePairs(lookup).map((p) => [p.label, p.a.code, p.b.code])
+    ).toEqual([
+      ['Dearest vs cheapest', 'E01000001', 'S01000002'],
+      ['Dearest in Wales vs Scotland', 'W01000001', 'S01000001'],
+    ]);
+  });
+
+  it('carries each side as a ranking row', () => {
+    const [first] = examplePairs(lookup);
+    expect(first.a.name).toBe('Dear England');
+    expect(first.b.calibrated_premium).toBe(300);
+  });
+
+  it('offers nothing before the areas have loaded', () => {
+    expect(examplePairs(new Map())).toEqual([]);
+  });
+
+  it('drops a pair whose sides are missing or the same area', () => {
+    const one = buildLookup({
+      type: 'FeatureCollection',
+      features: [area('E01000001', { calibrated_premium: 500 })],
+    });
+    expect(examplePairs(one)).toEqual([]);
+    const noWales = buildLookup({
+      type: 'FeatureCollection',
+      features: [
+        area('E01000001', { calibrated_premium: 500 }),
+        area('S01000001', { calibrated_premium: 400 }),
+      ],
+    });
+    expect(examplePairs(noWales).map((p) => p.label)).toEqual(['Dearest vs cheapest']);
   });
 });

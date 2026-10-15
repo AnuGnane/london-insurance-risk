@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Feature } from 'geojson';
 import { Search, ArrowLeft, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { DetailPanel } from './DetailPanel';
@@ -7,10 +7,12 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import type { AreaDetail, ColorMode, Methodology } from './types';
 import { COMPONENT_LABELS, type Nation } from './utils';
+import { examplePairs } from './api';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
   onSelectRanking: (code: string, coords?: [number, number]) => void;
+  onSelectPair: (a: string, b: string) => void;
   onClear: () => void;
   detail: AreaDetail | null;
   error: string | null;
@@ -141,6 +143,7 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
 export const Sidebar: React.FC<SidebarProps> = ({
   onSearch,
   onSelectRanking,
+  onSelectPair,
   onClear,
   detail,
   error,
@@ -169,6 +172,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onSearch(q.trim());
   };
   const showRecents = focused && term === '' && recentSearches.length > 0;
+  // The landing's one-tap comparisons, once the areas have loaded (empty before).
+  const pairs = useMemo(() => examplePairs(lookup), [lookup]);
+  const [pairSaid, setPairSaid] = useState('');
 
   return (
     <aside className="sidebar" aria-label="Search, rankings and area details">
@@ -275,6 +281,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {r}
                 </button>
               ))}
+            </div>
+          )}
+
+          {pairs.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <span className="eyebrow">Try</span>
+              <div className="seg seg-sm">
+                {pairs.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    title={`${p.a.name} vs ${p.b.name}`}
+                    onClick={() => {
+                      onSelectPair(p.a.code, p.b.code);
+                      setPairSaid(`Comparing ${p.a.name} with ${p.b.name}`);
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <span className="sr-only" role="status">{pairSaid}</span>
             </div>
           )}
 

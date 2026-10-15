@@ -95,6 +95,30 @@ export function getRankings(
   return rows.slice(0, n);
 }
 
+/** A ready-made comparison the landing offers: `a` becomes the main area, `b` the second. */
+export interface ExamplePair {
+  label: string;
+  a: RankingArea;
+  b: RankingArea;
+}
+
+/**
+ * The "Try" pairs, computed live from the loaded areas so no area code is typed in:
+ * GB's dearest against its cheapest, and the dearest area in Wales against the
+ * dearest in Scotland. A pair is dropped when a side is missing or both are one area.
+ */
+export function examplePairs(lookup: Map<string, Feature>): ExamplePair[] {
+  const top = (order: 'asc' | 'desc', nation?: Nation) =>
+    getRankings(lookup, order, 1, nation)[0];
+  const candidates = [
+    { label: 'Dearest vs cheapest', a: top('desc'), b: top('asc') },
+    { label: 'Dearest in Wales vs Scotland', a: top('desc', 'wales'), b: top('desc', 'scotland') },
+  ];
+  return candidates.filter(
+    (p): p is ExamplePair => p.a != null && p.b != null && p.a.code !== p.b.code
+  );
+}
+
 /** How many areas `getRankings` ranks from (all GB, or one nation). */
 export function countRankable(lookup: Map<string, Feature>, nation?: Nation): number {
   let count = 0;
