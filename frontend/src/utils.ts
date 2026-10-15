@@ -564,3 +564,19 @@ export function formatSci(n: number, dp = 1): string {
   const power = String(Number(exp)).split('').map((c) => SUPERSCRIPT[c] ?? c).join('');
   return `${mantissa}×10${power}`;
 }
+
+/**
+ * What a tap on the map says while the areas cannot answer it yet: the streamed tiles
+ * colour the map long before the GeoJSON behind the area details has downloaded.
+ * Null once the areas are drawn (a tap then selects as normal).
+ */
+export function tapFeedback(
+  areasDrawn: boolean,
+  tilesDrawn: boolean,
+  loadedBytes: number
+): string | null {
+  if (areasDrawn) return null;
+  if (!tilesDrawn) return 'The map is still loading';
+  const base = 'Area details arrive once the map data has loaded';
+  return loadedBytes > 0 ? `${base} (${(loadedBytes / 1e6).toFixed(1)} MB so far)` : base;
+}

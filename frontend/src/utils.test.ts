@@ -20,6 +20,7 @@ import {
   ordinalPct,
   premiumToRampPos,
   quintilePremiumBands,
+  tapFeedback,
   WATERFALL_ORDER,
 } from './utils';
 
@@ -464,5 +465,29 @@ describe('formatFigure and formatSci', () => {
     expect(formatSci(3.7458013911795408e-6)).toBe('3.7×10⁻⁶');
     expect(formatSci(0.0024198407878440143)).toBe('2.4×10⁻³');
     expect(formatSci(1234, 2)).toBe('1.23×10³');
+  });
+});
+
+describe('tapFeedback', () => {
+  it('says nothing once the areas are drawn', () => {
+    expect(tapFeedback(true, true, 8_000_000)).toBeNull();
+    expect(tapFeedback(true, false, 0)).toBeNull();
+  });
+
+  it('says how much has loaded while only the tiles show', () => {
+    expect(tapFeedback(false, true, 3_240_000)).toBe(
+      'Area details arrive once the map data has loaded (3.2 MB so far)'
+    );
+  });
+
+  it('leaves out the byte count before any data has arrived', () => {
+    expect(tapFeedback(false, true, 0)).toBe(
+      'Area details arrive once the map data has loaded'
+    );
+  });
+
+  it('gives a plainer line before anything shows', () => {
+    expect(tapFeedback(false, false, 0)).toBe('The map is still loading');
+    expect(tapFeedback(false, false, 5_000_000)).toBe('The map is still loading');
   });
 });
