@@ -341,6 +341,7 @@ body {
 .detail-code {
   font-size: 0.72rem; color: var(--ink-faint); margin-top: 2px;
 }
+.rankings-scope:empty { margin-top: 0; }
 
 /* Compare two areas: names and premiums side by side, keyed to the map outlines */
 .compare-pair {

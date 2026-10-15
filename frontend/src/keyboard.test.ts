@@ -17,6 +17,16 @@ describe('nextIndex', () => {
     expect(nextIndex('a', 3, 10)).toBeNull();
     expect(nextIndex('ArrowDown', 0, 0)).toBeNull();
   });
+
+  it('goes round the ends with wrap, and Home/End still jump', () => {
+    const wrap = { wrap: true };
+    expect(nextIndex('ArrowDown', 3, 4, wrap)).toBe(0);
+    expect(nextIndex('ArrowUp', 0, 4, wrap)).toBe(3);
+    expect(nextIndex('ArrowDown', 1, 4, wrap)).toBe(2);
+    expect(nextIndex('Home', 2, 4, wrap)).toBe(0);
+    expect(nextIndex('End', 1, 4, wrap)).toBe(3);
+    expect(nextIndex('ArrowDown', 0, 0, wrap)).toBeNull();
+  });
 });
 
 describe('typeAheadIndex', () => {

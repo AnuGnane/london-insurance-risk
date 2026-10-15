@@ -10,7 +10,7 @@ import {
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
-import { useRovingList } from './keyboard';
+import { nextIndex, useRovingList } from './keyboard';
 
 interface RankingsPanelProps {
   onSelectRanking: (code: string, coords?: [number, number]) => void;
@@ -51,12 +51,13 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   const names = useMemo(() => rankings.map((r) => r.name), [rankings]);
   const roving = useRovingList(names, `${order}:${nation ?? 'all'}`);
 
-  // Radio-group keys: arrows move the selection (and focus) along the chips.
+  // Radio-group keys: arrows move the selection (and focus) along the chips,
+  // wrapping round; Home/End go to the first and last chip.
   const onChipKey = (e: KeyboardEvent, index: number) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (!step) return;
+    const key = { ArrowRight: 'ArrowDown', ArrowLeft: 'ArrowUp' }[e.key] ?? e.key;
+    const next = nextIndex(key, index, NATION_CHIPS.length, { wrap: true });
+    if (next == null) return;
     e.preventDefault();
-    const next = (index + step + NATION_CHIPS.length) % NATION_CHIPS.length;
     onNationChange(NATION_CHIPS[next].id);
     chipRefs.current[next]?.focus();
   };
@@ -91,11 +92,12 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
       <div className="rankings-head">
         <h2 className="section-title">
           {order === 'desc' ? 'Most expensive areas' : 'Least expensive areas'}
-          {nationLabel && areaCount > 0 && (
-            <span className="rankings-scope">
-              {nationLabel} · {areaCount.toLocaleString('en-GB')} areas
-            </span>
-          )}
+          {/* Always mounted, so screen readers announce the scope when it changes. */}
+          <span className="rankings-scope" role="status" aria-live="polite">
+            {nationLabel && areaCount > 0
+              ? `${nationLabel} · ${areaCount.toLocaleString('en-GB')} areas`
+              : null}
+          </span>
         </h2>
         <div className="seg seg-sm">
           <button
