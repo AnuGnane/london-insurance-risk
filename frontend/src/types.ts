@@ -78,8 +78,12 @@ export interface WaterfallStep {
   percentile?: number;
   step: number;                  // signed £ contribution (LMDI; sums with baseline to the total)
   kind: 'place' | 'composition';
-  withinScotland?: boolean;      // crime is ranked within Scotland — flag it
+  rankedWithin?: RankingGroup;   // the group this layer is ranked within — flag it
 }
+
+/** The group a crime layer is ranked within: a nation, or England and Wales
+ *  together (vehicle crime, whose recorded-crime sources differ by jurisdiction). */
+export type RankingGroup = 'England' | 'Wales' | 'Scotland' | 'England and Wales';
 
 // Unified detail shape rendered by DetailPanel, from EITHER a postcode
 // search (rich, via /api/risk) or a map/ranking click (via feature props).

@@ -15,6 +15,7 @@ import {
   formatFigure,
   formatSci,
   nationOf,
+  rankingGroup,
   gbp,
   MODEL_DRIVERS,
   ordinalPct,
@@ -249,10 +250,20 @@ describe('featureToDetail', () => {
     expect(kinds.road_casualties).toBeUndefined();
   });
   it('flags vehicle crime as within-Scotland only for Scottish areas', () => {
-    const flag = (props: LsoaProps) =>
-      featureToDetail(props).steps!.find((s) => s.key === 'vehicle_crime')!.withinScotland;
-    expect(flag(CITY)).toBe(false);
-    expect(flag({ ...CITY, lsoa11cd: 'S01006506' })).toBe(true);
+    const group = (props: LsoaProps, key = 'vehicle_crime') =>
+      featureToDetail(props).steps!.find((s) => s.key === key)!.rankedWithin;
+    expect(group(CITY)).not.toBe('Scotland');
+    expect(group(CITY)).toBe('England and Wales');
+    expect(group({ ...CITY, lsoa11cd: 'W01000001' })).toBe('England and Wales');
+    expect(group({ ...CITY, lsoa11cd: 'S01006506' })).toBe('Scotland');
+  });
+  it('flags crime deprivation as ranked within each nation, and nothing else', () => {
+    const group = (props: LsoaProps, key: string) =>
+      featureToDetail(props).steps!.find((s) => s.key === key)!.rankedWithin;
+    expect(group(CITY, 'imd_crime')).toBe('England');
+    expect(group({ ...CITY, lsoa11cd: 'W01000001' }, 'imd_crime')).toBe('Wales');
+    expect(group({ ...CITY, lsoa11cd: 'S01006506' }, 'imd_crime')).toBe('Scotland');
+    expect(group(CITY, 'young_driver_share')).toBeUndefined();
   });
   it('omits the waterfall without a baseline and falls back to the code as title', () => {
     const bare = featureToDetail({ lsoa11cd: 'W01000001', risk_index: 10, quintile: 1 });
@@ -291,7 +302,7 @@ describe('explainArea', () => {
   it('explains a cheaper area from its own waterfall', () => {
     const d = featureToDetail(CITY);
     expect(explainArea(d.steps!, d.premium_baseline!, d.calibrated_premium!)).toBe(
-      'Cheaper than a typical GB area mainly because of crime deprivation (1st percentile, −£145) ' +
+      'Cheaper than a typical GB area mainly because of crime deprivation (1st percentile within England, −£145) ' +
         'and young drivers (16th percentile, −£130); cars per household (2nd percentile) pushes it up £83.'
     );
   });
@@ -327,8 +338,13 @@ describe('explainArea', () => {
       step('young_driver_share', 9, 60), step('cars_per_household', -12, 30),
     ];
     expect(explainArea(steps, 541, 565)).toBe(
-      'Dearer than a typical GB area through several small factors, none of them £10 or more; ' +
-        'cars per household (30th percentile) pulls it back £12.'
+      'Dearer than a typical GB area despite cars per household (30th percentile) pulling the other way £12, ' +
+        'through several small factors, none of them £10 or more.'
+    );
+    const cheaper = steps.map((s) => ({ ...s, step: -s.step }));
+    expect(explainArea(cheaper, 565, 541)).toBe(
+      'Cheaper than a typical GB area despite cars per household (30th percentile) pulling the other way £12, ' +
+        'through several small factors, none of them £10 or more.'
     );
   });
 
@@ -354,8 +370,26 @@ describe('explainArea', () => {
   });
 
   it('keeps the Scotland flag on vehicle crime', () => {
-    const steps = [step('vehicle_crime', 60, 95, { withinScotland: true })];
+    const steps = [step('vehicle_crime', 60, 95, { rankedWithin: 'Scotland' })];
     expect(explainArea(steps, 500, 560)).toContain('vehicle crime (95th percentile within Scotland, +£60)');
+  });
+
+  it('names the nation crime deprivation is ranked within', () => {
+    const steps = [step('imd_crime', 60, 88, { rankedWithin: 'Wales' })];
+    expect(explainArea(steps, 500, 560)).toContain('crime deprivation (88th percentile within Wales, +£60)');
+  });
+});
+
+describe('rankingGroup', () => {
+  it('never gives vehicle crime a single nation outside Scotland', () => {
+    expect(rankingGroup('vehicle_crime', 'E01000001')).toBe('England and Wales');
+    expect(rankingGroup('vehicle_crime', 'W01000001')).toBe('England and Wales');
+    expect(rankingGroup('vehicle_crime', 'S01006506')).toBe('Scotland');
+  });
+  it('is undefined for a GB-wide layer or an unknown code', () => {
+    expect(rankingGroup('aadf_intensity', 'S01006506')).toBeUndefined();
+    expect(rankingGroup('imd_crime', 'N01000001')).toBeUndefined();
+    expect(rankingGroup('vehicle_crime', undefined)).toBeUndefined();
   });
 });
 
@@ -455,14 +489,37 @@ describe('explainDifference', () => {
   });
 
   it('says when vehicle crime is ranked in different groups for the two areas', () => {
-    const scot = side('Glasgow 012B', 900, [step('vehicle_crime', 200, { withinScotland: true })]);
-    const eng = side('Leeds 044C', 700, [step('vehicle_crime', 20)]);
+    const scot = side('Glasgow 012B', 900, [step('vehicle_crime', 200, { rankedWithin: 'Scotland' })]);
+    const eng = side('Leeds 044C', 700, [step('vehicle_crime', 20, { rankedWithin: 'England and Wales' })]);
     expect(explainDifference(scot, eng)).toBe(
       'Glasgow 012B costs £200 a year more than Leeds 044C, mainly because of vehicle crime ' +
         '(+£180; ranked within Scotland for Glasgow 012B, within England and Wales for Leeds 044C).'
     );
-    const scot2 = side('Dundee 003A', 600, [step('vehicle_crime', 0, { withinScotland: true })]);
-    expect(explainDifference(scot, scot2)).toContain('vehicle crime (+£200; both ranked within Scotland)');
+    const scot2 = side('Dundee 003A', 600, [step('vehicle_crime', 0, { rankedWithin: 'Scotland' })]);
+    expect(explainDifference(scot, scot2)).toContain('vehicle crime (+£200; both ranked within Scotland)');    const untagged = side('Leeds 044C', 700, [step('vehicle_crime', 20)]);
+    expect(explainDifference(scot, untagged)).toContain(
+      'vehicle crime (+£180; ranked within Scotland for Glasgow 012B)'
+    );
+  });
+
+  it('says when crime deprivation is ranked in different nations', () => {
+    const wal = side('Cardiff 032F', 800, [step('imd_crime', 150, { rankedWithin: 'Wales' })]);
+    const scot = side('Glasgow 012B', 700, [step('imd_crime', 50, { rankedWithin: 'Scotland' })]);
+    expect(explainDifference(wal, scot)).toBe(
+      'Cardiff 032F costs £100 a year more than Glasgow 012B, mainly because of crime deprivation ' +
+        '(+£100; ranked within Wales for Cardiff 032F, within Scotland for Glasgow 012B).'
+    );
+    const eng = (name: string, v: number) => side(name, 600 + v, [step('imd_crime', v, { rankedWithin: 'England' })]);
+    expect(explainDifference(eng('A', 90), eng('B', 10))).toContain('crime deprivation (+£80; both ranked within England)');
+  });
+
+  it('says it the other way round when only a counter-driver reaches the step', () => {
+    const a = side('A', 560, [step('young_driver_share', 9), step('aadf_intensity', 9), step('cars_per_household', -12)]);
+    const b = side('B', 500, [step('young_driver_share', 0), step('aadf_intensity', 0), step('cars_per_household', 0)]);
+    expect(explainDifference(a, b)).toBe(
+      'A costs £60 a year more than B despite cars per household pulling the other way £12, ' +
+        'through several small differences, none of them £10 or more.'
+    );
   });
 });
 
