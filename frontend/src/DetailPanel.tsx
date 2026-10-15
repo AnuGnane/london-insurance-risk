@@ -129,23 +129,18 @@ const DriverDots: React.FC<{
                 >
                   <span className="dot-label">
                     {s.label}
-                    {(s.withinScotland || other?.withinScotland) && (
-                      <span className="diag-tag">
-                        within Scotland
-                        {other && s.withinScotland !== other.withinScotland && (
-                          <>
-                            <span aria-hidden="true">
-                              {` (${s.withinScotland ? SIDE_MARK[0] : SIDE_MARK[1]})`}
-                            </span>
-                            {names && (
-                              <span className="sr-only">
-                                {` for ${s.withinScotland ? names[0] : names[1]}`}
+                    {other && other.rankedWithin !== s.rankedWithin
+                      ? [s.rankedWithin, other.rankedWithin].map(
+                          (g, i) =>
+                            g && (
+                              <span key={i} className="diag-tag">
+                                within {g}
+                                <span aria-hidden="true">{` (${SIDE_MARK[i]})`}</span>
+                                {names && <span className="sr-only">{` for ${names[i]}`}</span>}
                               </span>
-                            )}
-                          </>
-                        )}
-                      </span>
-                    )}
+                            )
+                        )
+                      : s.rankedWithin && <span className="diag-tag">within {s.rankedWithin}</span>}
                   </span>
                   <span className="dot-track" aria-hidden="true">
                     <span className="dot-median" />
@@ -432,7 +427,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                       {s.percentile != null && !cmp && (
                         <span className="wf-pct">{ordinalPct(s.percentile)} pct</span>
                       )}
-                      {s.withinScotland && !cmp && <span className="diag-tag">within Scotland</span>}
+                      {s.rankedWithin && !cmp && <span className="diag-tag">within {s.rankedWithin}</span>}
                     </span>
                     <span className="wf-track">
                       {bar(s, 0)}

@@ -1,6 +1,6 @@
 // Small client-side helpers. No new dependencies.
 import type { Feature, FeatureCollection, Position } from 'geojson';
-import type { AreaDetail, LsoaProps, WaterfallStep } from './types';
+import type { AreaDetail, LsoaProps, RankingGroup, WaterfallStep } from './types';
 
 // Drivers that actually move the calibrated premium (place + composition) — these
 // carry a £ `_contrib`. Diagnostics are mapped layers the calibration evidence-gated
@@ -103,6 +103,20 @@ export const NATIONS: readonly { id: Nation; label: string; prefix: string }[] =
 export function nationOf(code: string | null | undefined): Nation | undefined {
   const first = code?.charAt(0).toUpperCase();
   return NATIONS.find((n) => n.prefix === first)?.id;
+}
+
+/**
+ * The group a layer is ranked within for an area, from its code: crime
+ * deprivation within each nation, vehicle crime within Scotland or within England
+ * and Wales together (never a single nation). Undefined for a layer ranked across
+ * GB, or an unknown code.
+ */
+export function rankingGroup(key: string, code: string | null | undefined): RankingGroup | undefined {
+  const nation = nationOf(code);
+  if (!nation) return undefined;
+  if (key === 'vehicle_crime') return nation === 'scotland' ? 'Scotland' : 'England and Wales';
+  if (key === 'imd_crime') return NATIONS.find((n) => n.id === nation)!.label as RankingGroup;
+  return undefined;
 }
 
 /** Build an O(1) lookup of lsoa code -> feature from the loaded GeoJSON. */
@@ -250,7 +264,7 @@ export function featureToDetail(props: LsoaProps): AreaDetail {
         percentile: props[`${key}_pct`] as number | undefined,
         step: Number(props[`${key}_contrib`] ?? 0),
         kind: (PLACE_KEYS.has(key) ? 'place' : 'composition') as 'place' | 'composition',
-        withinScotland: key === 'vehicle_crime' && String(props.lsoa11cd).startsWith('S'),
+        rankedWithin: rankingGroup(key, props.lsoa11cd as string | undefined),
       }));
 
   return {
@@ -438,7 +452,7 @@ const factorName = (s: WaterfallStep): string => SENTENCE_LABELS[s.key] ?? s.lab
 const percentilePhrase = (s: WaterfallStep): string | null =>
   s.percentile == null
     ? null
-    : `${ordinalPct(s.percentile)} percentile${s.withinScotland ? ' within Scotland' : ''}`;
+    : `${ordinalPct(s.percentile)} percentile${s.rankedWithin ? ` within ${s.rankedWithin}` : ''}`;
 
 /** "young drivers (91st percentile, +£142)" */
 const namedWithStep = (s: WaterfallStep): string => {
@@ -472,15 +486,21 @@ export function explainArea(steps: WaterfallStep[], baseline: number, premium: n
   const towards = dearer ? ups : downs;
   const against = dearer ? downs : ups;
   const lead = `${dearer ? 'Dearer' : 'Cheaper'} than a typical GB area`;
+  const small = `several small factors, none of them ${gbp(EXPLAIN_MIN_STEP_GBP)} or more`;
+  const counter = against[0];
+  const counterName = () => {
+    const pct = percentilePhrase(counter);
+    return `${factorName(counter)}${pct ? ` (${pct})` : ''}`;
+  };
+  // Only a counter-driver is big enough to name: say it the other way round.
+  if (!towards.length && counter) {
+    return `${lead} despite ${counterName()} pulling the other way ${gbp(Math.abs(counter.step))}, through ${small}.`;
+  }
   let sentence = towards.length
     ? `${lead} mainly because of ${towards.slice(0, 2).map(namedWithStep).join(' and ')}`
-    : `${lead} through several small factors, none of them ${gbp(EXPLAIN_MIN_STEP_GBP)} or more`;
-  const counter = against[0];
+    : `${lead} through ${small}`;
   if (counter) {
-    const pct = percentilePhrase(counter);
-    sentence += `; ${factorName(counter)}${pct ? ` (${pct})` : ''} ${
-      dearer ? 'pulls it back' : 'pushes it up'
-    } ${gbp(Math.abs(counter.step))}`;
+    sentence += `; ${counterName()} ${dearer ? 'pulls it back' : 'pushes it up'} ${gbp(Math.abs(counter.step))}`;
   }
   return `${sentence}.`;
 }
@@ -510,8 +530,8 @@ export interface ExplainSide { name: string; steps: WaterfallStep[]; premium: nu
  * One plain sentence for two areas: which is dearer, by how much, and the one or
  * two drivers that account for most of the gap. The LMDI steps are additive, so a
  * driver's share of the gap is the difference of the two areas' steps for it
- * (AUDIT.md §4). A driver ranked within different groups for the two areas
- * (vehicle crime for a Scottish and an English or Welsh area) says so.
+ * (AUDIT.md §4). A driver ranked within a group says which, and says so when
+ * the groups differ (vehicle crime for a Scottish and an English area).
  */
 export function explainDifference(a: ExplainSide, b: ExplainSide): string {
   const gap = Math.round(a.premium) - Math.round(b.premium);
@@ -527,14 +547,16 @@ export function explainDifference(a: ExplainSide, b: ExplainSide): string {
     .filter((d) => shown(d.diff) >= EXPLAIN_MIN_STEP_GBP)
     .sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
 
-  // "vehicle crime", flagged when the two areas are ranked in different groups.
+  // "vehicle crime", with its ranking group(s) when it has one.
   const name = (d: { s: WaterfallStep; other: WaterfallStep }): string => {
     const base = factorName(d.s);
-    if (!!d.s.withinScotland === !!d.other.withinScotland) {
-      return d.s.withinScotland ? `${base} (both ranked within Scotland)` : base;
-    }
-    const [scot, rest] = d.s.withinScotland ? [dearer, cheaper] : [cheaper, dearer];
-    return `${base} (ranked within Scotland for ${scot.name}, within England and Wales for ${rest.name})`;
+    const [g1, g2] = [d.s.rankedWithin, d.other.rankedWithin];
+    if (g1 === g2) return g1 ? `${base} (both ranked within ${g1})` : base;
+    const groups = [
+      g1 && `within ${g1} for ${dearer.name}`,
+      g2 && `within ${g2} for ${cheaper.name}`,
+    ].filter(Boolean);
+    return `${base} (ranked ${groups.join(', ')})`;
   };
   // One bracket: "vehicle crime (+£180; ranked within Scotland for …)".
   const named = (d: { s: WaterfallStep; other: WaterfallStep; diff: number }) => {
@@ -557,9 +579,14 @@ export function explainDifference(a: ExplainSide, b: ExplainSide): string {
   }
 
   const lead = `${dearer.name} costs ${gbp(Math.abs(gap))} a year more than ${cheaper.name}`;
+  const small = `several small differences, none of them ${gbp(EXPLAIN_MIN_STEP_GBP)} or more`;
+  // Only a counter-driver is big enough to name: say it the other way round.
+  if (!ups.length && downs[0]) {
+    return `${lead} despite ${name(downs[0])} pulling the other way ${gbp(Math.abs(downs[0].diff))}, through ${small}.`;
+  }
   let sentence = ups.length
     ? `${lead}, mainly because of ${ups.slice(0, 2).map(named).join(' and ')}`
-    : `${lead} through several small differences, none of them ${gbp(EXPLAIN_MIN_STEP_GBP)} or more`;
+    : `${lead} through ${small}`;
   if (downs[0]) sentence += `; ${name(downs[0])} pulls the other way ${gbp(Math.abs(downs[0].diff))}`;
   return `${sentence}.`;
 }
