@@ -150,6 +150,12 @@ export const MapView: React.FC<MapViewProps> = ({
   onShowDetails,
 }) => {
   const mapRef = useRef<MapRef>(null);
+  // Name the canvas as soon as the map exists, not at its load event, so a reader
+  // who focuses the map while the style is still loading hears the full hint.
+  const setMapRef = useCallback((map: MapRef | null) => {
+    mapRef.current = map;
+    map?.getCanvas().setAttribute('aria-label', MAP_LABEL);
+  }, []);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const [tapInfo, setTapInfo] = useState<TapInfo | null>(null);
@@ -417,7 +423,7 @@ export const MapView: React.FC<MapViewProps> = ({
       )}
 
       <MapGL
-        ref={mapRef}
+        ref={setMapRef}
         initialViewState={CAMERA.initialView}
         mapStyle={mapColors.basemap}
         interactiveLayerIds={geojson ? ['lsoa-fill'] : []}
@@ -426,7 +432,6 @@ export const MapView: React.FC<MapViewProps> = ({
         onClick={onMapClick}
         onSourceData={onSourceData}
         onError={onMapError}
-        onLoad={(e) => e.target.getCanvas().setAttribute('aria-label', MAP_LABEL)}
         cursor="default"
       >
         <NavigationControl position="top-left" showCompass={false} />

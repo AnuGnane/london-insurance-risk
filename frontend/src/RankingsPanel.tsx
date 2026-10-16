@@ -103,6 +103,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
               key={r.code}
               className="rank-row"
               role="option"
+              // Selection follows focus, a single-select listbox's convention (R-26 ruling).
               aria-selected={i === roving.active}
               {...roving.itemProps(i)}
               onClick={() => onSelectRanking(r.code, coords)}
