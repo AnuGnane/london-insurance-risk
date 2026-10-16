@@ -5,7 +5,8 @@ import { Share2 } from 'lucide-react';
 const CONFIRM_MS = 2000;
 
 /**
- * Share the current URL (which App keeps in sync with ?pc= / ?area= / ?filter=):
+ * Share the current URL (which App keeps in sync through url.ts: ?pc= / ?area= /
+ * ?area2= / ?filter= / ?nation=):
  * the native share sheet where there is one, otherwise copy it to the clipboard.
  */
 export const ShareButton: React.FC<{ title: string }> = ({ title }) => {
