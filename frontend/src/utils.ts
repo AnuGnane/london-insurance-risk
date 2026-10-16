@@ -1,6 +1,6 @@
 // Small client-side helpers. No new dependencies.
 import type { Feature, FeatureCollection, Position } from 'geojson';
-import type { AreaDetail, LsoaProps, RankingGroup, WaterfallStep } from './types';
+import type { AreaDetail, ColorMode, LsoaProps, RankingGroup, WaterfallStep } from './types';
 
 // Drivers that actually move the calibrated premium (place + composition) — these
 // carry a £ `_contrib`. Diagnostics are mapped layers the calibration evidence-gated
@@ -35,6 +35,22 @@ export const WATERFALL_ORDER = [
   'young_driver_share', 'cars_per_household',            // composition
 ] as const;
 const PLACE_KEYS = new Set<string>(['vehicle_crime', 'imd_crime', 'aadf_intensity']);
+
+// The map's colour modes, in the order the sidebar offers them.
+export const COLOR_MODES: { mode: ColorMode; label: string }[] = [
+  { mode: 'composite', label: 'Premium' },
+  { mode: 'vehicle_crime', label: 'Crime' },
+  { mode: 'imd_crime', label: 'Crime deprivation' },
+  { mode: 'aadf_intensity', label: 'Traffic' },
+  { mode: 'young_driver_share', label: 'Young drivers' },
+  { mode: 'cars_per_household', label: 'Cars/household' },
+  { mode: 'deprivation', label: 'Deprivation' },
+  { mode: 'flood_risk', label: 'Flood risk' },
+  { mode: 'road_casualties', label: 'Casualties' },
+  { mode: 'population_density', label: 'Density' },
+  { mode: 'traffic_per_capita', label: 'Traffic/capita' },
+  { mode: 'ksi_collisions_per_billion_vehicle_miles', label: 'KSI rate' },
+];
 
 export const COMPONENT_LABELS: Record<string, string> = {
   vehicle_crime: 'Vehicle crime',
