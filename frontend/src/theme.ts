@@ -24,4 +24,17 @@ export const AREA_STYLE = {
   fillOpacityHover: 0.95,
   lineWidth: 0.4,
   lineOpacity: 0.45,
+  /** Fade between colour modes (ms). */
+  fillColorTransitionMs: 350,
+  /** Outline of the selected area, and of the comparison (dashed). */
+  selectedLineWidth: 2.5,
+  compareDash: [2, 1],
+} as const;
+
+/** The search pin and the popups' distance from the point they label (px). */
+export const MARKER_STYLE = {
+  pinSize: 28,
+  pinStrokeWidth: 2.5,
+  tapPopupOffset: 10,
+  hoverPopupOffset: 14,
 } as const;

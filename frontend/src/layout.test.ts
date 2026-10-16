@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  CAMERA,
+  cameraDuration,
   DESKTOP_FIT_PADDING,
   fitPadding,
   PHONE_MAX_WIDTH,
+  REDUCED_MOTION_QUERY,
   SMALL_MAX_WIDTH,
   layoutCssVars,
   TAP_TARGET_MIN_PX,
@@ -47,5 +50,34 @@ describe('fitPadding', () => {
     expect(p.top + p.bottom).toBeLessThan(222);
     expect(p.left + p.right).toBeLessThan(360);
     expect(p.top).toBeGreaterThanOrEqual(16);
+  });
+});
+
+describe('camera', () => {
+  it('cuts instead of flying under Reduce Motion', () => {
+    expect(cameraDuration(true)).toBe(0);
+    expect(cameraDuration(false)).toBe(CAMERA.flightMs);
+    expect(CAMERA.flightMs).toBeGreaterThan(0);
+  });
+
+  it('uses the same reduced-motion query as index.css', () => {
+    const css = readFileSync(new URL('./index.css', import.meta.url), 'utf8');
+    expect(css).toContain(`@media ${REDUCED_MOTION_QUERY}`);
+  });
+
+  it('MapView reads its camera, line and popup numbers from layout.ts and theme.ts', () => {
+    const src = readFileSync(new URL('./MapView.tsx', import.meta.url), 'utf8');
+    for (const typed of [
+      /duration:\s*\d/,
+      /[zZ]oom:\s*\d/,
+      /strokeWidth=\{\d/,
+      /(longitude|latitude):\s*-?\d/,
+      /'line-width':\s*\d/,
+      /'line-dasharray':\s*\[\d/,
+      /offset=\{\d/,
+      /size=\{2\d\}/,
+    ]) {
+      expect(src).not.toMatch(typed);
+    }
   });
 });

@@ -11,6 +11,9 @@ export const SMALL_MAX_WIDTH = 560;
 /** Touch-first devices: no hover popup, a tap card instead. */
 export const TOUCH_QUERY = '(hover: none)';
 
+/** The same query `index.css` uses to stop its own animations. */
+export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
 /** Bottom-sheet heights on a phone, as a share of the dynamic viewport. */
 export const SHEET_HEIGHT = { collapsed: '40%', expanded: '70%' } as const;
 
@@ -62,6 +65,20 @@ export function fitPadding(width: number, height: number, viewportWidth: number)
   const bottom = Math.min(side + PHONE_LEGEND_ALLOWANCE, Math.floor(height / 2) - side);
   return { top: side, right: side, bottom: Math.max(side, bottom), left: side };
 }
+
+/** The map's camera: where it opens, and how it moves to a searched area. */
+export const CAMERA = {
+  initialView: { longitude: -2.5, latitude: 54.5, zoom: 5.2 },
+  /**
+   * Cap the zoom: the static geometry is simplified to ~180 m, so zooming in
+   * tight on one small area exposes coarse polygons — keep some context.
+   */
+  focusZoom: 11,
+  flightMs: 1100,
+} as const;
+
+/** How long a camera move takes: a cut (0) under Reduce Motion, else a flight. */
+export const cameraDuration = (reduced: boolean): number => (reduced ? 0 : CAMERA.flightMs);
 
 /** Subscribe to a media query (SSR-free: this app is client-only). */
 export function useMediaQuery(query: string): boolean {
