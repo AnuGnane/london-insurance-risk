@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { COMPONENT_LABELS } from './utils';
+import { COMPONENT_LABELS, formatFigure } from './utils';
 
 const DATA_SOURCES: { key: string; label?: string; source: string; description: string }[] = [
   {
@@ -49,7 +49,7 @@ const DATA_SOURCES: { key: string; label?: string; source: string; description: 
   },
 ];
 
-export const AboutPanel: React.FC = () => {
+export const AboutPanel: React.FC<{ areaCount: number }> = ({ areaCount }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -65,9 +65,9 @@ export const AboutPanel: React.FC = () => {
       {open && (
         <div className="disclosure-body">
           <p className="about-intro">
-            A <b>territorial risk proxy</b> ranking Great Britain's 41,729 small
-            areas by factors that correlate with motor-insurance claims, using
-            only public data. It is <b>not an insurance quote</b> and uses no
+            A <b>territorial risk proxy</b> ranking Great Britain's{' '}
+            {areaCount > 0 && `${formatFigure(areaCount)} `}small areas by factors
+            that correlate with motor-insurance claims, using only public data. It is <b>not an insurance quote</b> and uses no
             individual driver or vehicle details.
           </p>
           <div>

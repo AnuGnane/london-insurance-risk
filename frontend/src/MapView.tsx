@@ -31,6 +31,7 @@ import {
   premiumToRampPos,
   QUINTILE_TEXT,
   tapFeedback,
+  areasLabel,
 } from './utils';
 import { dataUrl, tilesUrl } from './api';
 import {
@@ -377,7 +378,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <span className="loader" aria-hidden="true" />
             {/* The live region changes only on a tap; the changing byte count is not announced. */}
             <span role="status">
-              {shownTapNote ?? (loadedBytes > 0 ? 'Loading map data…' : 'Plotting 41,729 areas…')}
+              {shownTapNote ?? (loadedBytes > 0 ? 'Loading map data…' : `Plotting ${areasLabel(lookup.size)}…`)}
             </span>
             {loadedBytes > 0 && (
               <span aria-hidden="true">{(loadedBytes / 1e6).toFixed(1)} MB</span>
