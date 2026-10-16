@@ -375,7 +375,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <div className="map-toast">
           <span className="loader" aria-hidden="true" />
           <span role="status">
-            Drawing {areasLabel(lookup.size)}…
+            Drawing {geojson.features.length.toLocaleString('en-GB')} areas…
           </span>
         </div>
       )}
