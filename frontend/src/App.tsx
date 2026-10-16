@@ -21,6 +21,7 @@ import {
 } from './utils';
 import { getGeojson, getMethodology } from './api';
 import { findMyArea } from './locate';
+import { searchTarget } from './search';
 import {
   addRecentSearch,
   clearRecentSearches,
@@ -117,6 +118,12 @@ function App() {
     null
   );
   const [comparing, setComparing] = useState(false);
+  // The armed state as of the latest render, read after a postcode lookup's await
+  // so a × tapped while the lookup is in flight is honoured (see search.ts).
+  const comparingRef = useRef(comparing);
+  useEffect(() => {
+    comparingRef.current = comparing;
+  }, [comparing]);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [marker, setMarker] = useState<[number, number] | null>(null);
   // Phone bottom sheet: starts collapsed (masthead + search) and expands when an
@@ -272,17 +279,22 @@ function App() {
     setLoading(true);
     setSearchError(null);
     // Armed "Compare with…": the result becomes the second area, the main one stays.
+    // Re-read once the lookup lands: a compare cancelled meanwhile drops its result.
     const asCompare = comparing && detail != null;
     try {
       // postcodes.io → coordinate → the area whose polygon contains it.
       const hit = await resolvePostcode(postcode);
+      const target = searchTarget(asCompare, comparingRef.current);
+      if (target === 'drop') return;
       if (!geojson) throw new Error('The map is still loading. Try again in a moment.');
-      if (asCompare) showCompareHit(geojson.features, hit);
+      if (target === 'compare') showCompareHit(geojson.features, hit);
       else showPostcodeHit(geojson.features, hit);
       setRecentSearches((list) => addRecentSearch(list, hit.label));
     } catch (err: unknown) {
+      const target = searchTarget(asCompare, comparingRef.current);
+      if (target === 'drop') return;
       setSearchError(err instanceof Error ? err.message : String(err));
-      if (asCompare) return;
+      if (target === 'compare') return;
       setDetail(null);
       setSearchedPc(null);
       setMarker(null);
