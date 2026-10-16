@@ -47,11 +47,13 @@ export function segmentedIndex(key: string, current: number, count: number): num
 /**
  * The first label starting with `query` (case-insensitive), searching from the
  * item after `from` and wrapping round; for a query that extends the current
- * item's own match (typing "sw" on "Swansea"), the current item stays. `null`
- * when nothing matches.
+ * item's own match (typing "sw" on "Swansea"), the current item stays. A query
+ * of one letter repeated ("ss") cycles like that letter alone. `null` when
+ * nothing matches.
  */
 export function typeAheadIndex(labels: readonly string[], query: string, from: number): number | null {
-  const q = query.toLowerCase();
+  // One letter typed again ("ss") steps on to the next match, as a single letter does.
+  const q = /^(.)\1+$/su.test(query) ? query[0].toLowerCase() : query.toLowerCase();
   if (!q || labels.length === 0) return null;
   const starts = (i: number) => labels[i].toLowerCase().startsWith(q);
   if (q.length > 1 && from >= 0 && from < labels.length && starts(from)) return from;

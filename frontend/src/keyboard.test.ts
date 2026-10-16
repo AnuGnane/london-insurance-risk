@@ -62,6 +62,11 @@ describe('typeAheadIndex', () => {
     expect(typeAheadIndex(names, 'ca', 1)).toBe(1);
     expect(typeAheadIndex(names, 'cam', 1)).toBe(3);
   });
+  it('steps on to the next match when one letter is typed again', () => {
+    expect(typeAheadIndex(names, 'ss', 0)).toBe(2);
+    expect(typeAheadIndex(names, 'sss', 2)).toBe(0);
+    expect(typeAheadIndex(names, 'CC', 1)).toBe(3);
+  });
   it('is case-insensitive and returns null when nothing matches', () => {
     expect(typeAheadIndex(names, 'N', 0)).toBe(4);
     expect(typeAheadIndex(names, 'x', 0)).toBeNull();
