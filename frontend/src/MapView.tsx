@@ -33,8 +33,15 @@ import {
   tapFeedback,
 } from './utils';
 import { dataUrl, tilesUrl } from './api';
-import { fitPadding, TOUCH_QUERY, useMediaQuery } from './layout';
-import { AREA_STYLE, BASEMAP_STYLE, cssToken, DARK_QUERY } from './theme';
+import {
+  CAMERA,
+  cameraDuration,
+  fitPadding,
+  REDUCED_MOTION_QUERY,
+  TOUCH_QUERY,
+  useMediaQuery,
+} from './layout';
+import { AREA_STYLE, BASEMAP_STYLE, cssToken, DARK_QUERY, MARKER_STYLE } from './theme';
 
 interface MapViewProps {
   geojson: FeatureCollection | null;
@@ -159,6 +166,13 @@ export const MapView: React.FC<MapViewProps> = ({
   }, []);
   const isTouch = useMediaQuery(TOUCH_QUERY);
   const isDark = useMediaQuery(DARK_QUERY);
+  // Read at flight time through a ref, so toggling the setting does not re-run
+  // the focus effect and snap the camera back to the last search.
+  const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
+  const reducedMotionRef = useRef(reducedMotion);
+  useEffect(() => {
+    reducedMotionRef.current = reducedMotion;
+  }, [reducedMotion]);
   // Basemap per scheme; outline colours come from index.css tokens, re-read when it flips.
   const mapColors = useMemo(
     () => ({
@@ -203,12 +217,18 @@ export const MapView: React.FC<MapViewProps> = ({
       map.resize();
       const el = map.getContainer();
       const padding = fitPadding(el.clientWidth, el.clientHeight, window.innerWidth);
-      // Cap the zoom: the static geometry is simplified to ~180 m, so zooming in
-      // tight on one small area exposes coarse polygons — keep some context.
-      map.fitBounds(focus.bounds, { padding, maxZoom: 11, duration: 1100 });
+      map.fitBounds(focus.bounds, {
+        padding,
+        maxZoom: CAMERA.focusZoom,
+        duration: cameraDuration(reducedMotionRef.current),
+      });
     } else if (focus.center) {
       map.resize();
-      map.flyTo({ center: focus.center, zoom: 11, duration: 1100 });
+      map.flyTo({
+        center: focus.center,
+        zoom: CAMERA.focusZoom,
+        duration: cameraDuration(reducedMotionRef.current),
+      });
     }
   }, [focus]);
 
@@ -397,7 +417,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       <MapGL
         ref={mapRef}
-        initialViewState={{ longitude: -2.5, latitude: 54.5, zoom: 5.2 }}
+        initialViewState={CAMERA.initialView}
         mapStyle={mapColors.basemap}
         interactiveLayerIds={geojson ? ['lsoa-fill'] : []}
         onMouseMove={isTouch ? undefined : onMouseMove}
@@ -449,7 +469,7 @@ export const MapView: React.FC<MapViewProps> = ({
                       AREA_STYLE.fillOpacity,
                     ]
                   : 0,
-                'fill-color-transition': { duration: 350, delay: 0 },
+                'fill-color-transition': { duration: AREA_STYLE.fillColorTransitionMs, delay: 0 },
               }}
             />
             <Layer
@@ -465,7 +485,7 @@ export const MapView: React.FC<MapViewProps> = ({
               id="lsoa-selected"
               type="line"
               filter={['==', ['get', 'lsoa11cd'], selectedLsoa ?? '__none__']}
-              paint={{ 'line-color': mapColors.selected, 'line-width': 2.5 }}
+              paint={{ 'line-color': mapColors.selected, 'line-width': AREA_STYLE.selectedLineWidth }}
             />
             <Layer
               id="lsoa-compare"
@@ -473,8 +493,8 @@ export const MapView: React.FC<MapViewProps> = ({
               filter={['==', ['get', 'lsoa11cd'], compareLsoa ?? '__none__']}
               paint={{
                 'line-color': mapColors.compare,
-                'line-width': 2.5,
-                'line-dasharray': [2, 1],
+                'line-width': AREA_STYLE.selectedLineWidth,
+                'line-dasharray': [...AREA_STYLE.compareDash],
               }}
             />
           </Source>
@@ -483,7 +503,7 @@ export const MapView: React.FC<MapViewProps> = ({
         {marker && (
           <Marker longitude={marker[0]} latitude={marker[1]} anchor="bottom">
             <div className="map-pin">
-              <MapPin size={28} strokeWidth={2.5} />
+              <MapPin size={MARKER_STYLE.pinSize} strokeWidth={MARKER_STYLE.pinStrokeWidth} />
             </div>
           </Marker>
         )}
@@ -493,7 +513,7 @@ export const MapView: React.FC<MapViewProps> = ({
           <Popup
             longitude={tapInfo.lng}
             latitude={tapInfo.lat}
-            offset={10}
+            offset={MARKER_STYLE.tapPopupOffset}
             closeButton={false}
             closeOnClick={false}
             className="hover-popup tap-card"
@@ -534,7 +554,7 @@ export const MapView: React.FC<MapViewProps> = ({
           <Popup
             longitude={hoverInfo.lng}
             latitude={hoverInfo.lat}
-            offset={14}
+            offset={MARKER_STYLE.hoverPopupOffset}
             closeButton={false}
             closeOnClick={false}
             className="hover-popup"
