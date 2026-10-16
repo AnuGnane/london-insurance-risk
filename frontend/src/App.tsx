@@ -16,12 +16,12 @@ import {
   boundsCentre,
   featureToDetail,
   featureAtPoint,
-  NATIONS,
   type Nation,
 } from './utils';
 import { getGeojson, getMethodology } from './api';
 import { findMyArea } from './locate';
 import { searchTarget } from './search';
+import { buildShareUrl, parseShareUrl } from './url';
 import {
   addRecentSearch,
   clearRecentSearches,
@@ -31,32 +31,6 @@ import {
 } from './postcode';
 import { layoutCssVars } from './layout';
 import './index.css';
-
-const VALID_FILTERS: readonly ColorMode[] = [
-  'vehicle_crime',
-  'imd_crime',
-  'young_driver_share',
-  'cars_per_household',
-  'road_casualties',
-  'deprivation',
-  'flood_risk',
-  'population_density',
-  'aadf_intensity',
-  'traffic_per_capita',
-  'ksi_collisions_per_billion_vehicle_miles',
-];
-
-/** The colour mode from a shared ?filter= link, or the premium by default. */
-function readUrlFilter(): ColorMode {
-  const f = new URLSearchParams(window.location.search).get('filter');
-  return VALID_FILTERS.find((m) => m === f) ?? 'composite';
-}
-
-/** The rankings' nation from a shared ?nation= link, or all of GB (null). */
-function readUrlNation(): Nation | null {
-  const n = new URLSearchParams(window.location.search).get('nation');
-  return NATIONS.find((x) => x.id === n)?.id ?? null;
-}
 
 // The map (react-map-gl, which in turn pulls in maplibre-gl) is its own chunk, so the
 // masthead and search paint before it loads.
@@ -107,9 +81,11 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [hoveredLsoa, setHoveredLsoa] = useState<string | null>(null);
-  const [colorMode, setColorMode] = useState<ColorMode>(readUrlFilter);
+  const [colorMode, setColorMode] = useState<ColorMode>(() => parseShareUrl(window.location.search).filter);
   // The rankings' nation filter (the map stays GB-wide); null = all of GB.
-  const [nation, setNation] = useState<Nation | null>(readUrlNation);
+  const [nation, setNation] = useState<Nation | null>(
+    () => parseShareUrl(window.location.search).nation
+  );
   // Compare two areas: the second area (?area2=), and whether "Compare with…" is
   // armed so the next map tap or search picks it instead of the main area.
   // The second area is pinned against one main area (`forArea`): pick another main
@@ -138,10 +114,7 @@ function App() {
   // Set once the visitor picks an area themselves, so a slow link restore never
   // overrides their choice.
   const userSelected = useRef(false);
-  const [initialLink] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return { area: params.get('area'), area2: params.get('area2'), pc: params.get('pc') };
-  });
+  const [initialLink] = useState(() => parseShareUrl(window.location.search));
 
   // -----------------------------------------------------------------------
   // Deep-linkable URLs: encode
@@ -155,14 +128,13 @@ function App() {
       pc: string | null,
       nat: Nation | null
     ) => {
-      const params = new URLSearchParams();
-      if (pc && lsoa) params.set('pc', pc);
-      if (lsoa) params.set('area', lsoa);
-      if (lsoa && lsoa2) params.set('area2', lsoa2);
-      if (mode !== 'composite') params.set('filter', mode);
-      if (nat) params.set('nation', nat);
-      const qs = params.toString();
-      const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      const url = buildShareUrl(window.location.pathname, {
+        area: lsoa,
+        area2: lsoa2,
+        pc,
+        filter: mode,
+        nation: nat,
+      });
       window.history.replaceState(null, '', url);
     },
     []
