@@ -48,7 +48,7 @@ export const DATA_SOURCES: { key: string; label?: string; source: string; descri
   },
   {
     key: 'population_density',
-    source: 'Census population + ONS / ScotGov boundaries',
+    source: 'IoD / WIMD / SIMD population + boundaries',
     description:
       "Residents per km² of each area's boundary. Evidence-gated out of the premium model and replaced by point-level AADF traffic — shown on the map as a diagnostic.",
   },
