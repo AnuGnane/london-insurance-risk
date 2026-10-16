@@ -69,7 +69,8 @@ describe('camera', () => {
     const src = readFileSync(new URL('./MapView.tsx', import.meta.url), 'utf8');
     for (const typed of [
       /duration:\s*\d/,
-      /zoom:\s*\d/,
+      /[zZ]oom:\s*\d/,
+      /strokeWidth=\{\d/,
       /(longitude|latitude):\s*-?\d/,
       /'line-width':\s*\d/,
       /'line-dasharray':\s*\[\d/,
