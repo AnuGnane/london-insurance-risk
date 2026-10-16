@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { COMPONENT_LABELS, type Nation } from './utils';
+import { areasLabel, COMPONENT_LABELS, type Nation } from './utils';
 import { examplePairs } from './api';
 
 interface SidebarProps {
@@ -231,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="sep">·</span>
             </>
           )}
-          <span>41,729 areas mapped</span>
+          <span>{areasLabel(lookup.size)} mapped</span>
           <span className="sep">·</span>
           {/* Built into dist/ by scripts/copy-methodology.mjs (not served by `npm run dev`). */}
           <a href={`${import.meta.env.BASE_URL}methodology.html`}>How it works</a>
@@ -393,7 +393,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         <MethodologyPanel m={methodology} />
-        <AboutPanel />
+        <AboutPanel areaCount={lookup.size} />
 
         <div className="section" style={{ borderTop: 'none', paddingTop: 8 }}>
           <div className="disclaimer">

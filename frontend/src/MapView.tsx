@@ -31,6 +31,7 @@ import {
   premiumToRampPos,
   QUINTILE_TEXT,
   tapFeedback,
+  areasLabel,
 } from './utils';
 import { dataUrl, tilesUrl } from './api';
 import { fitPadding, TOUCH_QUERY, useMediaQuery } from './layout';
@@ -357,7 +358,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <span className="loader" aria-hidden="true" />
             {/* The live region changes only on a tap; the changing byte count is not announced. */}
             <span role="status">
-              {shownTapNote ?? (loadedBytes > 0 ? 'Loading map data…' : 'Plotting 41,729 areas…')}
+              {shownTapNote ?? (loadedBytes > 0 ? 'Loading map data…' : `Plotting ${areasLabel(lookup.size)}…`)}
             </span>
             {loadedBytes > 0 && (
               <span aria-hidden="true">{(loadedBytes / 1e6).toFixed(1)} MB</span>
@@ -374,7 +375,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <div className="map-toast">
           <span className="loader" aria-hidden="true" />
           <span role="status">
-            Drawing {geojson.features.length.toLocaleString('en-GB')} areas…
+            Drawing {areasLabel(lookup.size)}…
           </span>
         </div>
       )}

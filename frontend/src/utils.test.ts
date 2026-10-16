@@ -12,6 +12,7 @@ import {
   featureAtPoint,
   featureBounds,
   featureToDetail,
+  areasLabel,
   formatFigure,
   formatSci,
   nationOf,
@@ -520,6 +521,13 @@ describe('explainDifference', () => {
       'A costs £60 a year more than B despite cars per household pulling the other way £12, ' +
         'through several small differences, none of them £10 or more.'
     );
+  });
+});
+
+describe('areasLabel', () => {
+  it('shows the loaded count and no number before it is known', () => {
+    expect(areasLabel(41729)).toBe('41,729 areas');
+    expect(areasLabel(0)).toBe('areas');
   });
 });
 
