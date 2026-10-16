@@ -3,6 +3,7 @@ import type { Feature, Polygon } from 'geojson';
 import type { LsoaProps, WaterfallStep } from './types';
 import {
   buildLookup,
+  COLOR_MODES,
   compareSummary,
   computeDistribution,
   dominantDriver,
@@ -26,6 +27,7 @@ import {
   unionBounds,
   WATERFALL_ORDER,
 } from './utils';
+import { DATA_SOURCE_ALIASES, DATA_SOURCES } from './dataSources';
 
 // A closed axis-aligned square ring [x0,y0]..[x1,y1].
 const square = (x0: number, y0: number, x1: number, y1: number): number[][] => [
@@ -567,4 +569,29 @@ describe('tapFeedback', () => {
     expect(tapFeedback(false, false, 0)).toBe('The map is still loading');
     expect(tapFeedback(false, false, 5_000_000)).toBe('The map is still loading');
   });
+});
+
+describe('About the data covers every colour mode', () => {
+  const sourceKeys = new Set(DATA_SOURCES.map((s) => s.key));
+  const modes = COLOR_MODES.map((m) => m.mode).filter((m) => m !== 'composite');
+
+  it.each(modes)('%s has an entry or a named alias', (mode) => {
+    const key = sourceKeys.has(mode) ? mode : DATA_SOURCE_ALIASES[mode];
+    expect(key, `no About entry for ${mode}`).toBeDefined();
+    expect(sourceKeys.has(key)).toBe(true);
+  });
+
+  it('every entry and alias names a real colour mode', () => {
+    const all = new Set<string>(modes);
+    for (const s of DATA_SOURCES) expect(all.has(s.key), s.key).toBe(true);
+    for (const a of Object.keys(DATA_SOURCE_ALIASES)) expect(all.has(a), a).toBe(true);
+  });
+
+  it.each(['population_density', 'traffic_per_capita', 'ksi_collisions_per_billion_vehicle_miles'])(
+    '%s is described as a diagnostic, outside the premium model',
+    (key) => {
+      const entry = DATA_SOURCES.find((s) => s.key === key);
+      expect(entry?.description).toMatch(/diagnostic/);
+    }
+  );
 });

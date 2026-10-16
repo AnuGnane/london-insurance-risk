@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { areasLabel, COMPONENT_LABELS, type Nation } from './utils';
+import { areasLabel, COLOR_MODES, COMPONENT_LABELS, type Nation } from './utils';
 import { examplePairs } from './api';
 
 interface SidebarProps {
@@ -34,21 +34,6 @@ interface SidebarProps {
   onCompareToggle: () => void;
   onCompareClear: () => void;
 }
-
-const COLOR_MODES: { mode: ColorMode; label: string }[] = [
-  { mode: 'composite', label: 'Premium' },
-  { mode: 'vehicle_crime', label: 'Crime' },
-  { mode: 'imd_crime', label: 'Crime deprivation' },
-  { mode: 'aadf_intensity', label: 'Traffic' },
-  { mode: 'young_driver_share', label: 'Young drivers' },
-  { mode: 'cars_per_household', label: 'Cars/household' },
-  { mode: 'deprivation', label: 'Deprivation' },
-  { mode: 'flood_risk', label: 'Flood risk' },
-  { mode: 'road_casualties', label: 'Casualties' },
-  { mode: 'population_density', label: 'Density' },
-  { mode: 'traffic_per_capita', label: 'Traffic/capita' },
-  { mode: 'ksi_collisions_per_billion_vehicle_miles', label: 'KSI rate' },
-];
 
 const COLOR_OPTIONS: readonly SegmentedOption<ColorMode>[] = COLOR_MODES.map(
   ({ mode, label }) => ({
