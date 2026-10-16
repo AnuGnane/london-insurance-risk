@@ -595,6 +595,12 @@ export function explainDifference(a: ExplainSide, b: ExplainSide): string {
 export const formatFigure = (n: number, dp = 0): string =>
   n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp });
 
+/**
+ * "41,729 areas" once the GeoJSON has loaded, a count-free "areas" before: the
+ * count is never typed in, so it moves by itself at the next bake.
+ */
+export const areasLabel = (n: number): string => (n > 0 ? `${formatFigure(n)} areas` : 'areas');
+
 const SUPERSCRIPT: Record<string, string> = {
   '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
 };
