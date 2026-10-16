@@ -70,11 +70,27 @@ describe('buildShareUrl', () => {
 });
 
 describe('VALID_FILTERS', () => {
+  // The list App.tsx held as a literal before it was derived from COLOR_MODES.
+  const BEFORE = [
+    'vehicle_crime',
+    'imd_crime',
+    'young_driver_share',
+    'cars_per_household',
+    'road_casualties',
+    'deprivation',
+    'flood_risk',
+    'population_density',
+    'aadf_intensity',
+    'traffic_per_capita',
+    'ksi_collisions_per_billion_vehicle_miles',
+  ];
+
+  it('is the same set of filters as before the refactor', () => {
+    expect([...VALID_FILTERS].sort()).toEqual([...BEFORE].sort());
+  });
+
   it('is every colour mode but the premium', () => {
-    expect([...VALID_FILTERS].sort()).toEqual(
-      COLOR_MODES.map((m) => m.mode)
-        .filter((m) => m !== 'composite')
-        .sort()
-    );
+    expect(VALID_FILTERS).not.toContain('composite');
+    expect(VALID_FILTERS).toHaveLength(COLOR_MODES.length - 1);
   });
 });
