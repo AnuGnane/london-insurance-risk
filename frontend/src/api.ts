@@ -146,6 +146,7 @@ interface RawMethodology {
       spearman_pred_vs_actual?: { rho?: number };
     };
   };
+  spatial_multiplier_checks?: { pair: string; predicted_ratio: number }[];
 }
 
 /** Load the trimmed calibration summary and shape it for the methodology panel. */
@@ -185,6 +186,12 @@ export async function getMethodology(): Promise<Methodology | null> {
             })),
             spearman: xs.spearman_pred_vs_actual?.rho,
           }
+        : null,
+      multiplier_checks: m.spatial_multiplier_checks
+        ? m.spatial_multiplier_checks.map((c) => ({
+            pair: c.pair,
+            predicted_ratio: c.predicted_ratio,
+          }))
         : null,
     };
   } catch {

@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { areasLabel, COLOR_MODES, COMPONENT_LABELS, type Nation } from './utils';
+import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, type Nation } from './utils';
 import { examplePairs } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -52,6 +52,39 @@ const COLOR_OPTIONS: readonly SegmentedOption<ColorMode>[] = COLOR_MODES.map(
 
 const fmt = (n: number | undefined, dp: number): string =>
   n == null ? '—' : n.toFixed(dp);
+
+/** The calibration's spatial-multiplier sanity checks: the modelled premium ratio
+ *  for named postcode-area pairs, as methodology.json lists them. */
+export const MultiplierChecks: React.FC<{
+  checks: Methodology['multiplier_checks'];
+}> = ({ checks }) => {
+  if (!checks || checks.length === 0) return null;
+  return (
+    <div className="feature-table" style={{ marginTop: 14 }}>
+      <p className="note">
+        Does the model reproduce the real spatial spread? Its premium ratio for
+        named pairs of postcode areas — the national average cancels in a ratio.
+      </p>
+      <table className="multiplier-table">
+        <caption className="feature-kicker">Spatial multiplier checks</caption>
+        <thead>
+          <tr>
+            <th scope="col">Pair</th>
+            <th scope="col">Modelled</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c.pair}>
+              <th scope="row">{c.pair}</th>
+              <td>{formatFigure(c.predicted_ratio, 2)}×</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
   const [open, setOpen] = useState(false);
@@ -136,6 +169,8 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
               ))}
             </div>
           )}
+
+          <MultiplierChecks checks={m.multiplier_checks} />
         </div>
       )}
     </div>

@@ -56,6 +56,9 @@ export interface Methodology {
     rows: { area_name: string; actual_gbp: number; predicted_gbp: number }[];
     spearman?: number;
   } | null;
+  /** Modelled premium ratio for named postcode-area pairs (calibration's
+   *  spatial-multiplier sanity checks); null when the JSON lacks them. */
+  multiplier_checks?: { pair: string; predicted_ratio: number }[] | null;
 }
 
 // Properties baked into each GeoJSON feature (see "backend contract" notes).
