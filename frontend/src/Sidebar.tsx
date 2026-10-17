@@ -171,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const showRecents = focused && term === '' && recentSearches.length > 0;
   // The landing's one-tap comparisons, once the areas have loaded (empty before).
   const pairs = useMemo(() => examplePairs(lookup), [lookup]);
-  const [pairSaid, sayPair, setPairSaid] = useAnnouncer('');
+  const [pairSaid, sayPair, setPairSaid] = useAnnouncer<string>('');
   // A comparison that ends (Back, or the × on the second pin) takes its
   // "Comparing …" line with it, so nothing stale is read later.
   const compareCode = compare?.lsoa11cd ?? null;
