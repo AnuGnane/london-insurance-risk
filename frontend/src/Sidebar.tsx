@@ -16,6 +16,7 @@ import {
   saveCalloutDismissed,
   shouldShowCallout,
 } from './callout';
+import { detailBodyState } from './layout';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -224,6 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [locating, setLocating] = useState(false);
   // The first-visit "what am I looking at" card (callout.ts).
   const [calloutDismissed, setCalloutDismissed] = useState(loadCalloutDismissed);
+  const bodyState = detailBodyState(loading, comparing, detail != null);
   const dismissCallout = () => {
     saveCalloutDismissed();
     setCalloutDismissed(true);
@@ -409,7 +411,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {loading ? (
+        {bodyState === 'skeleton' ? (
           <div className="section">
             <div className="skel-line" style={{ width: '55%', height: 40, marginBottom: 14 }} />
             <div className="skel-line" style={{ width: '80%', marginBottom: 8 }} />
@@ -433,6 +435,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               comparing={comparing}
               onCompareToggle={onCompareToggle}
               onCompareClear={onCompareClear}
+              pendingPin={bodyState === 'detail-with-pending-pin'}
             />
           </div>
         ) : (

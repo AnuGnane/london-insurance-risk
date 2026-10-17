@@ -28,6 +28,8 @@ interface DetailPanelProps {
   comparing: boolean;
   onCompareToggle: () => void;
   onCompareClear: () => void;
+  /** A compare lookup is in flight: a pending row where the second pin will land. */
+  pendingPin?: boolean;
 }
 
 /** The two areas' names and premiums side by side, keyed to their map outlines. */
@@ -188,6 +190,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   comparing,
   onCompareToggle,
   onCompareClear,
+  pendingPin = false,
 }) => {
   const premium = data?.calibrated_premium;
 
@@ -231,6 +234,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           </button>
         )}
       </div>
+      {pendingPin && (
+        <div className="skel-line compare-pending" aria-hidden="true" />
+      )}
 
       <p className="lede">{ledeForQuintile(data.quintile)}</p>
 

@@ -4,6 +4,7 @@ import {
   CAMERA,
   cameraDuration,
   DESKTOP_FIT_PADDING,
+  detailBodyState,
   fitPadding,
   PHONE_MAX_WIDTH,
   REDUCED_MOTION_QUERY,
@@ -79,5 +80,22 @@ describe('camera', () => {
     ]) {
       expect(src).not.toMatch(typed);
     }
+  });
+});
+
+describe('detailBodyState', () => {
+  // [loading, comparing, hasDetail] → what the detail section shows.
+  const cases: [boolean, boolean, boolean, ReturnType<typeof detailBodyState>][] = [
+    [false, false, false, 'rankings'],
+    [false, false, true, 'detail'],
+    [false, true, false, 'rankings'],
+    [false, true, true, 'detail'],
+    [true, false, false, 'skeleton'],
+    [true, false, true, 'skeleton'],
+    [true, true, false, 'skeleton'],
+    [true, true, true, 'detail-with-pending-pin'],
+  ];
+  it.each(cases)('loading=%s comparing=%s hasDetail=%s → %s', (l, c, d, want) => {
+    expect(detailBodyState(l, c, d)).toBe(want);
   });
 });
