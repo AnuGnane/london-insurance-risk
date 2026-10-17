@@ -17,6 +17,8 @@ import {
   areasLabel,
   GB_LABEL,
   PREMIUM_CAVEAT,
+  SCOTLAND_CAVEAT,
+  caveatsFor,
   rankingsScope,
   formatFigure,
   formatSci,
@@ -629,5 +631,36 @@ describe('PREMIUM_CAVEAT', () => {
   });
   it('carries no figure', () => {
     expect(PREMIUM_CAVEAT).not.toMatch(/\d/);
+  });
+});
+
+describe('SCOTLAND_CAVEAT', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  const section = readme.split("## What it doesn't claim")[1]?.split('\n## ')[0] ?? '';
+  it.each(['council grain', 'thinner sample'])('says "%s", as the README does', (phrase) => {
+    expect(SCOTLAND_CAVEAT).toContain(phrase);
+    expect(section).toContain(phrase);
+  });
+  it('carries no figure', () => {
+    expect(SCOTLAND_CAVEAT).not.toMatch(/\d/);
+  });
+});
+
+describe('caveatsFor', () => {
+  it('gives English and Welsh areas the premium caveat alone', () => {
+    expect(caveatsFor('E01000001')).toEqual([PREMIUM_CAVEAT]);
+    expect(caveatsFor('W01000001')).toEqual([PREMIUM_CAVEAT]);
+  });
+  it('adds the Scotland caveat for a Scottish area', () => {
+    expect(caveatsFor('S01006506')).toEqual([PREMIUM_CAVEAT, SCOTLAND_CAVEAT]);
+  });
+  it('gives an unknown code the premium caveat alone', () => {
+    expect(caveatsFor('N00000001')).toEqual([PREMIUM_CAVEAT]);
+    expect(caveatsFor('')).toEqual([PREMIUM_CAVEAT]);
+  });
+  it('shows the Scotland line once for a pair when either side is Scottish', () => {
+    expect(caveatsFor('W01000001', 'S01006506')).toEqual([PREMIUM_CAVEAT, SCOTLAND_CAVEAT]);
+    expect(caveatsFor('S01006506', 'S01006507')).toEqual([PREMIUM_CAVEAT, SCOTLAND_CAVEAT]);
+    expect(caveatsFor('E01000001', 'W01000001')).toEqual([PREMIUM_CAVEAT]);
   });
 });
