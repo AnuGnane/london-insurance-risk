@@ -192,6 +192,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const dismissCallout = () => {
     saveCalloutDismissed();
     setCalloutDismissed(true);
+    // The button unmounts with the card: hand focus to the search, not <body>.
+    inputRef.current?.focus();
   };
   const nearMe = async () => {
     if (locating) return;  // not `disabled`: that would drop keyboard focus
