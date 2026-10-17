@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Feature } from 'geojson';
 import { countRankable, examplePairs, getGeojson, getMethodology, getRankings, tilesUrl } from './api';
 import type { LsoaProps } from './types';
-import { buildLookup } from './utils';
+import { MultiplierChecks } from './Sidebar';
+import { buildLookup, formatFigure } from './utils';
 
 const area = (code: string, props: Partial<LsoaProps>): Feature => ({
   type: 'Feature',
@@ -129,6 +132,47 @@ describe('getMethodology', () => {
         predicted_gbp: r.predicted_gbp,
       }))
     );
+  });
+
+  it('maps the spatial-multiplier checks in the JSON\'s order', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(committed, { status: 200 })));
+    const m = (await getMethodology())!;
+    expect(m.multiplier_checks).toEqual(
+      raw.spatial_multiplier_checks.map((c: { pair: string; predicted_ratio: number }) => ({
+        pair: c.pair,
+        predicted_ratio: c.predicted_ratio,
+      }))
+    );
+  });
+
+  it('has no multiplier checks when the JSON lacks the key', async () => {
+    const { spatial_multiplier_checks: _drop, ...rest } = raw;
+    void _drop;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(rest), { status: 200 })));
+    const m = (await getMethodology())!;
+    expect(m.multiplier_checks).toBeNull();
+    expect(renderToStaticMarkup(createElement(MultiplierChecks, { checks: m.multiplier_checks }))).toBe('');
+  });
+
+  it('renders one row per check, labelled only with the JSON\'s pair strings', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(committed, { status: 200 })));
+    const m = (await getMethodology())!;
+    const html = renderToStaticMarkup(createElement(MultiplierChecks, { checks: m.multiplier_checks }));
+    const pairs: string[] = raw.spatial_multiplier_checks.map((c: { pair: string }) => c.pair);
+    const labels = [...html.matchAll(/<th scope="row">([^<]*)<\/th>/g)].map((x) => x[1]);
+    expect(labels.length).toBe(pairs.length);
+    for (const l of labels) expect(pairs).toContain(l);
+    expect(labels[0]).toBe(pairs[0]);
+    expect(html).toMatch(/<caption[^>]*>Spatial multiplier checks/);
+    for (const c of raw.spatial_multiplier_checks) {
+      expect(html).toContain(`${formatFigure(c.predicted_ratio, 2)}×`);
+    }
+    // No figure or pair label is typed into the component.
+    const src = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8');
+    for (const c of raw.spatial_multiplier_checks) {
+      expect(src).not.toContain(c.pair);
+      expect(src).not.toContain(String(c.predicted_ratio));
+    }
   });
 
   it('returns null when the file is missing', async () => {
