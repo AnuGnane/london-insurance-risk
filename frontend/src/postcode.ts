@@ -129,9 +129,9 @@ export async function resolvePostcode(
 export const RECENT_SEARCHES_MAX = 5;
 const RECENT_KEY = 'price-of-place:recent-searches';
 
-type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-const defaultStorage = (): StorageLike | null => {
+export const defaultStorage = (): StorageLike | null => {
   try {
     return window.localStorage;
   } catch {
