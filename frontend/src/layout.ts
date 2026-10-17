@@ -30,6 +30,19 @@ export const NEAR_ME_TIMEOUT_MS = 10_000;
 /** "Near me": how old a cached fix may be and still be used, ms. */
 export const NEAR_ME_MAX_AGE_MS = 60_000;
 
+/** What the sidebar's detail section shows. A postcode lookup normally swaps it
+ *  for the skeleton, but while a compare is armed over a shown area the area (and
+ *  its "(cancel)") stays, with a pending row where the second pin will land. */
+export type DetailBodyState = 'rankings' | 'skeleton' | 'detail' | 'detail-with-pending-pin';
+export const detailBodyState = (
+  loading: boolean,
+  comparing: boolean,
+  hasDetail: boolean
+): DetailBodyState => {
+  if (loading) return comparing && hasDetail ? 'detail-with-pending-pin' : 'skeleton';
+  return hasDetail ? 'detail' : 'rankings';
+};
+
 /** Live regions: how long a repeated message stays cleared before it is set again,
  *  ms, so screen readers read the same text twice (see announce.ts). */
 export const ANNOUNCE_CLEAR_MS = 100;

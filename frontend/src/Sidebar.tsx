@@ -16,6 +16,7 @@ import {
   saveCalloutDismissed,
   shouldShowCallout,
 } from './callout';
+import { detailBodyState } from './layout';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -202,6 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCompareClear,
 }) => {
   const [term, setTerm] = useState('');
+  const bodyState = detailBodyState(loading, comparing, detail != null);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const search = (q: string) => {
@@ -409,13 +411,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {loading ? (
+        {bodyState === 'skeleton' ? (
           <div className="section">
             <div className="skel-line" style={{ width: '55%', height: 40, marginBottom: 14 }} />
             <div className="skel-line" style={{ width: '80%', marginBottom: 8 }} />
             <div className="skel-line" style={{ width: '70%' }} />
           </div>
-        ) : detail ? (
+        ) : detail && bodyState !== 'rankings' ? (
           <div className="section">
             <div className="detail-actions">
               <button className="back-link" onClick={onClear}>
@@ -433,6 +435,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               comparing={comparing}
               onCompareToggle={onCompareToggle}
               onCompareClear={onCompareClear}
+              pendingPin={bodyState === 'detail-with-pending-pin'}
             />
           </div>
         ) : (
