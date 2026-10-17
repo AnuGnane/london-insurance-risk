@@ -617,6 +617,11 @@ export const formatFigure = (n: number, dp = 0): string =>
  */
 export const areasLabel = (n: number): string => (n > 0 ? `${formatFigure(n)} areas` : 'areas');
 
+/** The line under an area's £ figure and band (README "What it doesn't claim": the
+ *  model validates at postcode-area grain and extrapolates to small areas). */
+export const PREMIUM_CAVEAT =
+  'An estimate for the area, not a quote: validated at postcode-area grain and extrapolated to this one.';
+
 /** The rankings' name for all of GB (the README's own title, "Great Britain"). */
 export const GB_LABEL = 'Great Britain';
 

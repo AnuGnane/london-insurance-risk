@@ -16,6 +16,7 @@ import {
   featureToDetail,
   areasLabel,
   GB_LABEL,
+  PREMIUM_CAVEAT,
   rankingsScope,
   formatFigure,
   formatSci,
@@ -613,5 +614,20 @@ describe('rankingsScope', () => {
   it('calls GB by the README title', () => {
     const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
     expect(readme).toContain(GB_LABEL);
+  });
+});
+
+describe('PREMIUM_CAVEAT', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  const section = readme.split("## What it doesn't claim")[1]?.split('\n## ')[0] ?? '';
+  it('reads the README section', () => {
+    expect(section).toContain('Validation grain');
+  });
+  it.each(['quote', 'postcode-area', 'extrapolat'])('says "%s", as the README does', (phrase) => {
+    expect(PREMIUM_CAVEAT).toContain(phrase);
+    expect(section).toContain(phrase);
+  });
+  it('carries no figure', () => {
+    expect(PREMIUM_CAVEAT).not.toMatch(/\d/);
   });
 });
