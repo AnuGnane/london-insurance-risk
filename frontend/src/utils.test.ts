@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Feature, Polygon } from 'geojson';
 import type { LsoaProps, WaterfallStep } from './types';
@@ -14,6 +15,8 @@ import {
   featureBounds,
   featureToDetail,
   areasLabel,
+  GB_LABEL,
+  rankingsScope,
   formatFigure,
   formatSci,
   nationOf,
@@ -594,4 +597,21 @@ describe('About the data covers every colour mode', () => {
       expect(entry?.description).toMatch(/diagnostic/);
     }
   );
+});
+
+describe('rankingsScope', () => {
+  it('names each nation and the whole of GB with its count', () => {
+    expect(rankingsScope('england', 1200)).toBe('England · 1,200 areas');
+    expect(rankingsScope('wales', 12)).toBe('Wales · 12 areas');
+    expect(rankingsScope('scotland', 7)).toBe('Scotland · 7 areas');
+    expect(rankingsScope(null, 37)).toBe(`${GB_LABEL} · 37 areas`);
+  });
+  it('says nothing before the areas have loaded', () => {
+    expect(rankingsScope(null, 0)).toBe('');
+    expect(rankingsScope('wales', 0)).toBe('');
+  });
+  it('calls GB by the README title', () => {
+    const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+    expect(readme).toContain(GB_LABEL);
+  });
 });
