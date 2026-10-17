@@ -3,59 +3,65 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="How the GB car-insurance risk map works: data, model, validation and limits.">
-<title>GB Car-Insurance Risk Model</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<title>The Price of Place — how it works</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap">
 <style>
+  /* The map's tokens (frontend/src/index.css) under this page's names;
+     frontend/src/methodology-style.test.ts pins them. */
   :root {
-    --ground: #F7F8F6;
-    --panel: #FFFFFF;
-    --ink: #1B2430;
-    --muted: #5C6875;
-    --faint: #8A94A0;
-    --rule: #DDE3E1;
-    --accent: #0E6E6B;
-    --accent-soft: #D7E6E4;
-    --accent-ink: #0A514F;
+    --ground: #fbf7f0;
+    --panel: #ffffff;
+    --ink: #24211c;
+    --muted: #5c544b;
+    --faint: #6c6256;
+    --rule: #e6dccc;
+    --accent: #c8102e;
+    --accent-soft: #f6e2e2;
+    --accent-ink: #c8102e;
     --warn: #8A5A1E;
     --warn-soft: #F3E8D8;
-    --mono-bg: #EEF2F1;
+    --mono-bg: #f4ece0;
+    /* the map's type (frontend/src/index.css); no web mono, so a system stack */
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
   :root:not([data-theme="light"]) { }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ground: #101720;
-      --panel: #171F2A;
-      --ink: #E8ECEF;
-      --muted: #9AA6B2;
-      --faint: #6E7A87;
-      --rule: #2A3441;
-      --accent: #52B8B2;
-      --accent-soft: #143733;
-      --accent-ink: #7ACFC9;
+      --ground: #1b1916;
+      --panel: #24211d;
+      --ink: #f1ebe2;
+      --muted: #c9c0b4;
+      --faint: #a39a8e;
+      --rule: #3a352f;
+      --accent: #ff6b7d;
+      --accent-soft: #3d2126;
+      --accent-ink: #ff6b7d;
       --warn: #D9A45B;
       --warn-soft: #2E2517;
-      --mono-bg: #1E2833;
+      --mono-bg: #2e2a25;
     }
   }
   :root[data-theme="dark"] {
-    --ground: #101720;
-    --panel: #171F2A;
-    --ink: #E8ECEF;
-    --muted: #9AA6B2;
-    --faint: #6E7A87;
-    --rule: #2A3441;
-    --accent: #52B8B2;
-    --accent-soft: #143733;
-    --accent-ink: #7ACFC9;
+    --ground: #1b1916;
+    --panel: #24211d;
+    --ink: #f1ebe2;
+    --muted: #c9c0b4;
+    --faint: #a39a8e;
+    --rule: #3a352f;
+    --accent: #ff6b7d;
+    --accent-soft: #3d2126;
+    --accent-ink: #ff6b7d;
     --warn: #D9A45B;
     --warn-soft: #2E2517;
-    --mono-bg: #1E2833;
+    --mono-bg: #2e2a25;
   }
   * { box-sizing: border-box; }
   body {
     background: var(--ground);
     color: var(--ink);
-    font-family: "Source Serif 4", Georgia, serif;
+    font-family: var(--font-sans);
     font-size: 16.5px;
     line-height: 1.62;
     margin: 0;
@@ -64,18 +70,18 @@
   .wrap { max-width: 700px; margin: 0 auto; }
   .wide { max-width: 940px; margin: 0 auto; }
   h1, h2, h3 {
-    font-family: "Bricolage Grotesque", "Avenir Next", "Helvetica Neue", sans-serif;
+    font-family: var(--font-display);
     text-wrap: balance;
     line-height: 1.12;
     letter-spacing: -0.015em;
   }
-  h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 700; margin: 0 0 14px; }
+  h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 600; margin: 0 0 14px; }
   h2 { font-size: clamp(23px, 3.4vw, 29px); font-weight: 600; margin: 0 0 16px; }
   h3 { font-size: 18px; font-weight: 600; margin: 26px 0 8px; }
   p { margin: 0 0 14px; }
   a { color: var(--accent-ink); text-decoration-color: var(--accent); text-underline-offset: 2px; }
   .eyebrow {
-    font-family: "IBM Plex Mono", monospace;
+    font-family: var(--font-mono);
     font-size: 11.5px;
     font-weight: 600;
     letter-spacing: 0.14em;
@@ -85,14 +91,14 @@
   }
   header.hero { padding: 64px 0 8px; }
   .standfirst { font-size: 19px; color: var(--muted); max-width: 620px; }
-  .hero-links { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 18px; font-family: "Bricolage Grotesque", sans-serif; font-size: 14.5px; }
+  .hero-links { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 18px; font-family: var(--font-sans); font-size: 14.5px; }
   section { margin-top: 58px; }
   .mono, code {
-    font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+    font-family: var(--font-mono);
     font-size: 0.86em;
   }
   code { background: var(--mono-bg); padding: 1px 5px; border-radius: 3px; }
-  .num { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
   /* stat band */
   .stats {
@@ -106,7 +112,7 @@
   .stat { background: var(--panel); padding: 16px 16px 14px; }
   .stat b {
     display: block;
-    font-family: "IBM Plex Mono", monospace;
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-size: 23px;
     font-weight: 600;
@@ -130,7 +136,7 @@
   }
   .stage:last-child { border-bottom: 1px solid var(--rule); }
   .stage .tag {
-    font-family: "IBM Plex Mono", monospace;
+    font-family: var(--font-mono);
     font-size: 12.5px;
     font-weight: 600;
     color: var(--accent-ink);
@@ -144,7 +150,7 @@
   .tblwrap { overflow-x: auto; margin-top: 20px; border: 1px solid var(--rule); }
   table { border-collapse: collapse; width: 100%; min-width: 780px; background: var(--panel); }
   th {
-    font-family: "Bricolage Grotesque", sans-serif;
+    font-family: var(--font-sans);
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.09em;
@@ -162,11 +168,11 @@
     line-height: 1.45;
   }
   tr:last-child td { border-bottom: none; }
-  td.src { font-family: "Bricolage Grotesque", sans-serif; font-weight: 600; font-size: 14px; white-space: nowrap; }
-  td.src small { display: block; font-weight: 400; color: var(--faint); font-family: "IBM Plex Mono", monospace; font-size: 11px; margin-top: 2px; }
-  td .feed { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent-ink); }
+  td.src { font-family: var(--font-sans); font-weight: 600; font-size: 14px; white-space: nowrap; }
+  td.src small { display: block; font-weight: 400; color: var(--faint); font-family: var(--font-mono); font-size: 11px; margin-top: 2px; }
+  td .feed { font-family: var(--font-mono); font-size: 12px; color: var(--accent-ink); }
   .kept, .diag {
-    font-family: "IBM Plex Mono", monospace;
+    font-family: var(--font-mono);
     font-size: 10.5px;
     font-weight: 600;
     letter-spacing: 0.06em;
@@ -194,7 +200,7 @@
     background: var(--mono-bg);
     border: 1px solid var(--rule);
     padding: 14px 18px;
-    font-family: "IBM Plex Mono", monospace;
+    font-family: var(--font-mono);
     font-size: 13.5px;
     line-height: 1.7;
     overflow-x: auto;
@@ -213,7 +219,7 @@
 
 <header class="hero wrap">
   <p class="eyebrow">Personal project · open data · England, Wales &amp; Scotland</p>
-  <h1>GB Car-Insurance Risk Model</h1>
+  <h1>The Price of Place — how it works</h1>
   <p class="standfirst">A territorial car-insurance pricing model covering all 41,729 census
   small areas of Great Britain, built entirely from open data, calibrated against published
   price indices, and shipped as an interactive premium map. Every estimate decomposes into
@@ -225,7 +231,7 @@
     <a href="https://github.com/AnuGnane/london-insurance-risk/blob/main/DATA_PROVENANCE_AND_TRANSFORMS.md" target="_blank" rel="noopener noreferrer">Data provenance ↗</a>
   </div>
   <div class="ramp" aria-hidden="true">
-    <i style="background:#D7E6E4"></i><i style="background:#A9CCC8"></i><i style="background:#6FA9A4"></i><i style="background:#3B8983"></i><i style="background:#0E6E6B"></i>
+    <i style="background:#efc982"></i><i style="background:#e0a93f"></i><i style="background:#d88c3a"></i><i style="background:#c44536"></i><i style="background:#6e1e22"></i>
   </div>
 </header>
 

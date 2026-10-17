@@ -69,6 +69,7 @@ After a model change, re-run `make calibrate` on the Mac (it re-runs `risk` and
 | `src/layout.test.ts` | `index.css` uses only the breakpoints and tap sizes declared in `layout.ts`; map fit padding and camera |
 | `src/locate.test.ts` | "Near me": finding the area containing a point, the nearest-edge fallback and its threshold |
 | `src/methodology.test.ts` | The figures on `docs/PROJECT_SUMMARY.html` (served as `methodology.html`) match the committed data |
+| `src/methodology-style.test.ts` | The methodology page's ink, paper and accent tokens equal `index.css`'s (light and dark), and it uses the map's fonts and quintile fill |
 | `src/noTypedCount.test.ts` | No component types the priced-area count in as a literal |
 | `src/postcode.test.ts` | Postcode normalising and parsing, Northern Ireland detection, `resolvePostcode`'s error mapping and the recent searches |
 | `src/search.test.ts` | A compare cancelled during its lookup never pins its result or replaces the main area |
