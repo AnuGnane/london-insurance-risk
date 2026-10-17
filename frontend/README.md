@@ -1,73 +1,78 @@
-# React + TypeScript + Vite
+# Frontend: the GB car-insurance risk map
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vite + React + TypeScript + MapLibre. A fully static site: it reads baked files from
+`public/data/` and resolves postcodes through postcodes.io, so no backend runs in
+production. It deploys to https://anugnane.github.io/london-insurance-risk/ through
+`.github/workflows/deploy-pages.yml` on pushes to `main` that touch `frontend/**`,
+`docs/PROJECT_SUMMARY.html` or that workflow.
 
-Currently, two official plugins are available:
+## Scripts (`package.json`)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Script | What it runs |
+|--------|--------------|
+| `npm run dev` | `vite`, the dev server with hot reload |
+| `npm run build` | `tsc -b && vite build`, then `scripts/copy-methodology.mjs` (copies `docs/PROJECT_SUMMARY.html` to `dist/methodology.html`) and `scripts/og-image.mjs` (renders the share card to `dist/og.png`) |
+| `npm run lint` | `eslint .` |
+| `npm test` | `vitest run` |
+| `npm run preview` | `vite preview`, serves `dist/` |
 
-## React Compiler
+### `GITHUB_PAGES=1`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Pages serves the site under `/london-insurance-risk/`. With `GITHUB_PAGES` set,
+`vite.config.ts` uses that as the base path; without it (local dev) the base is `/`.
+The deploy and CI both build with it, so build the same way to check what ships:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+GITHUB_PAGES=1 npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### The og-image skip path
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`scripts/og-image.mjs` renders the card with Playwright's Chromium. A share image is a
+nicety, so if Chromium cannot launch the script logs
+`og-image: skipped, no dist/og.png (...)` and exits 0: the build, and the deploy, never
+break on it. It exits 1 only when `dist/` is missing (run `vite build` first).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## The gate
+
+Run before every merge (see `HOLIDAY.md`); `.github/workflows/ci.yml` runs the same
+checks on each PR:
+
 ```
+uv sync --extra dev
+uv run pytest -q
+uv run ruff check
+cd frontend && npm ci && npm run lint && npm test && GITHUB_PAGES=1 npm run build
+```
+
+## The committed data files
+
+`public/data/` holds what the site serves. These files are baked on Anu's Mac from the
+real pipeline data (`data/` and `reports/` are git-ignored) and are never edited by hand:
+
+| File | Baked by | Used for |
+|------|----------|----------|
+| `areas.geojson` | `make showcase-data` (`src/showcase/bake_static.py`) | Every area's geometry, premium, band, percentiles and driver contributions: search, rankings, detail panel |
+| `methodology.json` | `make showcase-data` (a trimmed `reports/calibration.json`) | The model figures shown in the app and on the share card |
+| `lsoa-risk.pmtiles` | `make showcase-tiles` | The vector tiles drawn first, before the GeoJSON arrives (also read by the Vouched map) |
+
+After a model change, re-run `make calibrate` on the Mac (it re-runs `risk` and
+`showcase-data`), then `make showcase-tiles`; see `CLAUDE.md`.
+
+## Tests and what each pins
+
+| File | Pins |
+|------|------|
+| `src/api.test.ts` | `getRankings` ordering, its nation filter, and `getMethodology` |
+| `src/colors.test.ts` | Each step of the colour ramp and quintile fill gets darker (CIE L*), so the scale reads without colour |
+| `src/keyboard.test.ts` | Arrow, Home/End and type-ahead index maths for the rankings and segmented controls |
+| `src/layout.test.ts` | `index.css` uses only the breakpoints and tap sizes declared in `layout.ts`; map fit padding and camera |
+| `src/locate.test.ts` | "Near me": finding the area containing a point, the nearest-edge fallback and its threshold |
+| `src/methodology.test.ts` | The figures on `docs/PROJECT_SUMMARY.html` (served as `methodology.html`) match the committed data |
+| `src/noTypedCount.test.ts` | No component types in the priced-area count; it is derived from the loaded GeoJSON |
+| `src/postcode.test.ts` | Postcode normalising and parsing, and Northern Ireland detection |
+| `src/search.test.ts` | A compare cancelled during its lookup never pins its result or replaces the main area |
+| `src/serveConsistency.test.ts` | The baked GeoJSON rebuilds each premium from its baseline plus the five driver steps (frontend half of `tests/test_serve_consistency.py`) |
+| `src/url.test.ts` | The share URL codec: `parseShareUrl`, `buildShareUrl` and the valid filters |
+| `src/utils.test.ts` | Formatting (`gbp`, `ordinalPct`, figures), bounds and point-in-area helpers, premium bands and ramp, the detail/explain/compare text, nation and ranking group, and that About covers every colour mode |
+| `scripts/og-template.test.mjs` | The share card shows the figures from `methodology.json`, leaves out any it lacks, and takes its colours from `index.css` |

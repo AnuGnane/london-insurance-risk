@@ -12,10 +12,14 @@ London-only prototype, expanded to all of England, Wales and Scotland (Northern
 Ireland excluded — no open crime source).
 
 For deep technical context, in this priority order:
-- `PROJECT_TECHNICAL_OVERVIEW.md` — model & maths, architecture, evolution decisions
-- `DATA_PROVENANCE_AND_TRANSFORMS.md` — every data source, why chosen, exact transform
-- `INTERVIEW_PREP_QA.md` — mock Q&A, useful as a fast model/architecture refresher
-- `MODEL_REVIEW.md`, `ROADMAP.md`, `SHOWCASE_PLAN.md` — historical planning docs
+- `docs/superpowers/info/PROJECT_TECHNICAL_OVERVIEW.md` — model & maths, architecture,
+  evolution decisions
+- `DATA_PROVENANCE_AND_TRANSFORMS.md` (root) — every data source, why chosen, exact transform
+- `AUDIT.md` (root) — model verification: coefficients, reconstructions, sign checks
+- `docs/superpowers/info/ROADMAP.md`, `docs/superpowers/info/SHOWCASE_PLAN.md` — historical
+  planning docs
+- `INTERVIEW_PREP_QA.md` and `MODEL_REVIEW.md` are not in the repo; the review's substance
+  is in `AUDIT.md`.
 
 ## Pipeline (Makefile targets = the source of truth for order)
 
@@ -31,7 +35,7 @@ make test      # pytest
 
 **Known gap:** `make risk` does not depend on `reports/calibration.json`'s timestamp, so
 running `risk` without `calibrate` afterward can ship stale premiums (this has happened
-before — see the train/serve-skew bug in `INTERVIEW_PREP_QA.md` Q18). After touching
+before — the train/serve-skew bug that `tests/test_serve_consistency.py` now guards). After touching
 calibration or coefficients, always re-run `calibrate` (which re-runs `risk` and
 `showcase-data` for you), don't just run `risk` alone.
 

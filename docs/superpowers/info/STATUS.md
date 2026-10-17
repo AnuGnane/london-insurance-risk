@@ -1,6 +1,7 @@
 # Project Status
 
-Last updated: 2026-07-18. Branch: `docs-finalize-transparency`.
+Last updated: 2026-07-18 (model); frontend section updated 2026-10-17 for the October
+holiday queue (`HOLIDAY.md`). Branch: `docs-finalize-transparency`.
 
 **2026-07 model wave — COMPLETE (Phase 4 flood + uncertainty bands + IMD sub-domains + Vouched bridge).**
 One evidence-gate calibrate cycle tested three candidates against the n=106 anchor panel
@@ -90,7 +91,9 @@ High/Medium zone, dissolved to prevent double-counting.
 0–100 `risk_index` is that premium on a percentile scale (one reconciled model). Premium fits on
 percentile features (bounds extrapolation); `road_casualties` is excluded from the premium but kept
 as a map layer. Scotland is fully priced (crime ingested from statistics.gov.scot). See
-`MODEL_REVIEW.md` for the audit and the P0-a/b/c resolution log.
+[`AUDIT.md`](../../../AUDIT.md) for the model verification. (`MODEL_REVIEW.md`, which held the
+audit and the P0-a/b/c resolution log, is not in the repo; the review's substance is in
+`AUDIT.md`.)
 
 ## What's complete
 
@@ -146,6 +149,17 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 - Quintile legend + deep-linkable URLs (`?area=<code>&filter=<mode>`)
 - Initial view: Great Britain (zoomed out to show all nations)
 
+**October 2026 holiday queue (R-1 to R-17, `HOLIDAY.md`).** The site is now a static
+GitHub Pages build with a green gate and PR checks, frontend unit tests (Vitest), a phone
+layout with touch targets, a forgiving postcode search and shareable links, an "explain this
+score" panel, a legend that reads without colour plus a dark mode, the methodology page
+published on the site with its figures pinned by test, a Lighthouse performance and
+accessibility pass, a nation filter on the rankings, a two-area compare with the waterfalls
+side by side, keyboard navigation of the rankings and the map, an `og:image` rendered at
+build time, and a streaming first paint that draws the committed `lsoa-risk.pmtiles` before
+the full GeoJSON arrives. The baseline figure in the docs was reconciled with the baked data
+on the Mac (R-17).
+
 ### Infrastructure
 
 - `Dockerfile` — two-stage build (Node frontend + Python backend)
@@ -159,7 +173,7 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 | Scotland crime is council-grain, disaggregated by population | No within-council variation in the crime feature, even though Scottish regions now validate at anchor grain |
 | WTW/MSM panel is quarterly at postcode-area/region grain | No sub-district calibration; all LSOA-level values remain modelled predictions |
 | Traffic exposure is point-level AADF within 2 km of each centroid | Genuine driver (partial r +0.38), but ~10% of areas fall back to the nearest count point where local coverage is sparse |
-| GeoJSON served as single ~15 MB file | Works fine in Docker; for production consider PMTiles (Phase D) |
+| Full GeoJSON still downloaded for search, rankings and the detail panel | First paint comes from the PMTiles layer (R-15); the GeoJSON follows |
 | Population vintage differs (England mid-2015 vs Wales/Scotland 2011) | Per-capita rates/density slightly off across the border (P1: move to Census 2021/2022) |
 
 ## What's deferred
@@ -168,7 +182,6 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 |------|-------|--------|
 | Northern Ireland | D+ | data.police.uk + STATS19 both exclude NI → only 2/4 features |
 | Flood overlay | 4 | EA/NRW/SEPA polygon overlay after traffic/collision revisit |
-| PMTiles vector tiles | D | ~42k areas too heavy for a single GeoJSON at scale; needs tippecanoe |
 | Sub-district calibration | D+ | WTW panel is postcode-area grain only |
 | CI / automated re-ingest | D+ | Data sources update quarterly; no cron yet |
 
