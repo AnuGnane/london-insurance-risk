@@ -1,7 +1,7 @@
 """Bake static assets for the GitHub Pages (static) showcase build.
 
 GitHub Pages can't run the FastAPI backend, so the frontend reads pre-baked static
-files instead (see SHOWCASE_PLAN.md). This script produces:
+files instead (see docs/superpowers/info/SHOWCASE_PLAN.md). This script produces:
 
   frontend/public/data/areas.geojson    — simplified choropleth (≈ 6–7 MB gzip; Pages
                                            serves it compressed)

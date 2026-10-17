@@ -3,7 +3,7 @@ name: Deploy showcase to GitHub Pages
 # Builds the static frontend (which reads pre-baked data/areas.geojson +
 # methodology.json committed under frontend/public/data) and publishes it to
 # GitHub Pages. The Python backend is NOT deployed — the site is fully static
-# (see SHOWCASE_PLAN.md). Regenerate the baked data with `make showcase-data`.
+# (see docs/superpowers/info/SHOWCASE_PLAN.md). Regenerate the baked data with `make showcase-data`.
 
 on:
   push:

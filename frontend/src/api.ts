@@ -3,7 +3,7 @@
  *
  * GitHub Pages can't run the FastAPI backend, so these functions replace the old
  * `/api/*` endpoints with static files + a public postcode API — same shapes, no
- * server. See SHOWCASE_PLAN.md.
+ * server. See docs/superpowers/info/SHOWCASE_PLAN.md.
  *
  *  - getGeojson()       → static frontend/public/data/areas.geojson
  *  - resolvePostcode()  → postcodes.io, in postcode.ts (postcode → point → area)
