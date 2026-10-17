@@ -297,6 +297,22 @@ body {
 }
 .search-error b { color: var(--accent); font-weight: 600; }
 
+/* The first-visit "what am I looking at" card above the Try row. */
+.callout {
+  margin-top: 12px; padding: 10px 12px;
+  font-size: 0.8125rem; line-height: 1.45; color: var(--ink-soft);
+  background: var(--paper-wash); border-left: 2px solid var(--rule-strong);
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+}
+.callout p { margin: 0 0 6px; }
+.callout-dismiss {
+  min-height: var(--tap-min); padding: 0 14px; margin-top: 2px;
+  font: inherit; font-weight: 600; color: var(--ink);
+  background: var(--paper-panel); border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm); cursor: pointer;
+}
+.callout-dismiss:hover { background: var(--paper-wash); }
+
 /* ===========================================================================
    Segmented controls (map filter + most/least)
    =========================================================================== */

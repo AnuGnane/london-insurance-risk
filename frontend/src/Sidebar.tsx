@@ -10,6 +10,12 @@ import type { AreaDetail, ColorMode, Methodology } from './types';
 import { areasLabel, COLOR_MODES, COMPONENT_LABELS, type Nation } from './utils';
 import { examplePairs } from './api';
 import { useAnnouncer } from './announce';
+import {
+  CALLOUT_COPY,
+  loadCalloutDismissed,
+  saveCalloutDismissed,
+  shouldShowCallout,
+} from './callout';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -181,6 +187,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (compareCode == null) setPairSaid('');
   }
   const [locating, setLocating] = useState(false);
+  // The first-visit "what am I looking at" card (callout.ts).
+  const [calloutDismissed, setCalloutDismissed] = useState(loadCalloutDismissed);
+  const dismissCallout = () => {
+    saveCalloutDismissed();
+    setCalloutDismissed(true);
+  };
   const nearMe = async () => {
     if (locating) return;  // not `disabled`: that would drop keyboard focus
     setLocating(true);
@@ -299,6 +311,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               ))}
             </div>
+          )}
+
+          {shouldShowCallout(calloutDismissed, detail != null) && (
+            <section className="callout" aria-label="What am I looking at">
+              {CALLOUT_COPY.map((sentence) => (
+                <p key={sentence}>{sentence}</p>
+              ))}
+              <button type="button" className="callout-dismiss" onClick={dismissCallout}>
+                Got it
+              </button>
+            </section>
           )}
 
           {pairs.length > 0 && (
