@@ -29,7 +29,7 @@ GITHUB_PAGES=1 npm run build
 ### The og-image skip path
 
 `scripts/og-image.mjs` renders the card with Playwright's Chromium. A share image is a
-nicety, so if Chromium cannot launch the script logs
+nicety, so if Chromium or the render fails the script logs
 `og-image: skipped, no dist/og.png (...)` and exits 0: the build, and the deploy, never
 break on it. It exits 1 only when `dist/` is missing (run `vite build` first).
 
@@ -63,14 +63,14 @@ After a model change, re-run `make calibrate` on the Mac (it re-runs `risk` and
 
 | File | Pins |
 |------|------|
-| `src/api.test.ts` | `getRankings` ordering, its nation filter, and `getMethodology` |
-| `src/colors.test.ts` | Each step of the colour ramp and quintile fill gets darker (CIE L*), so the scale reads without colour |
+| `src/api.test.ts` | `getRankings` ordering and its nation filter, `getMethodology`, `getGeojson`'s streaming and progress, `tilesUrl` and `examplePairs` |
+| `src/colors.test.ts` | Each step of the colour ramp and quintile fill gets darker (CIE L*), so the scale reads without colour; WCAG AA contrast for legend labels and faint ink; `index.css` tokens mirror the JS colours, keep hard-coded colours out, and define a dark scheme |
 | `src/keyboard.test.ts` | Arrow, Home/End and type-ahead index maths for the rankings and segmented controls |
 | `src/layout.test.ts` | `index.css` uses only the breakpoints and tap sizes declared in `layout.ts`; map fit padding and camera |
 | `src/locate.test.ts` | "Near me": finding the area containing a point, the nearest-edge fallback and its threshold |
 | `src/methodology.test.ts` | The figures on `docs/PROJECT_SUMMARY.html` (served as `methodology.html`) match the committed data |
-| `src/noTypedCount.test.ts` | No component types in the priced-area count; it is derived from the loaded GeoJSON |
-| `src/postcode.test.ts` | Postcode normalising and parsing, and Northern Ireland detection |
+| `src/noTypedCount.test.ts` | No component types the priced-area count in as a literal |
+| `src/postcode.test.ts` | Postcode normalising and parsing, Northern Ireland detection, `resolvePostcode`'s error mapping and the recent searches |
 | `src/search.test.ts` | A compare cancelled during its lookup never pins its result or replaces the main area |
 | `src/serveConsistency.test.ts` | The baked GeoJSON rebuilds each premium from its baseline plus the five driver steps (frontend half of `tests/test_serve_consistency.py`) |
 | `src/url.test.ts` | The share URL codec: `parseShareUrl`, `buildShareUrl` and the valid filters |

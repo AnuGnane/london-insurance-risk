@@ -1,7 +1,7 @@
 # Project Status
 
 Last updated: 2026-07-18 (model); frontend section updated 2026-10-17 for the October
-holiday queue (`HOLIDAY.md`). Branch: `docs-finalize-transparency`.
+holiday queue (`HOLIDAY.md`). July's branch: `docs-finalize-transparency`.
 
 **2026-07 model wave — COMPLETE (Phase 4 flood + uncertainty bands + IMD sub-domains + Vouched bridge).**
 One evidence-gate calibrate cycle tested three candidates against the n=106 anchor panel
