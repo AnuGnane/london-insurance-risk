@@ -30,6 +30,10 @@ export const NEAR_ME_TIMEOUT_MS = 10_000;
 /** "Near me": how old a cached fix may be and still be used, ms. */
 export const NEAR_ME_MAX_AGE_MS = 60_000;
 
+/** Live regions: how long a repeated message stays cleared before it is set again,
+ *  ms, so screen readers read the same text twice (see announce.ts). */
+export const ANNOUNCE_CLEAR_MS = 100;
+
 /** CSS custom properties that carry these values into index.css. */
 export const layoutCssVars = {
   '--sheet-collapsed': SHEET_HEIGHT.collapsed,

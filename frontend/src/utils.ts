@@ -617,6 +617,17 @@ export const formatFigure = (n: number, dp = 0): string =>
  */
 export const areasLabel = (n: number): string => (n > 0 ? `${formatFigure(n)} areas` : 'areas');
 
+/** The rankings' name for all of GB (the README's own title, "Great Britain"). */
+export const GB_LABEL = 'Great Britain';
+
+/** The rankings' scope line: "Wales · N areas", or "Great Britain · N areas" for
+ *  All; empty until the areas have loaded. */
+export function rankingsScope(nation: Nation | null, count: number): string {
+  if (count <= 0) return '';
+  const label = NATIONS.find((n) => n.id === nation)?.label ?? GB_LABEL;
+  return `${label} · ${areasLabel(count)}`;
+}
+
 const SUPERSCRIPT: Record<string, string> = {
   '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
 };

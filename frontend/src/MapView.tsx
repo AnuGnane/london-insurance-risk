@@ -34,6 +34,7 @@ import {
   areasLabel,
 } from './utils';
 import { dataUrl, tilesUrl } from './api';
+import { useAnnouncer } from './announce';
 import {
   CAMERA,
   cameraDuration,
@@ -160,7 +161,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const [tapInfo, setTapInfo] = useState<TapInfo | null>(null);
   // A tap that landed before the areas could answer it (see tapFeedback).
-  const [tapNote, setTapNote] = useState<string | null>(null);
+  // A repeat tap re-announces the same note (announce.ts).
+  const [tapNote, sayTapNote] = useAnnouncer<string | null>(null);
   // MapLibre's worker fetches and tiles the GeoJSON itself (from the HTTP cache the
   // app's own fetch just filled), so the areas appear a moment after the panel.
   // A basemap switch (light/dark) reloads the style and re-tiles the areas, so
@@ -332,12 +334,12 @@ export const MapView: React.FC<MapViewProps> = ({
       const f = e.features?.[0];
       if (!f) {
         setTapInfo(null);
-        setTapNote(tapFeedback(areasDrawn, tilesDrawn, loadedBytes));
+        sayTapNote(tapFeedback(areasDrawn, tilesDrawn, loadedBytes));
         return;
       }
       selectAt(f.properties as LsoaProps, e.lngLat.lng, e.lngLat.lat);
     },
-    [selectAt, areasDrawn, tilesDrawn, loadedBytes]
+    [selectAt, areasDrawn, tilesDrawn, loadedBytes, sayTapNote]
   );
 
   // Keyboard: MapLibre pans with the arrows and zooms with +/- once its canvas has

@@ -6,6 +6,7 @@ import {
   quintileColor,
   COMPONENT_LABELS,
   NATIONS,
+  rankingsScope,
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
@@ -47,7 +48,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   );
   const nationLabel = NATIONS.find((n) => n.id === nation)?.label;
   const areaCount = useMemo(
-    () => (nation ? countRankable(lookup, nation) : 0),
+    () => countRankable(lookup, nation ?? undefined),
     [lookup, nation]
   );
 
@@ -69,9 +70,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
           {order === 'desc' ? 'Most expensive areas' : 'Least expensive areas'}
           {/* Always mounted, so screen readers announce the scope when it changes. */}
           <span className="rankings-scope" role="status" aria-live="polite">
-            {nationLabel && areaCount > 0
-              ? `${nationLabel} · ${areaCount.toLocaleString('en-GB')} areas`
-              : null}
+            {rankingsScope(nation, areaCount)}
           </span>
         </h2>
         <Segmented

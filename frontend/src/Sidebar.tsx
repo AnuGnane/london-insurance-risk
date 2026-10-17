@@ -9,6 +9,7 @@ import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
 import { areasLabel, COLOR_MODES, COMPONENT_LABELS, type Nation } from './utils';
 import { examplePairs } from './api';
+import { useAnnouncer } from './announce';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -170,7 +171,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const showRecents = focused && term === '' && recentSearches.length > 0;
   // The landing's one-tap comparisons, once the areas have loaded (empty before).
   const pairs = useMemo(() => examplePairs(lookup), [lookup]);
-  const [pairSaid, setPairSaid] = useState('');
+  const [pairSaid, sayPair, setPairSaid] = useAnnouncer('');
+  // A comparison that ends (Back, or the × on the second pin) takes its
+  // "Comparing …" line with it, so nothing stale is read later.
+  const compareCode = compare?.lsoa11cd ?? null;
+  const [saidFor, setSaidFor] = useState(compareCode);
+  if (saidFor !== compareCode) {
+    setSaidFor(compareCode);
+    if (compareCode == null) setPairSaid('');
+  }
   const [locating, setLocating] = useState(false);
   const nearMe = async () => {
     if (locating) return;  // not `disabled`: that would drop keyboard focus
@@ -312,7 +321,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     title={`${p.a.name} vs ${p.b.name}`}
                     onClick={() => {
                       onSelectPair(p.a.code, p.b.code);
-                      setPairSaid(`Comparing ${p.a.name} with ${p.b.name}`);
+                      sayPair(`Comparing ${p.a.name} with ${p.b.name}`);
                     }}
                   >
                     {p.label}
