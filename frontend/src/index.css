@@ -410,6 +410,11 @@ body {
   font-family: var(--font-display); font-weight: 500; font-size: 1.1rem;
   color: var(--ink-mid); margin-top: 2px; letter-spacing: -0.01em;
 }
+/* "An estimate for the area, not a quote…": the band's muted ink, body size. */
+.premium-caveat {
+  font-size: 0.75rem; line-height: 1.4; color: var(--ink-mid); margin: 6px 0 0;
+}
+.compare-pair .premium-caveat { grid-column: 1 / -1; margin: 0; }
 
 /* Index + quintile (no coloured circle) */
 .index-row {
