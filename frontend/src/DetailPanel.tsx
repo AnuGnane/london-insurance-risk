@@ -13,7 +13,7 @@ import {
   explainDifference,
   compareSummary,
   QUINTILE_TEXT,
-  PREMIUM_CAVEAT,
+  caveatsFor,
 } from './utils';
 
 interface DetailPanelProps {
@@ -48,8 +48,10 @@ const ComparePair: React.FC<{ a: AreaDetail; b: AreaDetail }> = ({ a, b }) => (
         { name: b.title, premium: b.calibrated_premium }
       )}
     </p>
-    {/* One caveat for the pair; the hero below does not repeat it. */}
-    <p className="premium-caveat">{PREMIUM_CAVEAT}</p>
+    {/* One set of caveats for the pair; the hero below does not repeat them. */}
+    {caveatsFor(a.lsoa11cd, b.lsoa11cd).map((c) => (
+      <p key={c} className="premium-caveat">{c}</p>
+    ))}
   </div>
 );
 
@@ -253,7 +255,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div className="hero-caption">
             {data.premium_low != null ? 'Estimated annual premium (95% range)' : 'Estimated annual premium'}
           </div>
-          {!compare && <p className="premium-caveat">{PREMIUM_CAVEAT}</p>}
+          {!compare &&
+            caveatsFor(data.lsoa11cd).map((c) => (
+              <p key={c} className="premium-caveat">{c}</p>
+            ))}
         </div>
       </div>
 

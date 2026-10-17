@@ -622,6 +622,18 @@ export const areasLabel = (n: number): string => (n > 0 ? `${formatFigure(n)} ar
 export const PREMIUM_CAVEAT =
   'An estimate for the area, not a quote: validated at postcode-area grain and extrapolated to this one.';
 
+/** The line under PREMIUM_CAVEAT for a Scottish area (README "What it doesn't claim":
+ *  Scotland caveats). */
+export const SCOTLAND_CAVEAT =
+  'In Scotland, crime data arrives at council grain, so neighbouring areas in one council share its crime signal; the Scottish anchors also validate on a thinner sample.';
+
+/** The caveats an area (or a compared pair) shows under its £ figure, in order:
+ *  the premium caveat always, the Scotland one once if any area is Scottish. */
+export const caveatsFor = (...codes: string[]): string[] =>
+  codes.some((c) => nationOf(c) === 'scotland')
+    ? [PREMIUM_CAVEAT, SCOTLAND_CAVEAT]
+    : [PREMIUM_CAVEAT];
+
 /** The rankings' name for all of GB (the README's own title, "Great Britain"). */
 export const GB_LABEL = 'Great Britain';
 
