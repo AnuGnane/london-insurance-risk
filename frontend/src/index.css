@@ -598,6 +598,17 @@ body {
 .feature-row .f-name { font-size: 0.78rem; color: var(--ink); }
 .feature-row .f-r { font-size: 0.75rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .feature-kicker { font-size: 0.68rem; color: var(--ink-faint); margin: 6px 0 2px; }
+.multiplier-table { width: 100%; border-collapse: collapse; }
+.multiplier-table caption { text-align: left; }
+.multiplier-table th, .multiplier-table td {
+  padding: 6px 0; border-top: 1px solid var(--rule); font-weight: normal; text-align: left;
+}
+.multiplier-table thead th { border-top: none; font-size: 0.68rem; color: var(--ink-faint); padding: 2px 0; }
+.multiplier-table tbody th { font-size: 0.78rem; color: var(--ink); }
+.multiplier-table td {
+  font-size: 0.75rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; text-align: right;
+}
+.multiplier-table thead th:last-child { text-align: right; }
 
 .about-source { padding: 11px 0; border-top: 1px solid var(--rule); }
 .about-source:first-child { border-top: none; }
