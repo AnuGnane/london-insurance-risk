@@ -235,7 +235,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         )}
       </div>
       {pendingPin && (
-        <div className="skel-line compare-pending" role="status" aria-label="Looking up the second area" />
+        <div className="skel-line compare-pending" aria-hidden="true" />
       )}
 
       <p className="lede">{ledeForQuintile(data.quintile)}</p>

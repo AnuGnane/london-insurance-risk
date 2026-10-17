@@ -203,7 +203,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCompareClear,
 }) => {
   const [term, setTerm] = useState('');
-  const bodyState = detailBodyState(loading, comparing, detail != null);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const search = (q: string) => {
@@ -226,6 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [locating, setLocating] = useState(false);
   // The first-visit "what am I looking at" card (callout.ts).
   const [calloutDismissed, setCalloutDismissed] = useState(loadCalloutDismissed);
+  const bodyState = detailBodyState(loading, comparing, detail != null);
   const dismissCallout = () => {
     saveCalloutDismissed();
     setCalloutDismissed(true);
@@ -417,7 +417,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="skel-line" style={{ width: '80%', marginBottom: 8 }} />
             <div className="skel-line" style={{ width: '70%' }} />
           </div>
-        ) : detail && bodyState !== 'rankings' ? (
+        ) : detail ? (
           <div className="section">
             <div className="detail-actions">
               <button className="back-link" onClick={onClear}>
