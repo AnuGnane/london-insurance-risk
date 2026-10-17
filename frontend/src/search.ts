@@ -12,3 +12,11 @@ export function searchTarget(startedAsCompare: boolean, armedNow: boolean): Sear
   if (!startedAsCompare) return 'main';
   return armedNow ? 'compare' : 'drop';
 }
+
+// Whether an awaited selection (a "Near me" fix) is still the latest one. Each
+// selection the visitor makes (a ranking or map tap, a search, a "Try" pair, another
+// "Near me") takes the next id; a fix that lands after a newer one is dropped,
+// silently, so it never overrides the area they picked while it was on its way.
+export function isCurrent(id: number, latest: number): boolean {
+  return id === latest;
+}

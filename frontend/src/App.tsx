@@ -20,7 +20,7 @@ import {
 } from './utils';
 import { getGeojson, getMethodology } from './api';
 import { findMyArea } from './locate';
-import { searchTarget } from './search';
+import { isCurrent, searchTarget } from './search';
 import { buildShareUrl, parseShareUrl } from './url';
 import {
   addRecentSearch,
@@ -114,6 +114,9 @@ function App() {
   // Set once the visitor picks an area themselves, so a slow link restore never
   // overrides their choice.
   const userSelected = useRef(false);
+  // Bumped by every selection the visitor makes; a "Near me" fix that lands after a
+  // later one is dropped (see isCurrent in search.ts).
+  const selectionId = useRef(0);
   const [initialLink] = useState(() => parseShareUrl(window.location.search));
 
   // -----------------------------------------------------------------------
@@ -248,6 +251,7 @@ function App() {
 
   const handleSearch = async (postcode: string) => {
     userSelected.current = true;
+    selectionId.current++;
     setLoading(true);
     setSearchError(null);
     // Armed "Compare with…": the result becomes the second area, the main one stays.
@@ -310,6 +314,7 @@ function App() {
     const props = lookup.get(lsoa11cd)?.properties as LsoaProps | undefined;
     if (!props) return;
     userSelected.current = true;
+    selectionId.current++;
     setSearchError(null);
     if (comparing && detail) {
       // The main area cannot be its own comparison: stay armed for another tap.
@@ -323,6 +328,7 @@ function App() {
 
   const handleSelectRanking = (code: string, coords?: [number, number]) => {
     userSelected.current = true;
+    selectionId.current++;
     setSearchError(null);
     setSearchedPc(null);
     const props = lookup.get(code)?.properties as LsoaProps | undefined;
@@ -342,14 +348,17 @@ function App() {
   const handleNearMe = async () => {
     if (!geojson) return;
     setSearchError(null);
+    const id = ++selectionId.current;
     try {
       const feature = await findMyArea(navigator.geolocation, geojson.features);
+      if (!isCurrent(id, selectionId.current)) return;
       userSelected.current = true;
       setSearchedPc(null);
       setDetail({ ...featureToDetail(feature.properties as LsoaProps), title: 'Your location' });
       setSheetExpanded(true);
       focusFeature(feature);
     } catch (e) {
+      if (!isCurrent(id, selectionId.current)) return;
       setSearchError(e instanceof Error ? e.message : 'Could not find your location.');
     }
   };
@@ -359,7 +368,7 @@ function App() {
   const handleSelectPair = (a: string, b: string) => {
     const bProps = lookup.get(b)?.properties as LsoaProps | undefined;
     if (!lookup.has(a) || !bProps) return;
-    handleSelectRanking(a);
+    handleSelectRanking(a); // bumps selectionId
     setCompare({ forArea: a, detail: featureToDetail(bProps) });
     setComparing(false);
     const bounds = unionBounds(lookup.get(a), lookup.get(b));
