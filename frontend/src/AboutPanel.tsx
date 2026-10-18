@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { COMPONENT_LABELS, formatFigure } from './utils';
+import { COMPONENT_LABELS, ELSEWHERE_COPY, formatFigure } from './utils';
 import { DATA_SOURCES } from './dataSources';
+
+const [ELSEWHERE_BEFORE, ELSEWHERE_AFTER] = ELSEWHERE_COPY.split('vouched.autos');
 
 export const AboutPanel: React.FC<{ areaCount: number }> = ({ areaCount }) => {
   const [open, setOpen] = useState(false);
@@ -37,6 +39,11 @@ export const AboutPanel: React.FC<{ areaCount: number }> = ({ areaCount }) => {
               </div>
             ))}
           </div>
+          <p className="about-elsewhere">
+            {ELSEWHERE_BEFORE}
+            <a href="https://vouched.autos">vouched.autos</a>
+            {ELSEWHERE_AFTER}
+          </p>
         </div>
       )}
     </div>

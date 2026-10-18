@@ -627,6 +627,11 @@ export const PREMIUM_CAVEAT =
 export const SCOTLAND_CAVEAT =
   'In Scotland, crime data arrives at council grain, so neighbouring areas in one council share its crime signal; the Scottish anchors also validate on a thinner sample.';
 
+/** The About panel's closing line: where else the model runs (README "Elsewhere",
+ *  word for word without its markdown; AboutPanel links "vouched.autos"). */
+export const ELSEWHERE_COPY =
+  "The model also powers the postcode-district premium estimates behind vouched.autos's First-Car Finder, via a frozen data contract with provenance stamps (model commit, calibration date, n, R²) — every model-changing ship here regenerates that pack.";
+
 /** The caveats an area (or a compared pair) shows under its £ figure, in order:
  *  the premium caveat always, the Scotland one once if any area is Scottish. */
 export const caveatsFor = (...codes: string[]): string[] =>

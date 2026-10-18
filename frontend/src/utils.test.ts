@@ -17,6 +17,7 @@ import {
   areasLabel,
   GB_LABEL,
   PREMIUM_CAVEAT,
+  ELSEWHERE_COPY,
   SCOTLAND_CAVEAT,
   caveatsFor,
   rankingsScope,
@@ -631,6 +632,25 @@ describe('PREMIUM_CAVEAT', () => {
   });
   it('carries no figure', () => {
     expect(PREMIUM_CAVEAT).not.toMatch(/\d/);
+  });
+});
+
+describe('ELSEWHERE_COPY', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  const section = (readme.split('## Elsewhere')[1]?.split('\n## ')[0] ?? '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\s+/g, ' ');
+  it('reads the README section', () => {
+    expect(section).toContain('First-Car Finder');
+  });
+  it('is the README sentence, word for word', () => {
+    expect(section).toContain(ELSEWHERE_COPY);
+  });
+  it('is rendered by the About panel, with one same-tab link to vouched.autos', () => {
+    const src = readFileSync(new URL('./AboutPanel.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('ELSEWHERE_COPY');
+    expect(src.match(/href="https:\/\/vouched\.autos"/g) ?? []).toHaveLength(1);
+    expect(src).not.toMatch(/target=/);
   });
 });
 
