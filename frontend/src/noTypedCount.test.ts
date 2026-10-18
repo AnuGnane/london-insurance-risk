@@ -18,3 +18,18 @@ describe('no area count typed into the app', () => {
     expect(src).not.toMatch(/41,?729/);
   });
 });
+
+// The place vs composition R² split comes from methodology.json at every bake, so
+// the methodology block derives its three figures rather than typing them in.
+describe('no variance split typed into the sidebar', () => {
+  const src = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8');
+  const vd = JSON.parse(
+    readFileSync(new URL('../public/data/methodology.json', import.meta.url), 'utf8'),
+  ).variance_decomposition;
+
+  it.each(['place_only_r2', 'composition_only_r2', 'full_r2'])('carries no literal %s', (k) => {
+    expect(typeof vd[k]).toBe('number');
+    expect(src).not.toContain(vd[k].toFixed(2));
+    expect(src).not.toContain(String(vd[k]));
+  });
+});
