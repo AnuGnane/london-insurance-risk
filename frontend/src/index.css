@@ -588,6 +588,9 @@ body {
 }
 .note { font-size: 0.78rem; color: var(--ink-soft); line-height: 1.55; margin: 10px 0; }
 .note b { color: var(--ink); }
+.not-claimed { font-size: 0.78rem; line-height: 1.55; margin-top: 6px; padding-left: 18px; }
+.not-claimed li + li { margin-top: 6px; }
+.not-claimed b { color: var(--ink); }
 
 .feature-table { margin-top: 10px; width: 100%; border-collapse: collapse; }
 .feature-table caption {

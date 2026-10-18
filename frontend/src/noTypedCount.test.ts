@@ -33,3 +33,19 @@ describe('no variance split typed into the sidebar', () => {
     expect(src).not.toContain(String(vd[k]));
   });
 });
+
+// The anchor sample size comes from methodology.json's n_matched, so the "What it
+// doesn't claim" list renders it rather than typing in the README's figure.
+describe('no anchor sample size typed in', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  const n = readme.match(/(\d+) matched observations/)?.[1] ?? '';
+
+  it('reads the README figure', () => {
+    expect(n).toMatch(/^\d+$/);
+  });
+
+  it.each(['./Sidebar.tsx', './utils.ts'])('%s carries no literal sample size', (f) => {
+    const src = readFileSync(new URL(f, import.meta.url), 'utf8');
+    expect(src).not.toMatch(new RegExp(`\\b${n}\\b`));
+  });
+});

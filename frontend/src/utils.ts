@@ -632,6 +632,46 @@ export const SCOTLAND_CAVEAT =
 export const ELSEWHERE_COPY =
   "The model also powers the postcode-district premium estimates behind vouched.autos's First-Car Finder, via a frozen data contract with provenance stamps (model commit, calibration date, n, R²) — every model-changing ship here regenerates that pack.";
 
+/** One README "What it doesn't claim" bullet, word for word: the bold lead, then the
+ *  rest. The sample bullet's count is methodology.json's n_matched, never typed. */
+export type NotClaimed = { lead: string; text: string | ((n?: number) => string) };
+
+export const NOT_CLAIMED: readonly NotClaimed[] = [
+  {
+    lead: 'Validation grain ≠ prediction grain.',
+    text: 'The model validates at postcode-area / region grain (where published premiums exist) and predicts at LSOA grain. Per-LSOA figures are principled extrapolation — directionally strong rankings, not quotes. This is the single most important caveat.',
+  },
+  {
+    lead: 'Small anchor sample, by design.',
+    text: (n) =>
+      `${n ? `${formatFigure(n)} matched observations is` : 'The matched sample is'} what honestly exists in public. Hence a linear model and the emphasis on hold-outs.`,
+  },
+  {
+    lead: 'Ecological inference.',
+    text: 'Area aggregates predict area premiums; nothing here supports individual-level conclusions (MAUP applies).',
+  },
+  {
+    lead: 'Known blind spot.',
+    text: 'Wealthy-but-central areas can under-price: deprivation-family signals are low there while real premiums are driven by unmodelled factors (vehicle values, congestion, claims cost).',
+  },
+  {
+    lead: 'Scotland caveats.',
+    text: "Crime arrives at council grain and is disaggregated by population, so there's no within-council variation; Scottish anchors validate at a thinner sample than E+W.",
+  },
+  {
+    lead: 'Northern Ireland is excluded',
+    text: '— data.police.uk and STATS19 both omit NI, so an NI area would carry only half its features.',
+  },
+  {
+    lead: 'The anchor is a market average,',
+    text: 'transcribed from published indices, not claims data.',
+  },
+];
+
+/** A NOT_CLAIMED entry's text, with the anchor sample size when it is known. */
+export const notClaimedText = (e: NotClaimed, n?: number): string =>
+  typeof e.text === 'string' ? e.text : e.text(n);
+
 /** The caveats an area (or a compared pair) shows under its £ figure, in order:
  *  the premium caveat always, the Scotland one once if any area is Scottish. */
 export const caveatsFor = (...codes: string[]): string[] =>
