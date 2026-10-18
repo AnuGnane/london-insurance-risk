@@ -18,6 +18,8 @@ import {
   GB_LABEL,
   PREMIUM_CAVEAT,
   ELSEWHERE_COPY,
+  NOT_CLAIMED,
+  notClaimedText,
   SCOTLAND_CAVEAT,
   caveatsFor,
   rankingsScope,
@@ -651,6 +653,31 @@ describe('ELSEWHERE_COPY', () => {
     expect(src).toContain('ELSEWHERE_COPY');
     expect(src.match(/href="https:\/\/vouched\.autos"/g) ?? []).toHaveLength(1);
     expect(src).not.toMatch(/target=/);
+  });
+});
+
+describe('NOT_CLAIMED', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  const raw = readme.split("## What it doesn't claim")[1]?.split('\n## ')[0] ?? '';
+  const section = raw.replace(/\*\*/g, '').replace(/\s+/g, ' ');
+  const n = Number(raw.match(/(\d+) matched observations/)?.[1]);
+  it('reads the README section and its sample size', () => {
+    expect(section).toContain('Ecological inference');
+    expect(n).toBeGreaterThan(0);
+  });
+  it('has one entry per README bullet', () => {
+    expect(NOT_CLAIMED.length).toBe((raw.match(/^- \*\*/gm) ?? []).length);
+  });
+  it.each(NOT_CLAIMED.map((e) => [e.lead, e] as const))(
+    '"%s" is the README bullet, word for word',
+    (lead, e) => {
+      expect(section).toContain(`${lead} ${notClaimedText(e, n)}`);
+    },
+  );
+  it('reads without a number before methodology.json gives one', () => {
+    const counted = NOT_CLAIMED.filter((e) => typeof e.text === 'function');
+    expect(counted).toHaveLength(1);
+    expect(notClaimedText(counted[0])).not.toMatch(/\d/);
   });
 });
 

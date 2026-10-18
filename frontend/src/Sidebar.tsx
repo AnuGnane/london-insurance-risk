@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, type Nation } from './utils';
+import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
 import { examplePairs } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -201,6 +201,17 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
           )}
 
           <MultiplierChecks checks={m.multiplier_checks} />
+
+          <details className="disclosure pct-explainer">
+            <summary>What it doesn't claim</summary>
+            <ul className="not-claimed">
+              {NOT_CLAIMED.map((e) => (
+                <li key={e.lead}>
+                  <b>{e.lead}</b> {notClaimedText(e, m.n_matched)}
+                </li>
+              ))}
+            </ul>
+          </details>
         </div>
       )}
     </div>
