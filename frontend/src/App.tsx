@@ -376,6 +376,7 @@ function App() {
   };
 
   const clearDetail = () => {
+    selectionId.current++; // a late "Near me" fix or lookup must not reopen the panel
     userSelected.current = true;
     setDetail(null);
     setSearchedPc(null);
