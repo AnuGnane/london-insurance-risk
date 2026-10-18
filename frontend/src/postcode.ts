@@ -119,9 +119,14 @@ export async function loadOutcodeTable(
   }
 }
 
-// Fetched once, on the first lookup that needs it.
+// Fetched on the first lookup that needs it, and kept once it loads; a failed load
+// is not kept, so the next outage tries again.
 let outcodeTable: Promise<Record<string, string> | null> | null = null;
-const cachedOutcodeTable = () => (outcodeTable ??= loadOutcodeTable());
+const cachedOutcodeTable = () =>
+  (outcodeTable ??= loadOutcodeTable().then((t) => {
+    if (!t) outcodeTable = null;
+    return t;
+  }));
 
 /** The approximate area for a search postcodes.io failed on, or null when the
  *  failure is not an outage, there is no table, or the outcode is not in it. */
