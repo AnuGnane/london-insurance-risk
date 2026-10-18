@@ -31,7 +31,9 @@ describe('the waterfall table', () => {
     expect(table).toContain('scope="col"');
     expect(table).toContain('scope="row"');
     expect(table).toContain('<tfoot>');
-    expect(table.indexOf('Typical GB area')).toBeLessThan(table.indexOf('<tfoot>'));
+    const tbody = table.slice(table.indexOf('<tbody>'), table.indexOf('</tbody>'));
+    expect(tbody).toContain('Typical GB area');
+    expect(tbody.indexOf('Typical GB area')).toBeLessThan(tbody.indexOf('data.steps.map'));
     expect(table.slice(table.indexOf('<tfoot>'))).toContain("'This area'");
   });
 
