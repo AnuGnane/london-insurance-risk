@@ -613,6 +613,7 @@ body {
 .about-source-name { font-size: 0.8rem; font-weight: 600; color: var(--ink); }
 .about-source-origin { font-size: 0.68rem; color: var(--ink-faint); font-weight: 500; flex-shrink: 0; }
 .about-source-desc { font-size: 0.74rem; color: var(--ink-soft); line-height: 1.5; }
+.about-elsewhere { font-size: 0.74rem; color: var(--ink-soft); line-height: 1.5; margin-top: 12px; }
 .about-intro { font-size: 0.8125rem; color: var(--ink-soft); line-height: 1.6; margin-bottom: 14px; }
 .about-intro b { color: var(--ink); }
 
