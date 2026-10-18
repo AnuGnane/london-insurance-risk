@@ -352,6 +352,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <span
               key={side}
               className={`wf-bar ${up ? 'wf-up' : 'wf-down'}${side ? ' wf-bar-b' : ''}`}
+              aria-hidden="true"
               style={{ width: `${(Math.abs(s.step) / maxAbs) * 50}%` }}
             />
           );
@@ -420,50 +421,71 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 England and Wales otherwise. Tap a factor to colour the map by it.
               </p>
             </details>
-            <div
-              className={`waterfall${cmp ? ' waterfall-pair' : ''}`}
-              aria-label={
-                cmp
-                  ? `Breakdown of the estimated premiums by factor: ${SIDE_MARK[0]} ${names[0]}, ${SIDE_MARK[1]} ${names[1]}`
-                  : 'Breakdown of the estimated premium by factor'
-              }
-            >
-              <div className="wf-row wf-anchor">
-                <span className="wf-label">Typical GB area</span>
-                {amounts(data.premium_baseline, cmp?.baseline ?? 0)}
-              </div>
-              {data.steps.map((s) => {
-                const active = colorMode !== 'composite' && s.key === colorMode;
-                const other = cmp?.steps.find((o) => o.key === s.key);
-                return (
-                  <div key={s.key} className={`wf-row wf-step${active ? ' wf-active' : ''}`}>
-                    <span className="wf-label">
-                      {s.label}
-                      {s.percentile != null && !cmp && (
-                        <span className="wf-pct">{ordinalPct(s.percentile)} pct</span>
-                      )}
-                      {s.rankedWithin && !cmp && <span className="diag-tag">within {s.rankedWithin}</span>}
-                    </span>
-                    <span className="wf-track">
-                      {bar(s, 0)}
-                      {other && bar(other, 1)}
-                    </span>
-                    {other ? (
-                      <span className="wf-deltas">
-                        {delta(s, 0)}
-                        {delta(other, 1)}
-                      </span>
-                    ) : (
-                      delta(s)
-                    )}
-                  </div>
-                );
-              })}
-              <div className="wf-row wf-total">
-                <span className="wf-label">{cmp ? 'These areas' : 'This area'}</span>
-                {amounts(premium, cmp?.premium ?? 0, { color })}
-              </div>
-            </div>
+            <table className={`waterfall${cmp ? ' waterfall-pair' : ''}`}>
+              <caption>
+                <span className="sr-only">
+                  {cmp
+                    ? `Breakdown of the estimated premiums by factor: ${SIDE_MARK[0]} ${names[0]}, ${SIDE_MARK[1]} ${names[1]}`
+                    : 'Breakdown of the estimated premium by factor'}
+                </span>
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col"><span className="sr-only">Factor</span></th>
+                  <th scope="col"><span className="sr-only">Step size</span></th>
+                  <th scope="col"><span className="sr-only">£ step</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="wf-row wf-anchor">
+                  <th scope="row"><span className="wf-label">Typical GB area</span></th>
+                  <td className="wf-cell-amount" colSpan={2}>
+                    {amounts(data.premium_baseline, cmp?.baseline ?? 0)}
+                  </td>
+                </tr>
+                {data.steps.map((s) => {
+                  const active = colorMode !== 'composite' && s.key === colorMode;
+                  const other = cmp?.steps.find((o) => o.key === s.key);
+                  return (
+                    <tr key={s.key} className={`wf-row wf-step${active ? ' wf-active' : ''}`}>
+                      <th scope="row">
+                        <span className="wf-label">
+                          {s.label}
+                          {s.percentile != null && !cmp && (
+                            <span className="wf-pct">{ordinalPct(s.percentile)} pct</span>
+                          )}
+                          {s.rankedWithin && !cmp && <span className="diag-tag">within {s.rankedWithin}</span>}
+                        </span>
+                      </th>
+                      <td className="wf-cell-track">
+                        <span className="wf-track">
+                          {bar(s, 0)}
+                          {other && bar(other, 1)}
+                        </span>
+                      </td>
+                      <td className="wf-cell-delta">
+                        {other ? (
+                          <span className="wf-deltas">
+                            {delta(s, 0)}
+                            {delta(other, 1)}
+                          </span>
+                        ) : (
+                          delta(s)
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="wf-row wf-total">
+                  <th scope="row"><span className="wf-label">{cmp ? 'These areas' : 'This area'}</span></th>
+                  <td className="wf-cell-amount" colSpan={2}>
+                    {amounts(premium, cmp?.premium ?? 0, { color })}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
             <p className="drivers-note">
               Each step is this area's factor versus a national-median area; the steps add up
               exactly to the estimate, and each factor's share is independent of ordering.

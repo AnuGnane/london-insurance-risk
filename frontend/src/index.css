@@ -948,13 +948,23 @@ body {
 .pct-explainer p { margin-top: 6px; }
 
 /* ---- Premium waterfall ---------------------------------------------------- */
-.waterfall { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
-.wf-row { display: grid; grid-template-columns: 1fr 64px auto; align-items: center;
-  gap: 8px; padding: 4px 0; font-size: 13px; }
+/* A real table, so screen readers hear its name, columns and row count. Never set
+   `display` on the table or its cells: Blink and WebKit drop the semantics. */
+.waterfall { margin-top: 10px; width: 100%; border-collapse: collapse; font-size: 13px; }
+.waterfall th, .waterfall td {
+  padding: 4px 0; vertical-align: middle; text-align: left; font-weight: inherit;
+}
+.waterfall thead th { padding: 0; }        /* sr-only column names: no visible row */
+.waterfall tbody tr + tr > * { padding-top: 8px; }        /* the old 4px row gap */
+.waterfall tbody tr:last-child > * { padding-bottom: 10px; }
+.waterfall .wf-cell-track { width: 64px; padding-left: 8px; }
+.waterfall .wf-cell-delta, .waterfall .wf-cell-amount {
+  width: 1%; white-space: nowrap; padding-left: 8px; text-align: right;
+}
 .wf-label { display: flex; align-items: center; gap: 6px; color: var(--ink);
   flex-wrap: wrap; }
 .wf-pct { font-size: 11px; color: var(--ink-faint); opacity: .85; }
-.wf-track { position: relative; height: 8px; }
+.wf-track { display: block; position: relative; height: 8px; }
 .wf-bar { position: absolute; top: 0; height: 8px; border-radius: 2px; }
 .wf-up { right: 50%; background: var(--up-bar); }       /* dearer → grows left from centre */
 .wf-down { left: 50%; background: var(--down-bar); }       /* cheaper → grows right from centre */
@@ -964,10 +974,11 @@ body {
 .wf-arrow { font-size: 0.7em; margin-right: 3px; vertical-align: 1px; }
 .wf-delta.pos { color: var(--up); }
 .wf-delta.neg { color: var(--down); }
-.wf-anchor, .wf-total { grid-template-columns: 1fr auto; font-weight: 700; }
-.wf-anchor { color: var(--anchor); border-bottom: 1px dashed var(--hairline-soft); }
-.wf-total { border-top: 1px solid var(--hairline); margin-top: 2px; padding-top: 8px;
-  font-size: 15px; }
+.wf-anchor, .wf-total { font-weight: 700; }
+.wf-anchor { color: var(--anchor); }
+.wf-anchor > * { border-bottom: 1px dashed var(--hairline-soft); }
+.wf-total { font-size: 15px; }
+.waterfall .wf-total > * { border-top: 1px solid var(--hairline); padding-top: 8px; }
 .wf-amount { font-variant-numeric: tabular-nums; }
 .wf-active .wf-label { font-weight: 700; }
 .chip-up { color: var(--up); }
@@ -995,6 +1006,6 @@ body {
 .wf-deltas .wf-delta { font-size: 12px; }
 
 @media (max-width: 560px) {
-  .wf-row { grid-template-columns: 1fr auto; }
+  .waterfall .wf-cell-track { width: 0; padding-left: 0; }
   .wf-track { display: none; }            /* keep the signed £ + percentile, drop the bar */
 }
