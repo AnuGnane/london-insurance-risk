@@ -87,6 +87,22 @@ export const MultiplierChecks: React.FC<{
   );
 };
 
+/** The calibration's variance decomposition: how much of the spread between
+ *  areas place alone, composition alone and both together explain. */
+export const VarianceSplit: React.FC<{
+  variance: Methodology['variance'];
+}> = ({ variance }) => {
+  if (!variance) return null;
+  return (
+    <p className="note">
+      Place alone explains R² {fmt(variance.place_only_r2, 2)} of the spread
+      between areas; who lives there alone, {fmt(variance.composition_only_r2, 2)};
+      together, {fmt(variance.full_r2, 2)}. Composition explaining more than place
+      is reported as a finding, not tuned away.
+    </p>
+  );
+};
+
 const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
   const [open, setOpen] = useState(false);
   if (!m) return null;
@@ -133,6 +149,7 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
             of the variance in real average premiums; predictions rank areas at
             ρ {fmt(m.spearman, 2)} against actual.
           </p>
+          <VarianceSplit variance={m.variance} />
 
           {features.length > 0 && (
             <div className="feature-table">

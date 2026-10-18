@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Feature } from 'geojson';
 import { countRankable, examplePairs, getGeojson, getMethodology, getRankings, tilesUrl } from './api';
 import type { LsoaProps } from './types';
-import { MultiplierChecks } from './Sidebar';
+import { MultiplierChecks, VarianceSplit } from './Sidebar';
 import { buildLookup, formatFigure } from './utils';
 
 const area = (code: string, props: Partial<LsoaProps>): Feature => ({
@@ -173,6 +173,38 @@ describe('getMethodology', () => {
       expect(src).not.toContain(c.pair);
       expect(src).not.toContain(String(c.predicted_ratio));
     }
+  });
+
+  it('maps the place vs composition R² split', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(committed, { status: 200 })));
+    const m = (await getMethodology())!;
+    const vd = raw.variance_decomposition;
+    expect(m.variance).toEqual({
+      place_only_r2: vd.place_only_r2,
+      composition_only_r2: vd.composition_only_r2,
+      full_r2: vd.full_r2,
+    });
+    const html = renderToStaticMarkup(createElement(VarianceSplit, { variance: m.variance }));
+    for (const v of [vd.place_only_r2, vd.composition_only_r2, vd.full_r2]) {
+      expect(html).toContain(v.toFixed(2));
+    }
+    expect(html).toContain('reported as a finding, not tuned away');
+  });
+
+  it('has no place vs composition sentence when the JSON lacks the key', async () => {
+    const { variance_decomposition: _drop, ...rest } = raw;
+    void _drop;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(rest), { status: 200 })));
+    const m = (await getMethodology())!;
+    expect(m.variance).toBeNull();
+    expect(renderToStaticMarkup(createElement(VarianceSplit, { variance: m.variance }))).toBe('');
+  });
+
+  it("quotes the README's place vs composition finding", () => {
+    const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+    const para = readme.split('**Place vs composition.**')[1]?.split('\n\n')[0] ?? '';
+    expect(para).toContain('Composition alone explains more of the spread than');
+    expect(para.replace(/\s+/g, ' ')).toContain('reported as a finding, not tuned away');
   });
 
   it('returns null when the file is missing', async () => {

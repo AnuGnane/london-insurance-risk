@@ -59,6 +59,9 @@ export interface Methodology {
   /** Modelled premium ratio for named postcode-area pairs (calibration's
    *  spatial-multiplier sanity checks); null when the JSON lacks them. */
   multiplier_checks?: { pair: string; predicted_ratio: number }[] | null;
+  /** R² of place-only, composition-only and full fits (calibration's variance
+   *  decomposition); null when the JSON lacks it. */
+  variance?: { place_only_r2: number; composition_only_r2: number; full_r2: number } | null;
 }
 
 // Properties baked into each GeoJSON feature (see "backend contract" notes).

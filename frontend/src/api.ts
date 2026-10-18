@@ -147,6 +147,11 @@ interface RawMethodology {
     };
   };
   spatial_multiplier_checks?: { pair: string; predicted_ratio: number }[];
+  variance_decomposition?: {
+    place_only_r2: number;
+    composition_only_r2: number;
+    full_r2: number;
+  };
 }
 
 /** Load the trimmed calibration summary and shape it for the methodology panel. */
@@ -192,6 +197,13 @@ export async function getMethodology(): Promise<Methodology | null> {
             pair: c.pair,
             predicted_ratio: c.predicted_ratio,
           }))
+        : null,
+      variance: m.variance_decomposition
+        ? {
+            place_only_r2: m.variance_decomposition.place_only_r2,
+            composition_only_r2: m.variance_decomposition.composition_only_r2,
+            full_r2: m.variance_decomposition.full_r2,
+          }
         : null,
     };
   } catch {
