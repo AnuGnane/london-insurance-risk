@@ -8,6 +8,8 @@
  * match our 2011 `area_code`s, so we use coordinates instead (vintage-independent).
  */
 
+import { POSTCODE_LOOKUP_TIMEOUT_MS } from './layout';
+
 const POSTCODES_API = 'https://api.postcodes.io';
 
 // UK postcode shape: outward code (area letters + district) then inward code.
@@ -47,7 +49,8 @@ export type PostcodeErrorCode =
   | 'no_location'
   | 'rate_limited'
   | 'offline'
-  | 'network';
+  | 'network'
+  | 'timeout';
 
 const MESSAGES: Record<PostcodeErrorCode, string> = {
   malformed:
@@ -59,6 +62,7 @@ const MESSAGES: Record<PostcodeErrorCode, string> = {
   rate_limited: 'Too many searches in a short time. Wait a few seconds and try again.',
   offline: 'You appear to be offline. Check your connection and try again.',
   network: "Couldn't reach the postcode service (postcodes.io). Try again in a moment.",
+  timeout: "The postcode service (postcodes.io) didn't answer in time. Try again in a moment.",
 };
 
 export class PostcodeError extends Error {
@@ -90,19 +94,31 @@ interface PostcodesIoResult {
  */
 export async function resolvePostcode(
   input: string,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs: number = POSTCODE_LOOKUP_TIMEOUT_MS
 ): Promise<PostcodeHit> {
   const query = parsePostcode(input);
   if (!query) throw new PostcodeError('malformed');
   if (isNorthernIreland(query)) throw new PostcodeError('northern_ireland');
 
   const path = query.kind === 'postcode' ? 'postcodes' : 'outcodes';
+  // A stalled connection would otherwise leave the search "Searching" for the
+  // browser's own limit, which on a phone is minutes.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
   try {
-    res = await fetchImpl(`${POSTCODES_API}/${path}/${encodeURIComponent(query.text)}`);
-  } catch {
+    res = await fetchImpl(`${POSTCODES_API}/${path}/${encodeURIComponent(query.text)}`, {
+      signal: controller.signal,
+    });
+  } catch (e) {
     const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-    throw new PostcodeError(offline ? 'offline' : 'network');
+    if (offline) throw new PostcodeError('offline');
+    throw new PostcodeError(
+      e instanceof Error && e.name === 'AbortError' ? 'timeout' : 'network'
+    );
+  } finally {
+    clearTimeout(timer);
   }
   if (res.status === 404) throw new PostcodeError('not_found');
   if (res.status === 429) throw new PostcodeError('rate_limited');

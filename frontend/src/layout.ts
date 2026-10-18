@@ -27,6 +27,9 @@ export const NEAR_ME_MAX_DEGREES = 0.1;
 /** "Near me": how long to wait for a position fix, ms. */
 export const NEAR_ME_TIMEOUT_MS = 10_000;
 
+/** Postcode search: how long to wait for postcodes.io before giving up, ms. */
+export const POSTCODE_LOOKUP_TIMEOUT_MS = 8_000;
+
 /** "Near me": how old a cached fix may be and still be used, ms. */
 export const NEAR_ME_MAX_AGE_MS = 60_000;
 
