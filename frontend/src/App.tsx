@@ -15,6 +15,7 @@ import {
   unionBounds,
   boundsCentre,
   featureToDetail,
+  outcodeFallbackNote,
   featureAtPoint,
   type Nation,
 } from './utils';
@@ -26,7 +27,9 @@ import {
   addRecentSearch,
   clearRecentSearches,
   loadRecentSearches,
+  outcodeFallback,
   resolvePostcode,
+  type OutcodeFallbackHit,
   type PostcodeHit,
 } from './postcode';
 import { layoutCssVars } from './layout';
@@ -267,8 +270,11 @@ function App() {
       else showPostcodeHit(geojson.features, hit);
       setRecentSearches((list) => addRecentSearch(list, hit.label));
     } catch (err: unknown) {
+      // postcodes.io down: the bundled outcode table gives the outcode's centre area.
+      const fallback = await outcodeFallback(postcode, err);
       const target = searchTarget(asCompare, comparingRef.current);
       if (target === 'drop') return;
+      if (fallback && target === 'main' && showOutcodeFallback(fallback)) return;
       setSearchError(err instanceof Error ? err.message : String(err));
       if (target === 'compare') return;
       setDetail(null);
@@ -277,6 +283,23 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // An approximate area from the outcode table, shown with its caveat. False when
+  // the area is not on the loaded map, so the lookup's own error stands.
+  const showOutcodeFallback = (hit: OutcodeFallbackHit): boolean => {
+    const feature = lookup.get(hit.lsoa11cd);
+    const props = feature?.properties as LsoaProps | undefined;
+    if (!feature || !props) return false;
+    setDetail({
+      ...featureToDetail(props),
+      title: `${hit.outcode} · district centre`,
+      note: outcodeFallbackNote(hit.outcode),
+    });
+    setSearchedPc(null);
+    setSheetExpanded(true);
+    focusFeature(feature);
+    return true;
   };
 
   // A postcode search while "Compare with…" is armed: pin its area as the second one.

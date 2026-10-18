@@ -3,13 +3,17 @@ import {
   addRecentSearch,
   clearRecentSearches,
   isNorthernIreland,
+  loadOutcodeTable,
   loadRecentSearches,
+  outcodeFallback,
   normalisePostcode,
   parsePostcode,
   PostcodeError,
   RECENT_SEARCHES_MAX,
+  resolveOutcodeFallback,
   resolvePostcode,
 } from './postcode';
+import { readFileSync } from 'node:fs';
 import { POSTCODE_LOOKUP_TIMEOUT_MS } from './layout';
 
 describe('normalisePostcode', () => {
@@ -232,5 +236,81 @@ describe('recent searches', () => {
     expect(addRecentSearch(['SW1A'], 'E1 6AN', throwingStorage)).toEqual(['E1 6AN', 'SW1A']);
     expect(() => clearRecentSearches(throwingStorage)).not.toThrow();
     expect(addRecentSearch([], 'E1 6AN', null)).toEqual(['E1 6AN']);
+  });
+});
+
+// A fixture table: the real one is baked on the Mac (make showcase-outcodes).
+const TABLE: Record<string, string> = { CV21: 'E01000001', SW1A: 'E01000002' };
+
+describe('resolveOutcodeFallback', () => {
+  it('looks up a bare outcode', () => {
+    expect(resolveOutcodeFallback('cv21', TABLE)).toEqual({
+      outcode: 'CV21',
+      lsoa11cd: 'E01000001',
+      approximate: true,
+    });
+  });
+  it("looks up a full postcode's outcode", () => {
+    expect(resolveOutcodeFallback('sw1a1aa', TABLE)).toEqual({
+      outcode: 'SW1A',
+      lsoa11cd: 'E01000002',
+      approximate: true,
+    });
+  });
+  it('gives null for an outcode not in the table, or a malformed entry', () => {
+    expect(resolveOutcodeFallback('ZZ9', TABLE)).toBeNull();
+    expect(resolveOutcodeFallback('hello', TABLE)).toBeNull();
+  });
+  it('gives null for Northern Ireland', () => {
+    expect(resolveOutcodeFallback('BT1', { BT1: 'N00000001' })).toBeNull();
+  });
+});
+
+describe('loadOutcodeTable', () => {
+  it('fetches the baked table', async () => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify(TABLE)));
+    expect(await loadOutcodeTable(f)).toEqual(TABLE);
+    expect(String(f.mock.calls[0][0])).toMatch(/data\/outcodes\.json$/);
+  });
+  it('treats a missing file as no fallback', async () => {
+    const f = vi.fn().mockResolvedValue(new Response('', { status: 404 }));
+    expect(await loadOutcodeTable(f)).toBeNull();
+  });
+  it('treats an unreachable or unreadable file as no fallback', async () => {
+    expect(await loadOutcodeTable(vi.fn().mockRejectedValue(new TypeError('x')))).toBeNull();
+    const bad = vi.fn().mockResolvedValue(new Response('not json'));
+    expect(await loadOutcodeTable(bad)).toBeNull();
+  });
+});
+
+describe('outcodeFallback', () => {
+  const load = () => Promise.resolve(TABLE);
+  it.each(['network', 'timeout'] as const)('falls back when postcodes.io fails with %s', async (code) => {
+    const hit = await outcodeFallback('CV21 1AA', new PostcodeError(code), load);
+    expect(hit?.lsoa11cd).toBe('E01000001');
+  });
+  it.each(['offline', 'not_found', 'rate_limited', 'malformed'] as const)(
+    'does not fall back on %s',
+    async (code) => {
+      const loader = vi.fn(load);
+      expect(await outcodeFallback('CV21', new PostcodeError(code), loader)).toBeNull();
+      expect(loader).not.toHaveBeenCalled();
+    }
+  );
+  it('does not fall back on an error that is not a lookup failure', async () => {
+    expect(await outcodeFallback('CV21', new Error('x'), load)).toBeNull();
+  });
+  it('gives null when there is no table', async () => {
+    expect(await outcodeFallback('CV21', new PostcodeError('network'), () => Promise.resolve(null))).toBeNull();
+  });
+});
+
+describe('no outcode or area code typed into App.tsx', () => {
+  const src = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+  it('carries no area code', () => {
+    expect(src).not.toMatch(/['"`][ESW]0[0-9]{7}['"`]/);
+  });
+  it('carries no outcode literal', () => {
+    expect(src).not.toMatch(/['"`][A-Z]{1,2}[0-9][A-Z0-9]?( [0-9][A-Z]{2})?['"`]/);
   });
 });

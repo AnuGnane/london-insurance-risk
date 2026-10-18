@@ -19,6 +19,7 @@ import {
   PREMIUM_CAVEAT,
   ELSEWHERE_COPY,
   NOT_CLAIMED,
+  outcodeFallbackNote,
   notClaimedText,
   SCOTLAND_CAVEAT,
   caveatsFor,
@@ -678,6 +679,14 @@ describe('NOT_CLAIMED', () => {
     const counted = NOT_CLAIMED.filter((e) => typeof e.text === 'function');
     expect(counted).toHaveLength(1);
     expect(notClaimedText(counted[0])).not.toMatch(/\d/);
+  });
+});
+
+describe('outcodeFallbackNote', () => {
+  it('names the outcode and says the area is approximate', () => {
+    expect(outcodeFallbackNote('CV21')).toBe(
+      "postcodes.io didn't answer, so this is the area at the centre of CV21, not your postcode's."
+    );
   });
 });
 
