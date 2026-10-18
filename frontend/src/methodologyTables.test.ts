@@ -6,8 +6,11 @@ import { describe, expect, it } from 'vitest';
 
 const src = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8');
 const start = src.indexOf('export const MultiplierChecks');
-const end = src.indexOf('\nconst ', src.indexOf('const MethodologyPanel') + 1);
-const block = src.slice(start, end < 0 ? undefined : end);
+// From MultiplierChecks to the end of MethodologyPanel: the next top-level `const`.
+const panel = src.indexOf('const MethodologyPanel');
+const next = src.slice(panel + 1).search(/^(export )?const /m);
+const end = next < 0 ? src.length : panel + 1 + next;
+const block = src.slice(start, end);
 const tables = block.split('<table').slice(1).map((t) => t.split('</table>')[0]);
 
 // The kicker strings the captions replaced, pinned so the words do not drift.
@@ -21,6 +24,7 @@ describe('methodology tables', () => {
   it('finds the methodology block', () => {
     expect(start).toBeGreaterThan(-1);
     expect(block).toContain('MethodologyPanel');
+    expect(block).not.toContain('export const Sidebar');
   });
 
   it('has no feature-row divs', () => {
