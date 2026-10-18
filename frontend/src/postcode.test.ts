@@ -10,6 +10,7 @@ import {
   RECENT_SEARCHES_MAX,
   resolvePostcode,
 } from './postcode';
+import { POSTCODE_LOOKUP_TIMEOUT_MS } from './layout';
 
 describe('normalisePostcode', () => {
   it.each([
@@ -71,7 +72,9 @@ describe('resolvePostcode', () => {
       json({ result: { postcode: 'E1 6AN', longitude: -0.0723, latitude: 51.5166 } })
     );
     const hit = await resolvePostcode(' e16an ', f);
-    expect(String(f.mock.calls[0])).toBe('https://api.postcodes.io/postcodes/E1%206AN');
+    expect(f).toHaveBeenCalledWith('https://api.postcodes.io/postcodes/E1%206AN', {
+      signal: expect.any(AbortSignal),
+    });
     expect(hit).toEqual({
       query: { kind: 'postcode', text: 'E1 6AN' },
       label: 'E1 6AN',
@@ -85,7 +88,9 @@ describe('resolvePostcode', () => {
       json({ result: { outcode: 'SW1A', longitude: -0.135, latitude: 51.501 } })
     );
     const hit = await resolvePostcode('sw1a', f);
-    expect(String(f.mock.calls[0])).toBe('https://api.postcodes.io/outcodes/SW1A');
+    expect(f).toHaveBeenCalledWith('https://api.postcodes.io/outcodes/SW1A', {
+      signal: expect.any(AbortSignal),
+    });
     expect(hit.query.kind).toBe('outcode');
     expect(hit.label).toBe('SW1A');
   });
@@ -120,10 +125,51 @@ describe('resolvePostcode', () => {
     expect(await codeOf(resolvePostcode('E1 6AN', fail))).toBe('network');
   });
 
+  describe('a lookup that never answers', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** Answers only by rejecting once its signal aborts, like a stalled request. */
+    const stalled = vi.fn(
+      (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted.', 'AbortError'))
+          );
+        })
+    );
+
+    it('times out after POSTCODE_LOOKUP_TIMEOUT_MS', async () => {
+      vi.useFakeTimers();
+      const result = codeOf(resolvePostcode('E1 6AN', stalled));
+      await vi.advanceTimersByTimeAsync(POSTCODE_LOOKUP_TIMEOUT_MS - 1);
+      expect(stalled.mock.calls[0][1]?.signal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await result).toBe('timeout');
+    });
+
+    it('leaves no timer behind when the answer comes at once', async () => {
+      vi.useFakeTimers();
+      const f = vi.fn(async () =>
+        json({ result: { postcode: 'E1 6AN', longitude: -0.0723, latitude: 51.5166 } })
+      );
+      const hit = await resolvePostcode('E1 6AN', f);
+      expect(hit.label).toBe('E1 6AN');
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('says the service did not answer in time', () => {
+      expect(new PostcodeError('timeout').message).toBe(
+        "The postcode service (postcodes.io) didn't answer in time. Try again in a moment."
+      );
+    });
+  });
+
   it('gives each error a distinct message for the panel', () => {
     const codes = [
       'malformed', 'northern_ireland', 'not_found', 'no_location',
-      'rate_limited', 'offline', 'network',
+      'rate_limited', 'offline', 'network', 'timeout',
     ] as const;
     const messages = codes.map((c) => new PostcodeError(c).message);
     expect(new Set(messages).size).toBe(codes.length);
