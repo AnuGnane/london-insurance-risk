@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-// Every user action that changes the panel bumps selectionId, so a late answer
-// from an earlier action (a postcode lookup, a "Near me" fix) sees it is stale
-// and drops itself instead of reopening the panel.
+// Every user action that changes the panel bumps selectionId, so a "Near me" fix
+// that lands after a later action sees it is stale and drops itself instead of
+// reopening the panel.
 const src = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 
 /** The body of `const <name> = ...`, by brace-matching from its first `{`. */
