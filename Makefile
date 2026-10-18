@@ -1,4 +1,4 @@
-.PHONY: ingest features risk calibrate api test clean showcase-data showcase-tiles
+.PHONY: ingest features risk calibrate api test clean showcase-data showcase-tiles showcase-outcodes
 
 ingest:        ## M1: download + parse all sources -> data/interim/*.parquet
 	python -m src.ingest.boundaries
@@ -34,6 +34,9 @@ showcase-data: ## Bake static assets for GitHub Pages -> frontend/public/data/
 
 showcase-tiles: ## Bake LSOA PMTiles for the Vouched map -> frontend/public/data/
 	python -m src.showcase.bake_tiles
+
+showcase-outcodes: ## Bake the outcode -> area search fallback -> frontend/public/data/outcodes.json
+	python -m src.showcase.bake_outcodes
 
 test:
 	pytest -q
