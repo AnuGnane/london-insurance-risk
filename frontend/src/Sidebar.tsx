@@ -61,13 +61,13 @@ export const MultiplierChecks: React.FC<{
 }> = ({ checks }) => {
   if (!checks || checks.length === 0) return null;
   return (
-    <div className="feature-table" style={{ marginTop: 14 }}>
+    <div style={{ marginTop: 14 }}>
       <p className="note">
         Does the model reproduce the real spatial spread? Its premium ratio for
         named pairs of postcode areas — the national average cancels in a ratio.
       </p>
-      <table className="multiplier-table">
-        <caption className="feature-kicker">Spatial multiplier checks</caption>
+      <table className="feature-table">
+        <caption>Spatial multiplier checks</caption>
         <thead>
           <tr>
             <th scope="col">Pair</th>
@@ -152,40 +152,52 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
           <VarianceSplit variance={m.variance} />
 
           {features.length > 0 && (
-            <div className="feature-table">
-              <div className="feature-kicker">
-                Independent signal (partial r, net of the others)
-              </div>
-              {features.map((f) => (
-                <div key={f.key} className="feature-row">
-                  <span className="f-name">
-                    {COMPONENT_LABELS[f.key] ?? f.key}
-                  </span>
-                  <span className="f-r">
-                    {f.partial_r >= 0 ? '+' : '−'}
-                    {Math.abs(f.partial_r).toFixed(2)}
-                    {'  ·  VIF '}
-                    {f.vif.toFixed(1)}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <table className="feature-table">
+              <caption>Independent signal (partial r, net of the others)</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Signal</th>
+                  <th scope="col">Partial r</th>
+                  <th scope="col">VIF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {features.map((f) => (
+                  <tr key={f.key}>
+                    <th scope="row">{COMPONENT_LABELS[f.key] ?? f.key}</th>
+                    <td>
+                      {f.partial_r >= 0 ? '+' : '−'}
+                      {Math.abs(f.partial_r).toFixed(2)}
+                    </td>
+                    <td>{f.vif.toFixed(1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
 
           {m.cross_source && m.cross_source.rows.length > 0 && (
-            <div className="feature-table" style={{ marginTop: 14 }}>
-              <div className="feature-kicker">
+            <table className="feature-table" style={{ marginTop: 14 }}>
+              <caption>
                 Cross-source check — {m.cross_source.name} (predicted vs actual)
-              </div>
-              {m.cross_source.rows.map((r) => (
-                <div key={r.area_name} className="feature-row">
-                  <span className="f-name">{r.area_name}</span>
-                  <span className="f-r">
-                    £{Math.round(r.predicted_gbp)} vs £{Math.round(r.actual_gbp)}
-                  </span>
-                </div>
-              ))}
-            </div>
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Area</th>
+                  <th scope="col">Predicted</th>
+                  <th scope="col">Published</th>
+                </tr>
+              </thead>
+              <tbody>
+                {m.cross_source.rows.map((r) => (
+                  <tr key={r.area_name}>
+                    <th scope="row">{r.area_name}</th>
+                    <td>£{Math.round(r.predicted_gbp)}</td>
+                    <td>£{Math.round(r.actual_gbp)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
 
           <MultiplierChecks checks={m.multiplier_checks} />
