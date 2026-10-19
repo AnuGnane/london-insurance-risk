@@ -462,6 +462,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                           {bar(s, 0)}
                           {other && bar(other, 1)}
                         </span>
+                        <span className="sr-only">
+                          {`${other ? `${names[0]}: ` : ''}${Math.round((100 * Math.abs(s.step)) / maxAbs)}% of the largest step`}
+                        </span>
+                        {other && (
+                          <span className="sr-only">
+                            {`${names[1]}: ${Math.round((100 * Math.abs(other.step)) / maxAbs)}% of the largest step`}
+                          </span>
+                        )}
                       </td>
                       <td className="wf-cell-delta">
                         {other ? (

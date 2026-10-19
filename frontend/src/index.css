@@ -960,7 +960,7 @@ body {
 }
 .waterfall thead th { padding: 0; }        /* sr-only column names: no visible row */
 .waterfall tbody tr + tr > * { padding-top: 8px; }        /* the old 4px row gap */
-.waterfall tbody tr:last-child > * { padding-bottom: 10px; }
+.waterfall tbody tr.wf-step:last-child > * { padding-bottom: 10px; }
 .waterfall .wf-cell-track { width: 64px; padding-left: 8px; }
 .waterfall .wf-cell-delta, .waterfall .wf-cell-amount {
   width: 1%; white-space: nowrap; padding-left: 8px; text-align: right;
