@@ -524,6 +524,23 @@ export function explainArea(steps: WaterfallStep[], baseline: number, premium: n
 /** One side of a two-area comparison: the panel's title and its premium. */
 export interface CompareSide { name: string; premium?: number | null; }
 
+/** Below this ratio the compare gives no "N× the price": a rounding gap is no multiple. */
+export const MULTIPLIER_MIN = 1.05;
+
+/**
+ * How many times the dearer premium is the cheaper ("2.4×", one decimal, as the
+ * spatial-multiplier table writes one), or null when either side is missing or
+ * zero, or the two are within MULTIPLIER_MIN of each other.
+ */
+export function premiumMultiplier(
+  dearer: number | null | undefined,
+  cheaper: number | null | undefined
+): string | null {
+  if (!dearer || !cheaper) return null;
+  const ratio = dearer / cheaper;
+  return ratio >= MULTIPLIER_MIN ? `${formatFigure(ratio, 1)}×` : null;
+}
+
 /**
  * One sentence comparing two areas' estimated premiums: which is dearer and by
  * how many £ (the difference of the two baked premiums, rounded as `gbp` rounds).
@@ -536,7 +553,9 @@ export function compareSummary(a: CompareSide, b: CompareSide): string {
   const gap = Math.round(Math.abs(a.premium - b.premium));
   if (gap === 0) return `${a.name} and ${b.name} have the same estimated premium.`;
   const [dearer, cheaper] = a.premium > b.premium ? [a, b] : [b, a];
-  return `${dearer.name} is ${gbp(gap)} a year dearer than ${cheaper.name}.`;
+  const multiple = premiumMultiplier(dearer.premium, cheaper.premium);
+  const tail = multiple ? `, about ${multiple} the price` : '';
+  return `${dearer.name} is ${gbp(gap)} a year dearer than ${cheaper.name}${tail}.`;
 }
 
 /** One side of a waterfall comparison: the area's name, its steps and premium. */
