@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextIndex, segmentedIndex, typeAheadIndex } from './keyboard';
+import { escapeAction, nextIndex, segmentedIndex, typeAheadIndex } from './keyboard';
 
 describe('nextIndex', () => {
   it('steps down and up, stopping at the ends', () => {
@@ -72,5 +72,24 @@ describe('typeAheadIndex', () => {
     expect(typeAheadIndex(names, 'x', 0)).toBeNull();
     expect(typeAheadIndex([], 's', 0)).toBeNull();
     expect(typeAheadIndex(names, '', 0)).toBeNull();
+  });
+});
+
+describe('escapeAction', () => {
+  const base = { detailOpen: false, calloutShown: false, inTextField: false };
+  it('closes an open panel', () => {
+    expect(escapeAction('Escape', { ...base, detailOpen: true })).toBe('close');
+    expect(escapeAction('Escape', { ...base, detailOpen: true, calloutShown: true })).toBe('close');
+  });
+  it('dismisses the callout when no panel is open', () => {
+    expect(escapeAction('Escape', { ...base, calloutShown: true })).toBe('dismiss');
+  });
+  it('leaves Escape to a text field', () => {
+    expect(escapeAction('Escape', { ...base, detailOpen: true, inTextField: true })).toBeNull();
+    expect(escapeAction('Escape', { ...base, calloutShown: true, inTextField: true })).toBeNull();
+  });
+  it('ignores other keys and an idle page', () => {
+    expect(escapeAction('Enter', { ...base, detailOpen: true })).toBeNull();
+    expect(escapeAction('Escape', base)).toBeNull();
   });
 });

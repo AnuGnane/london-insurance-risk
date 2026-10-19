@@ -36,3 +36,27 @@ describe('user actions that set the panel bump selectionId', () => {
     expect(body).toMatch(/selectionId\.current\+\+|\+\+selectionId\.current/);
   });
 });
+
+// Escape closes the panel (keyboard.ts's escapeAction) and hands focus back to
+// the search box, as "Back to rankings" does.
+describe('Escape in Sidebar.tsx', () => {
+  const sidebar = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8');
+  it('registers and removes the keydown listener in the same effect', () => {
+    const effect = sidebar.match(/useEffect\(\(\) => \{[\s\S]*?\n {2}\}, \[[^\]]*\]\);/g) ?? [];
+    const esc = effect.find((e) => e.includes('escapeAction('));
+    expect(esc).toBeDefined();
+    expect(esc).toMatch(/window\.addEventListener\('keydown', (\w+)\)/);
+    const name = esc!.match(/window\.addEventListener\('keydown', (\w+)\)/)![1];
+    expect(esc).toContain(`return () => window.removeEventListener('keydown', ${name})`);
+  });
+  it('follows onClear with the focus call, for Escape and the Back button', () => {
+    expect(sidebar).toMatch(/const closeDetail = [^\n]*\n\s*onClear\(\);\n\s*inputRef\.current\?\.focus\(\);/);
+    expect(sidebar).toMatch(/action === 'close'\) closeDetail\(\)/);
+    expect(sidebar).toContain('onClick={closeDetail}');
+    expect(sidebar.match(/onClear\(/g)).toHaveLength(1);
+    expect(sidebar).not.toMatch(/onClick=\{onClear\}/);
+  });
+  it('lets Escape from the search box close the panel (focus stays there after a search)', () => {
+    expect(sidebar).toContain('inTextField: e.target !== inputRef.current && isTextField(e.target)');
+  });
+});

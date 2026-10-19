@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Feature } from 'geojson';
 import { Search, ArrowLeft, ChevronDown, ChevronRight, LocateFixed, X } from 'lucide-react';
 import { DetailPanel } from './DetailPanel';
@@ -17,6 +17,7 @@ import {
   shouldShowCallout,
 } from './callout';
 import { detailBodyState } from './layout';
+import { escapeAction, isTextField } from './keyboard';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -266,12 +267,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // The first-visit "what am I looking at" card (callout.ts).
   const [calloutDismissed, setCalloutDismissed] = useState(loadCalloutDismissed);
   const bodyState = detailBodyState(loading, comparing, detail != null);
-  const dismissCallout = () => {
+  const dismissCallout = useCallback(() => {
     saveCalloutDismissed();
     setCalloutDismissed(true);
     // The button unmounts with the card: hand focus to the search, not <body>.
     inputRef.current?.focus();
-  };
+  }, []);
+  // Back to the rankings, with focus in the search box rather than on <body>.
+  const closeDetail = useCallback(() => {
+    onClear();
+    inputRef.current?.focus();
+  }, [onClear]);
+  const calloutShown = shouldShowCallout(calloutDismissed, detail != null);
+  // Escape closes the panel (or, with none open, the first-visit card).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const action = escapeAction(e.key, {
+        detailOpen: detail != null,
+        calloutShown,
+        // The search box has no Escape of its own, and focus stays there after
+        // a search, so Escape from it still closes the panel.
+        inTextField: e.target !== inputRef.current && isTextField(e.target),
+      });
+      if (action === 'close') closeDetail();
+      else if (action === 'dismiss') dismissCallout();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [detail, calloutShown, closeDetail, dismissCallout]);
   const nearMe = async () => {
     if (locating) return;  // not `disabled`: that would drop keyboard focus
     setLocating(true);
@@ -392,7 +416,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
-          {shouldShowCallout(calloutDismissed, detail != null) && (
+          {calloutShown && (
             <section className="callout" aria-label="What am I looking at">
               {CALLOUT_COPY.map((sentence) => (
                 <p key={sentence}>{sentence}</p>
@@ -460,7 +484,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : detail ? (
           <div className="section">
             <div className="detail-actions">
-              <button className="back-link" onClick={onClear}>
+              <button className="back-link" onClick={closeDetail}>
                 <ArrowLeft size={14} /> Back to rankings
               </button>
               <ShareButton title={detail.title} />
