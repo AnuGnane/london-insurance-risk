@@ -41,6 +41,25 @@ describe('the waterfall table', () => {
     expect(src).toMatch(/className=\{`wf-bar[^>]*aria-hidden="true"/s);
   });
 
+  it('gives every bar cell a hidden share of the largest step', () => {
+    const cells = table.split('<td className="wf-cell-track">').slice(1);
+    expect(cells.length).toBeGreaterThan(0);
+    for (const c of cells) {
+      const cell = c.slice(0, c.indexOf('</td>'));
+      const spans = [...cell.matchAll(/<span className="sr-only">([\s\S]*?)<\/span>/g)];
+      expect(spans.length).toBeGreaterThan(0);
+      for (const [, text] of spans) {
+        expect(text).toContain('maxAbs');
+        expect(text).toContain('% of the largest step');
+      }
+    }
+  });
+
+  it('pads only the last step row, so an empty step list leaves the anchor unpadded', () => {
+    expect(css).toMatch(/\.waterfall tbody tr\.wf-step:last-child > \*\s*\{[^}]*padding-bottom/);
+    expect(css).not.toMatch(/\.waterfall tbody tr:last-child/);
+  });
+
   it('puts no aria-label on a div without a role', () => {
     const divs = [...src.matchAll(/<div\b[^>]*>/gs)].map((m) => m[0]);
     expect(divs.length).toBeGreaterThan(0);
