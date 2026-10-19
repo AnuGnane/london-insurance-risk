@@ -205,7 +205,10 @@ src/transform/            aggregate_to_lsoa.py (M2) · build_risk_index.py (M3)
 src/calibrate/            wtw_index.py (anchor panel) · calibrate.py (regression + validation ladder)
 src/showcase/             bake_static.py (served GeoJSON) · bake_tiles.py (PMTiles)
 src/api/main.py           FastAPI — local dev only
-frontend/                 Vite + React + TypeScript + MapLibre GL
+frontend/                 Vite + React + TypeScript + MapLibre GL (see frontend/README.md)
+frontend/src/             components (*.tsx) and pure, unit-tested modules (*.ts)
+frontend/scripts/         build-time: methodology page copy, og:image render
+frontend/public/data/     baked by make showcase-data / showcase-tiles — never hand-edit
 tests/                    pytest, roughly one file per module
 data/                     git-ignored — never commit
 ```
@@ -219,7 +222,9 @@ data/                     git-ignored — never commit
 | [`DATA_PROVENANCE_AND_TRANSFORMS.md`](DATA_PROVENANCE_AND_TRANSFORMS.md) | Every source, why it was chosen, the exact transform and normalisation |
 | [`docs/superpowers/info/PROJECT_TECHNICAL_OVERVIEW.md`](docs/superpowers/info/PROJECT_TECHNICAL_OVERVIEW.md) | Model maths, architecture, evolution decisions |
 | [`docs/superpowers/info/STATUS.md`](docs/superpowers/info/STATUS.md) | Current state, per-phase completion log, known limitations |
+| [`frontend/README.md`](frontend/README.md) | The map's scripts, gate, committed data files, source modules and what each test pins |
 | [`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md) | Working agreement and conventions for coding agents |
+| [`HOLIDAY.md`](HOLIDAY.md) | The October 2026 package queue and its rules for the scheduled runs |
 
 Phase plans and older design docs under `docs/superpowers/` are dated historical records —
 where they disagree with `AUDIT.md` (2026-07 addendum) or `STATUS.md`, those two win.

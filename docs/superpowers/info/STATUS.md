@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-18 (model); frontend section updated 2026-10-17 for the October
+Last updated: 2026-07-18 (model); frontend section updated 2026-10-19 for the October
 holiday queue (`HOLIDAY.md`). July's branch: `docs-finalize-transparency`.
 
 **2026-07 model wave — COMPLETE (Phase 4 flood + uncertainty bands + IMD sub-domains + Vouched bridge).**
@@ -159,6 +159,23 @@ side by side, keyboard navigation of the rankings and the map, an `og:image` ren
 build time, and a streaming first paint that draws the committed `lsoa-risk.pmtiles` before
 the full GeoJSON arrives. The baseline figure in the docs was reconciled with the baked data
 on the Mac (R-17).
+
+**The holiday queue continued (R-18 to R-49, bar R-47).** A tap made while only the tiles have
+loaded still gets an answer, and the landing offers a one-tap "Dearest vs cheapest" pair
+and a "Near me" button. A late location fix or a cancelled compare lookup never overrides
+a later choice, and a compare's "(cancel)" stays reachable while its lookup runs; a
+postcode lookup that never answers now times out. For keyboard and screen-reader users,
+the nation chips take Home and End and announce the change, the segmented controls are
+radio groups, the live regions say what changed, and the waterfall (its bar cells read
+too) and the methodology block's lists are real tables. The map's tunables live in one
+module (no camera flight under Reduce Motion), no area count is typed into the app, and the
+share URL's codec is lifted out and tested. Explanations grew: ranking-group tags and the
+"several small differences" sentence, a first-visit "What am I looking at" card, a caveat
+under the premium and one on Scottish areas, "About the data" covering every colour mode
+and naming where else the model runs, and in the methodology block the spatial-multiplier
+checks, the place-versus-composition split and "What it doesn't claim". The methodology
+page now wears the map's design. A second Lighthouse pass followed, and the sidebar no
+longer shifts on a phone as the model figures arrive.
 
 ### Infrastructure
 

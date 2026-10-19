@@ -59,21 +59,47 @@ real pipeline data (`data/` and `reports/` are git-ignored) and are never edited
 After a model change, re-run `make calibrate` on the Mac (it re-runs `risk` and
 `showcase-data`), then `make showcase-tiles`; see `CLAUDE.md`.
 
+## Source modules
+
+Components are the `*.tsx` files in `src/`; the logic they share lives in plain modules,
+most with their own test file (see below):
+
+| Module | What it holds |
+|--------|---------------|
+| `announce.ts` | Live-region announcements that repeat when the same text is set twice |
+| `api.ts` | The client-side data layer: rankings, methodology, the streamed GeoJSON, the tiles URL |
+| `callout.ts` | The landing's first-visit "What am I looking at" card: when it shows, its copy, its dismissal |
+| `dataSources.ts` | "About the data": one entry per data source behind a colour mode |
+| `keyboard.ts` | Roving-tabindex lists and type-ahead |
+| `layout.ts` | Layout tunables: breakpoints, sheet heights, tap size, timeouts, map fit padding and camera |
+| `locate.ts` | "Near me": a browser location to the area it falls in |
+| `postcode.ts` | Postcode normalising and validation, the postcodes.io lookup, recent searches |
+| `search.ts` | Where a search's result goes when a compare is armed or cancelled |
+| `theme.ts` | Light and dark basemaps, and the CSS tokens MapLibre needs |
+| `types.ts` | The data shapes |
+| `url.ts` | The share URL codec |
+| `utils.ts` | Formatting, geometry helpers, premium bands, the detail/explain/compare text |
+
 ## Tests and what each pins
 
 | File | Pins |
 |------|------|
+| `src/announce.test.ts` | `announce` clears the region and sets the text after a pause, so a repeated message is read again |
 | `src/api.test.ts` | `getRankings` ordering and its nation filter, `getMethodology`, `getGeojson`'s streaming and progress, `tilesUrl` and `examplePairs` |
+| `src/callout.test.ts` | When the first-visit card shows, that its sentences match `README.md` and the About intro, and how its dismissal is stored |
 | `src/colors.test.ts` | Each step of the colour ramp and quintile fill gets darker (CIE L*), so the scale reads without colour; WCAG AA contrast for legend labels and faint ink; `index.css` tokens mirror the JS colours, keep hard-coded colours out, and define a dark scheme |
 | `src/keyboard.test.ts` | Arrow, Home/End and type-ahead index maths for the rankings and segmented controls |
-| `src/layout.test.ts` | `index.css` uses only the breakpoints and tap sizes declared in `layout.ts`; map fit padding and camera |
+| `src/layout.test.ts` | `index.css` uses only the breakpoints, tap sizes and reserved heights declared in `layout.ts`; map fit padding and camera; what the detail section shows while a lookup runs |
 | `src/locate.test.ts` | "Near me": finding the area containing a point, the nearest-edge fallback and its threshold |
 | `src/methodology.test.ts` | The figures on `docs/PROJECT_SUMMARY.html` (served as `methodology.html`) match the committed data |
+| `src/methodologyTables.test.ts` | The methodology block's lists are tables with captions and column headers |
 | `src/methodology-style.test.ts` | The methodology page's ink, paper and accent tokens equal `index.css`'s (light and dark), and it uses the map's fonts and quintile fill |
 | `src/noTypedCount.test.ts` | No component types the priced-area count in as a literal |
 | `src/postcode.test.ts` | Postcode normalising and parsing, Northern Ireland detection, `resolvePostcode`'s error mapping and the recent searches |
 | `src/search.test.ts` | A compare cancelled during its lookup never pins its result or replaces the main area |
+| `src/selection.test.ts` | Every action that changes the panel bumps `selectionId`, so a late "Near me" fix drops itself |
 | `src/serveConsistency.test.ts` | The baked GeoJSON rebuilds each premium from its baseline plus the five driver steps (frontend half of `tests/test_serve_consistency.py`) |
 | `src/url.test.ts` | The share URL codec: `parseShareUrl`, `buildShareUrl` and the valid filters |
 | `src/utils.test.ts` | Formatting (`gbp`, `ordinalPct`, figures), bounds and point-in-area helpers, premium bands and ramp, the detail/explain/compare text, nation and ranking group, and that About covers every colour mode |
+| `src/waterfallTable.test.ts` | The premium waterfall is a table with a caption and headers, its bars hidden from screen readers but each bar cell read as a share of the largest step, and no `display` on a table element |
 | `scripts/og-template.test.mjs` | The share card shows the figures from `methodology.json`, leaves out any it lacks, and takes its colours from `index.css` |
