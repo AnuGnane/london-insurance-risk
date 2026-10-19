@@ -62,7 +62,7 @@ After a model change, re-run `make calibrate` on the Mac (it re-runs `risk` and
 ## Source modules
 
 Components are the `*.tsx` files in `src/`; the logic they share lives in plain modules,
-each with its own test file:
+most with their own test file (see below):
 
 | Module | What it holds |
 |--------|---------------|
