@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Share2 } from 'lucide-react';
+import { pageTitle, SHARE_BASE } from './url';
 
 // How long the "Link copied" confirmation stays up.
 const CONFIRM_MS = 2000;
@@ -24,7 +25,7 @@ export const ShareButton: React.FC<{ title: string }> = ({ title }) => {
     const url = window.location.href;
     if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: `${title} · The Price of Place`, url });
+        await navigator.share({ title: pageTitle(SHARE_BASE, title), url });
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return; // cancelled

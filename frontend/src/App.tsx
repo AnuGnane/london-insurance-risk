@@ -21,7 +21,7 @@ import {
 import { getGeojson, getMethodology } from './api';
 import { findMyArea } from './locate';
 import { isCurrent, searchTarget } from './search';
-import { buildShareUrl, parseShareUrl } from './url';
+import { buildShareUrl, pageTitle, parseShareUrl } from './url';
 import {
   addRecentSearch,
   clearRecentSearches,
@@ -186,6 +186,19 @@ function App() {
       nation
     );
   }, [detail?.lsoa11cd, activeCompare?.lsoa11cd, colorMode, searchedPc, nation, updateUrl]);
+
+  // The tab's title follows the selection (history, tab strip, bookmarks); the
+  // plain title in index.html is the base, read once and restored on unmount.
+  const baseTitle = useRef(document.title);
+  useEffect(() => {
+    document.title = pageTitle(baseTitle.current, detail?.title, activeCompare?.title);
+  }, [detail?.title, activeCompare?.title]);
+  useEffect(() => {
+    const base = baseTitle.current;
+    return () => {
+      document.title = base;
+    };
+  }, []);
 
   // Show the area containing a resolved postcode (its props already carry the
   // premium + drivers, baked into the GeoJSON). Throws if it is off the map.

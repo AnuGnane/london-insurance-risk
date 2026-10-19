@@ -47,3 +47,16 @@ export function buildShareUrl(pathname: string, s: ShareState): string {
   const qs = params.toString();
   return qs ? `${pathname}?${qs}` : pathname;
 }
+
+/** The name the share sheet puts after an area's title. */
+export const SHARE_BASE = 'The Price of Place';
+
+/**
+ * A title for the page or the share sheet: the base alone with no area, the
+ * area first with one, and "A vs B" (the word the landing's pairs use) with two.
+ */
+export function pageTitle(base: string, detailTitle?: string, compareTitle?: string): string {
+  if (!detailTitle) return base;
+  if (!compareTitle) return `${detailTitle} · ${base}`;
+  return `${detailTitle} vs ${compareTitle} · ${base}`;
+}

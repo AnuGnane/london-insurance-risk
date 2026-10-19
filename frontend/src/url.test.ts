@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildShareUrl, parseShareUrl, VALID_FILTERS, type ShareState } from './url';
+import { readFileSync } from 'node:fs';
+import {
+  buildShareUrl,
+  pageTitle,
+  parseShareUrl,
+  SHARE_BASE,
+  VALID_FILTERS,
+  type ShareState,
+} from './url';
 import { COLOR_MODES } from './utils';
 
 const EMPTY: ShareState = { area: null, area2: null, pc: null, filter: 'composite', nation: null };
@@ -92,5 +100,38 @@ describe('VALID_FILTERS', () => {
   it('is every colour mode but the premium', () => {
     expect(VALID_FILTERS).not.toContain('composite');
     expect(VALID_FILTERS).toHaveLength(COLOR_MODES.length - 1);
+  });
+});
+
+describe('pageTitle', () => {
+  const BASE = 'The Price of Place — GB car-insurance risk map';
+  it('is the base alone with no area', () => {
+    expect(pageTitle(BASE)).toBe(BASE);
+    expect(pageTitle(BASE, '')).toBe(BASE);
+  });
+  it('puts one area before the base', () => {
+    expect(pageTitle(BASE, 'Tower Hamlets 021A')).toBe(`Tower Hamlets 021A · ${BASE}`);
+  });
+  it('names both areas of a comparison', () => {
+    expect(pageTitle(BASE, 'Tower Hamlets 021A', 'Rugby 004B')).toBe(
+      `Tower Hamlets 021A vs Rugby 004B · ${BASE}`
+    );
+  });
+  it('falls back to the one-area form on an empty compare title', () => {
+    expect(pageTitle(BASE, 'Tower Hamlets 021A', '')).toBe(`Tower Hamlets 021A · ${BASE}`);
+  });
+});
+
+describe('title sources', () => {
+  const src = (f: string) => readFileSync(new URL(`./${f}`, import.meta.url), 'utf8');
+  it('ShareButton builds its title through pageTitle, not by hand', () => {
+    const share = src('ShareButton.tsx');
+    expect(share).toContain('pageTitle(SHARE_BASE');
+    expect(share).not.toContain(SHARE_BASE);
+  });
+  it('App reads the base title from the document rather than typing it', () => {
+    const app = src('App.tsx');
+    expect(app).toContain('useRef(document.title)');
+    expect(app).not.toContain('GB car-insurance risk map');
   });
 });
