@@ -6,6 +6,8 @@ import {
   buildLookup,
   COLOR_MODES,
   compareSummary,
+  premiumMultiplier,
+  MULTIPLIER_MIN,
   computeDistribution,
   dominantDriver,
   EXPLAIN_MIN_STEP_GBP,
@@ -423,13 +425,19 @@ describe('compareSummary', () => {
   it('names the dearer area and the £ gap, whichever side it is on', () => {
     const a = { name: 'City of London 001A', premium: 1210.4 };
     const b = { name: 'Westminster 018C', premium: 980.2 };
-    const expected = 'City of London 001A is £230 a year dearer than Westminster 018C.';
+    const expected =
+      'City of London 001A is £230 a year dearer than Westminster 018C, about 1.2× the price.';
     expect(compareSummary(a, b)).toBe(expected);
     expect(compareSummary(b, a)).toBe(expected);
   });
   it('formats thousands the way gbp does', () => {
     expect(compareSummary({ name: 'A', premium: 400 }, { name: 'B', premium: 1578 })).toBe(
-      'B is £1,178 a year dearer than A.'
+      'B is £1,178 a year dearer than A, about 3.9× the price.'
+    );
+  });
+  it('leaves the multiple out when the two are within a few per cent', () => {
+    expect(compareSummary({ name: 'A', premium: 1000 }, { name: 'B', premium: 1040 })).toBe(
+      'B is £40 a year dearer than A.'
     );
   });
   it('calls a gap that rounds to £0 the same premium', () => {
@@ -444,6 +452,27 @@ describe('compareSummary', () => {
     expect(compareSummary({ name: 'A', premium: 500 }, { name: 'B', premium: null })).toBe(
       'B has no premium estimate, so the two cannot be compared.'
     );
+  });
+});
+
+describe('premiumMultiplier', () => {
+  it('keeps one decimal below ten', () => {
+    expect(premiumMultiplier(1578, 400)).toBe('3.9×');
+    expect(premiumMultiplier(2000, 1000)).toBe('2.0×');
+  });
+  it('keeps one decimal at ten and above too', () => {
+    expect(premiumMultiplier(12345, 1000)).toBe('12.3×');
+  });
+  it('is null for a ratio too close to one to read as a multiple', () => {
+    expect(premiumMultiplier(1040, 1000)).toBeNull();
+    expect(premiumMultiplier(1000 * MULTIPLIER_MIN - 1, 1000)).toBeNull();
+    expect(premiumMultiplier(1000, 1000)).toBeNull();
+  });
+  it('is null when either side is missing or zero', () => {
+    expect(premiumMultiplier(1000, 0)).toBeNull();
+    expect(premiumMultiplier(0, 1000)).toBeNull();
+    expect(premiumMultiplier(null, 1000)).toBeNull();
+    expect(premiumMultiplier(1000, undefined)).toBeNull();
   });
 });
 
