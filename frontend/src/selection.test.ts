@@ -56,4 +56,7 @@ describe('Escape in Sidebar.tsx', () => {
     expect(sidebar.match(/onClear\(/g)).toHaveLength(1);
     expect(sidebar).not.toMatch(/onClick=\{onClear\}/);
   });
+  it('lets Escape from the search box close the panel (focus stays there after a search)', () => {
+    expect(sidebar).toContain('inTextField: e.target !== inputRef.current && isTextField(e.target)');
+  });
 });

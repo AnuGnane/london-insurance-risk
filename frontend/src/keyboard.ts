@@ -135,8 +135,12 @@ export function escapeAction(
   return null;
 }
 
+/** `<input>` types that are not typed into, so do not keep their own Escape. */
+const NON_TEXT_INPUTS = ['button', 'checkbox', 'color', 'file', 'image', 'radio', 'range', 'reset', 'submit'];
+
 /** Whether `el` is a field that types text (and so keeps its own Escape). */
 export function isTextField(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
-  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+  if (el instanceof HTMLInputElement) return !NON_TEXT_INPUTS.includes(el.type);
+  return el.isContentEditable || ['TEXTAREA', 'SELECT'].includes(el.tagName);
 }

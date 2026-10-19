@@ -286,7 +286,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const action = escapeAction(e.key, {
         detailOpen: detail != null,
         calloutShown,
-        inTextField: isTextField(e.target),
+        // The search box has no Escape of its own, and focus stays there after
+        // a search, so Escape from it still closes the panel.
+        inTextField: e.target !== inputRef.current && isTextField(e.target),
       });
       if (action === 'close') closeDetail();
       else if (action === 'dismiss') dismissCallout();
