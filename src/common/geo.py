@@ -35,5 +35,13 @@ def postcode_area(postcode: str) -> str:
 
 
 def postcode_district(postcode: str) -> str:
-    """'EN1 4QR' -> 'EN1' (the outward code)."""
-    return postcode.upper().strip().split(" ")[0]
+    """'EN1 4QR' -> 'EN1' (the outward code).
+
+    An unspaced full postcode ('AB101AA', as ONSPD's pcd7 writes every
+    seven-character postcode) loses its three-character inward code; an
+    outward code alone (two to four characters) is returned as it is.
+    """
+    p = postcode.upper().strip()
+    if " " in p:
+        return p.split(" ")[0]
+    return p[:-3] if len(p) >= 5 else p

@@ -38,6 +38,20 @@ def test_keys_are_sorted():
     assert list(build_outcode_table(shuffled)) == ["AB1", "AB2"]
 
 
+def test_an_unspaced_postcode_in_the_district_column_counts_under_its_outcode():
+    # The lookup's postcode_district was cut from pcd7, which holds seven-character
+    # postcodes without a space: "AB101AA" there is outcode AB10, not a key of its own.
+    rows = pd.DataFrame(
+        {
+            "postcode_district": ["AB101AA", "AB10", "AB1"],
+            "lsoa11cd": ["S01006646", "S01006647", "E01000001"],
+            "lat": [57.148, 57.150, 51.0],
+            "long": [-2.097, -2.090, -1.0],
+        }
+    )
+    assert set(build_outcode_table(rows)) == {"AB1", "AB10"}
+
+
 def test_run_writes_json(tmp_path):
     src = tmp_path / "postcode_lookup.parquet"
     FIXTURE.to_parquet(src, index=False)

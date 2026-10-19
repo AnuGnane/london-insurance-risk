@@ -8,7 +8,9 @@ Vintage: the lookup's lsoa11cd (2011 LSOA / Scottish Data Zone), the map's vinta
 
 Each outcode maps to the small area of its postcode nearest the outcode's mean
 lat/long, so every value is a real area from the lookup. The outcode is the
-lookup's own postcode_district (never re-derived). Nearest is measured on lat and
+lookup's own postcode_district, passed once more through postcode_district: the
+ingest cut it from pcd7, which writes seven-character postcodes without a space,
+so a lookup built before that fix carries "AB101AA" where it means AB10. Nearest is measured on lat and
 cos(lat)-scaled long: good enough to rank points inside one outcode, and it needs
 no geopandas.
 """
@@ -21,6 +23,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.common.geo import postcode_district
 from src.common.io import interim
 
 log = logging.getLogger(__name__)
@@ -38,6 +41,7 @@ def build_outcode_table(df: pd.DataFrame) -> dict[str, str]:
     the smaller area code, so the table is the same at every bake.
     """
     d = df[COLUMNS].dropna().copy()
+    d["postcode_district"] = d["postcode_district"].map(postcode_district)
     centre = d.groupby("postcode_district")[["lat", "long"]].transform("mean")
     dy = d["lat"] - centre["lat"]
     dx = (d["long"] - centre["long"]) * np.cos(np.radians(centre["lat"]))
