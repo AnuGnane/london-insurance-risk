@@ -20,6 +20,13 @@ export const SHEET_HEIGHT = { collapsed: '40%', expanded: '70%' } as const;
 /** Minimum tap target on touch layouts (Apple HIG / WCAG 2.5.5), CSS px. */
 export const TAP_TARGET_MIN_PX = 44;
 
+/** The masthead's meta line (R², the ± error, the area count, "How it works")
+ *  wraps onto a second row below the small breakpoint once methodology.json
+ *  fills in the model figures. Its two-row height, CSS px, is reserved from
+ *  first paint so the sidebar under it does not shift (measured at 320 to 430 px,
+ *  with the web fonts and with the fallbacks: 43 either way). */
+export const MASTHEAD_META_MIN_HEIGHT_PX = 43;
+
 /** "Near me": how far (degrees) a located point may sit from the nearest area's
  *  bounds centre when no area contains it, before it counts as outside GB. */
 export const NEAR_ME_MAX_DEGREES = 0.1;
@@ -55,6 +62,7 @@ export const layoutCssVars = {
   '--sheet-collapsed': SHEET_HEIGHT.collapsed,
   '--sheet-expanded': SHEET_HEIGHT.expanded,
   '--tap-min': `${TAP_TARGET_MIN_PX}px`,
+  '--masthead-meta-min': `${MASTHEAD_META_MIN_HEIGHT_PX}px`,
 } as React.CSSProperties;
 
 // fitBounds framing: the desktop value, and how it scales on a small map.

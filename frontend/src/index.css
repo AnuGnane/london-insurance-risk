@@ -1012,4 +1012,5 @@ body {
 @media (max-width: 560px) {
   .waterfall .wf-cell-track { width: 0; padding-left: 0; }
   .wf-track { display: none; }            /* keep the signed £ + percentile, drop the bar */
+  .masthead-meta { min-height: var(--masthead-meta-min); }  /* the model figures wrap it */
 }

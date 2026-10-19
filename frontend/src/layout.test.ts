@@ -10,6 +10,7 @@ import {
   REDUCED_MOTION_QUERY,
   SMALL_MAX_WIDTH,
   layoutCssVars,
+  MASTHEAD_META_MIN_HEIGHT_PX,
   TAP_TARGET_MIN_PX,
 } from './layout';
 
@@ -26,6 +27,17 @@ describe('breakpoints', () => {
     for (const name of Object.keys(layoutCssVars)) expect(css).toContain(`var(${name})`);
     expect(layoutCssVars).toMatchObject({ '--tap-min': `${TAP_TARGET_MIN_PX}px` });
     expect(TAP_TARGET_MIN_PX).toBeGreaterThanOrEqual(44);
+  });
+
+  it('reserves the masthead meta line its wrapped height on a small screen', () => {
+    // The model figures arrive with methodology.json; below the small breakpoint
+    // they wrap the line onto a second row, which pushed the sidebar down (CLS).
+    expect(layoutCssVars).toMatchObject({
+      '--masthead-meta-min': `${MASTHEAD_META_MIN_HEIGHT_PX}px`,
+    });
+    const small = css.slice(css.indexOf(`@media (max-width: ${SMALL_MAX_WIDTH}px)`));
+    const block = small.slice(0, small.indexOf('\n}'));
+    expect(block).toMatch(/\.masthead-meta\s*\{[^}]*min-height:\s*var\(--masthead-meta-min\)/);
   });
 });
 
