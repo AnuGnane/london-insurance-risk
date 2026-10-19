@@ -115,3 +115,28 @@ export function useRovingList(labels: readonly string[], resetKey: string) {
 
   return { active, itemProps };
 }
+
+/** What Escape does on the page: close the detail panel, or dismiss the callout. */
+export type EscapeAction = 'close' | 'dismiss';
+
+/**
+ * What a page-level `key` press does, given what is showing: Escape closes an
+ * open detail panel, or, with none open, dismisses the first-visit callout.
+ * `null` for any other key, or when focus is in a text field, which keeps its
+ * own Escape.
+ */
+export function escapeAction(
+  key: string,
+  state: { detailOpen: boolean; calloutShown: boolean; inTextField: boolean }
+): EscapeAction | null {
+  if (key !== 'Escape' || state.inTextField) return null;
+  if (state.detailOpen) return 'close';
+  if (state.calloutShown) return 'dismiss';
+  return null;
+}
+
+/** Whether `el` is a field that types text (and so keeps its own Escape). */
+export function isTextField(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
