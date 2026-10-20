@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-18 (model); frontend section updated 2026-10-19 for the October
+Last updated: 2026-07-18 (model); frontend section updated 2026-10-20 for the October
 holiday queue (`HOLIDAY.md`). July's branch: `docs-finalize-transparency`.
 
 **2026-07 model wave — COMPLETE (Phase 4 flood + uncertainty bands + IMD sub-domains + Vouched bridge).**
@@ -176,6 +176,18 @@ and naming where else the model runs, and in the methodology block the spatial-m
 checks, the place-versus-composition split and "What it doesn't claim". The methodology
 page now wears the map's design. A second Lighthouse pass followed, and the sidebar no
 longer shifts on a phone as the model figures arrive.
+
+**And after that (R-50 to R-59).** Escape closes the area panel and puts focus back in the
+search box, and the browser tab's title follows the open area (or both areas in a
+compare), as the share sheet already did. The compare says how many times dearer one
+area is than the other. "About the data" counts the mapped areas by nation and says what
+the modelled premiums run between, naming the cheapest and dearest areas, all computed
+from the loaded data rather than typed in. In the methodology block, the feature table
+gains a p-value column, and the note under the metric strip names how many quarters the
+panel spans and the cross-validated R² beside the in-sample one. Two leftovers were
+tidied: a blank band under the masthead on mid-width phones, and a keyboard listener that
+re-registered on every render. A third Lighthouse pass and a second docs catch-up ran
+along the way.
 
 ### Infrastructure
 
