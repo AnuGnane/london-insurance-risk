@@ -27,6 +27,7 @@ import {
   rankingsScope,
   formatFigure,
   formatSci,
+  formatP,
   nationCounts,
   nationOf,
   rankingGroup,
@@ -593,6 +594,13 @@ describe('formatFigure and formatSci', () => {
     expect(formatSci(3.7458013911795408e-6)).toBe('3.7×10⁻⁶');
     expect(formatSci(0.0024198407878440143)).toBe('2.4×10⁻³');
     expect(formatSci(1234, 2)).toBe('1.23×10³');
+  });
+  it('prints a p-value in scientific notation below 0.001, fixed above', () => {
+    expect(formatP(5.70815848352127e-8)).toBe('5.7×10⁻⁸');
+    expect(formatP(0.0002)).toBe('2.0×10⁻⁴');
+    expect(formatP(0.001)).toBe('0.001');
+    expect(formatP(0.0029207418136957286)).toBe('0.003');
+    expect(formatP(0.181908501880367)).toBe('0.182');
   });
 });
 

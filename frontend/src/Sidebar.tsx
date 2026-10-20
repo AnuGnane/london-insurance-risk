@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
+import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
 import { examplePairs } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -160,6 +160,7 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
                   <th scope="col">Signal</th>
                   <th scope="col">Partial r</th>
                   <th scope="col">VIF</th>
+                  <th scope="col">p</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,6 +172,7 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
                       {Math.abs(f.partial_r).toFixed(2)}
                     </td>
                     <td>{f.vif.toFixed(1)}</td>
+                    <td>{f.p !== undefined ? formatP(f.p) : '—'}</td>
                   </tr>
                 ))}
               </tbody>

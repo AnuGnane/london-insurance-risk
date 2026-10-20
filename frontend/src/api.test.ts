@@ -119,6 +119,7 @@ describe('getMethodology', () => {
         partial_r: src.partial_r,
         vif: src.vif,
         verdict: src.verdict,
+        p: raw.feature_p_values[k],
       });
     }
 
@@ -132,6 +133,32 @@ describe('getMethodology', () => {
         predicted_gbp: r.predicted_gbp,
       }))
     );
+  });
+
+  it('carries a p-value for every driver in the committed JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(committed, { status: 200 })));
+    const m = (await getMethodology())!;
+    expect(Object.keys(raw.feature_p_values).sort()).toEqual(Object.keys(raw.feature_analysis).sort());
+    for (const v of Object.values(m.feature_analysis!)) expect(typeof v.p).toBe('number');
+  });
+
+  it('leaves p out when the JSON has no feature_p_values block', async () => {
+    const { feature_p_values: _drop, ...rest } = raw;
+    void _drop;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(rest), { status: 200 })));
+    const m = (await getMethodology())!;
+    expect(Object.keys(m.feature_analysis!)).toEqual(Object.keys(raw.feature_analysis));
+    for (const v of Object.values(m.feature_analysis!)) expect('p' in v).toBe(false);
+  });
+
+  it('leaves p out for a driver the block does not name', async () => {
+    const [first, ...others] = Object.keys(raw.feature_p_values);
+    const partial = Object.fromEntries(others.map((k) => [k, raw.feature_p_values[k]]));
+    const body = JSON.stringify({ ...raw, feature_p_values: partial });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(body, { status: 200 })));
+    const m = (await getMethodology())!;
+    expect('p' in m.feature_analysis![first]).toBe(false);
+    for (const k of others) expect(m.feature_analysis![k].p).toBe(raw.feature_p_values[k]);
   });
 
   it('maps the spatial-multiplier checks in the JSON\'s order', async () => {
