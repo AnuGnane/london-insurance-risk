@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
+import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
 import { examplePairs } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -254,6 +254,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const showRecents = focused && term === '' && recentSearches.length > 0;
   // The landing's one-tap comparisons, once the areas have loaded (empty before).
   const pairs = useMemo(() => examplePairs(lookup), [lookup]);
+  // About's per-nation table, counted from the same loaded areas.
+  const byNation = useMemo(() => nationCounts(lookup.keys()), [lookup]);
   const [pairSaid, sayPair, setPairSaid] = useAnnouncer<string>('');
   // A comparison that ends (Back, or the × on the second pin) takes its
   // "Comparing …" line with it, so nothing stale is read later.
@@ -514,7 +516,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         <MethodologyPanel m={methodology} />
-        <AboutPanel areaCount={lookup.size} />
+        <AboutPanel areaCount={lookup.size} nationCounts={byNation} />
 
         <div className="section" style={{ borderTop: 'none', paddingTop: 8 }}>
           <div className="disclaimer">
