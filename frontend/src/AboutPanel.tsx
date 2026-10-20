@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { COMPONENT_LABELS, ELSEWHERE_COPY, formatFigure } from './utils';
+import { COMPONENT_LABELS, ELSEWHERE_COPY, formatFigure, NATIONS, type Nation } from './utils';
 import { DATA_SOURCES } from './dataSources';
 
 const [ELSEWHERE_BEFORE, ELSEWHERE_AFTER] = ELSEWHERE_COPY.split('vouched.autos');
 
-export const AboutPanel: React.FC<{ areaCount: number }> = ({ areaCount }) => {
+export const AboutPanel: React.FC<{
+  areaCount: number;
+  nationCounts: Record<Nation, number>;
+}> = ({ areaCount, nationCounts }) => {
+  // A nation's row is left out when the bake carries none of its areas.
+  const anyNation = NATIONS.some((n) => nationCounts[n.id] > 0);
+
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,6 +32,27 @@ export const AboutPanel: React.FC<{ areaCount: number }> = ({ areaCount }) => {
             that correlate with motor-insurance claims, using only public data. It is <b>not an insurance quote</b> and uses no
             individual driver or vehicle details.
           </p>
+          {anyNation && (
+            <table className="feature-table">
+              <caption className="sr-only">Areas mapped, by nation</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Nation</th>
+                  <th scope="col">Areas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {NATIONS.map((n) =>
+                  nationCounts[n.id] > 0 ? (
+                    <tr key={n.id}>
+                      <th scope="row">{n.label}</th>
+                      <td>{formatFigure(nationCounts[n.id])}</td>
+                    </tr>
+                  ) : null
+                )}
+              </tbody>
+            </table>
+          )}
           <div>
             {DATA_SOURCES.map((s) => (
               <div key={s.key} className="about-source">
