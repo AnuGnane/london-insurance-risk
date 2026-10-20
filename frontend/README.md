@@ -67,7 +67,7 @@ most with their own test file (see below):
 | Module | What it holds |
 |--------|---------------|
 | `announce.ts` | Live-region announcements that repeat when the same text is set twice |
-| `api.ts` | The client-side data layer: rankings, methodology, the streamed GeoJSON, the tiles URL |
+| `api.ts` | The client-side data layer: rankings, the landing pairs and premium span, methodology, the streamed GeoJSON, the tiles URL |
 | `callout.ts` | The landing's first-visit "What am I looking at" card: when it shows, its copy, its dismissal |
 | `dataSources.ts` | "About the data": one entry per data source behind a colour mode |
 | `keyboard.ts` | Roving-tabindex lists and type-ahead, and what Escape does |
@@ -78,7 +78,7 @@ most with their own test file (see below):
 | `theme.ts` | Light and dark basemaps, and the CSS tokens MapLibre needs |
 | `types.ts` | The data shapes |
 | `url.ts` | The share URL codec and the tab title (`pageTitle`) |
-| `utils.ts` | Formatting, geometry helpers, premium bands, the detail/explain/compare text, the compare multiplier, the methodology note |
+| `utils.ts` | Formatting, geometry helpers, premium bands, the detail/explain/compare text, the compare multiplier, p-values, nation counts, the methodology note |
 
 ## Tests and what each pins
 
@@ -97,7 +97,7 @@ most with their own test file (see below):
 | `src/noTypedCount.test.ts` | No component types the priced-area count in as a literal |
 | `src/postcode.test.ts` | Postcode normalising and parsing, Northern Ireland detection, `resolvePostcode`'s error mapping and the recent searches |
 | `src/search.test.ts` | A compare cancelled during its lookup never pins its result or replaces the main area |
-| `src/selection.test.ts` | Every action that changes the panel bumps `selectionId`, so a late "Near me" fix drops itself |
+| `src/selection.test.ts` | Every action that changes the panel bumps `selectionId`, so a late "Near me" fix drops itself; `clearDetail` is memoised, and Escape closes the panel and returns focus to the search box |
 | `src/serveConsistency.test.ts` | The baked GeoJSON rebuilds each premium from its baseline plus the five driver steps (frontend half of `tests/test_serve_consistency.py`) |
 | `src/url.test.ts` | The share URL codec: `parseShareUrl`, `buildShareUrl` and the valid filters; `pageTitle` |
 | `src/utils.test.ts` | Formatting (`gbp`, `ordinalPct`, figures), bounds and point-in-area helpers, premium bands and ramp, the detail/explain/compare text and `premiumMultiplier`, `formatP`, `methodologyNote`, nation and ranking group, and that About covers every colour mode, counts areas by nation and gives the premium span from a prop |
