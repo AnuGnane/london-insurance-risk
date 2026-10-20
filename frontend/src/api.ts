@@ -119,6 +119,27 @@ export function examplePairs(lookup: Map<string, Feature>): ExamplePair[] {
   );
 }
 
+/** The cheapest and dearest areas' premiums, for the About panel's one-line span. */
+export interface PremiumSpan {
+  low: { name: string; premium: number };
+  high: { name: string; premium: number };
+}
+
+/**
+ * The lowest and highest calibrated premium over the loaded areas, each with the
+ * area's name as the rankings give it (so the same two areas the landing's
+ * "Dearest vs cheapest" pair opens). Null before the areas load or with no premium.
+ */
+export function premiumSpan(lookup: Map<string, Feature>): PremiumSpan | null {
+  const low = getRankings(lookup, 'asc', 1)[0];
+  const high = getRankings(lookup, 'desc', 1)[0];
+  if (low?.calibrated_premium == null || high?.calibrated_premium == null) return null;
+  return {
+    low: { name: low.name, premium: low.calibrated_premium },
+    high: { name: high.name, premium: high.calibrated_premium },
+  };
+}
+
 /** How many areas `getRankings` ranks from (all GB, or one nation). */
 export function countRankable(lookup: Map<string, Feature>, nation?: Nation): number {
   let count = 0;

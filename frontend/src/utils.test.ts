@@ -667,6 +667,20 @@ describe('About the data counts the areas by nation', () => {
   });
 });
 
+describe('About the data gives the premium span from the data', () => {
+  const src = readFileSync(new URL('./AboutPanel.tsx', import.meta.url), 'utf8');
+  it('renders the sentence from a premiumSpan prop, guarded on it', () => {
+    expect(src).toMatch(/premiumSpan\??:\s*PremiumSpan \| null/);
+    expect(src).toMatch(/premiumSpan &&/);
+    expect(src).toContain('Modelled premiums run from');
+    expect(src).toContain('gbp(premiumSpan.low.premium)');
+    expect(src).toContain('gbp(premiumSpan.high.premium)');
+  });
+  it('types no £ of its own', () => {
+    expect(src).not.toContain('£');
+  });
+});
+
 describe('rankingsScope', () => {
   it('names each nation and the whole of GB with its count', () => {
     expect(rankingsScope('england', 1200)).toBe('England · 1,200 areas');

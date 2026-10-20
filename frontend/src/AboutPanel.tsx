@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { COMPONENT_LABELS, ELSEWHERE_COPY, formatFigure, NATIONS, type Nation } from './utils';
+import { COMPONENT_LABELS, ELSEWHERE_COPY, formatFigure, gbp, NATIONS, type Nation } from './utils';
+import type { PremiumSpan } from './api';
 import { DATA_SOURCES } from './dataSources';
 
 const [ELSEWHERE_BEFORE, ELSEWHERE_AFTER] = ELSEWHERE_COPY.split('vouched.autos');
@@ -8,7 +9,8 @@ const [ELSEWHERE_BEFORE, ELSEWHERE_AFTER] = ELSEWHERE_COPY.split('vouched.autos'
 export const AboutPanel: React.FC<{
   areaCount: number;
   nationCounts: Record<Nation, number>;
-}> = ({ areaCount, nationCounts }) => {
+  premiumSpan: PremiumSpan | null;
+}> = ({ areaCount, nationCounts, premiumSpan }) => {
   // A nation's row is left out when the bake carries none of its areas.
   const anyNation = NATIONS.some((n) => nationCounts[n.id] > 0);
 
@@ -52,6 +54,13 @@ export const AboutPanel: React.FC<{
                 )}
               </tbody>
             </table>
+          )}
+          {premiumSpan && (
+            <p className="about-intro">
+              Modelled premiums run from {gbp(premiumSpan.low.premium)} in{' '}
+              {premiumSpan.low.name} to {gbp(premiumSpan.high.premium)} in{' '}
+              {premiumSpan.high.name}.
+            </p>
           )}
           <div>
             {DATA_SOURCES.map((s) => (
