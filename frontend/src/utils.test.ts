@@ -7,6 +7,7 @@ import {
   COLOR_MODES,
   compareSummary,
   premiumMultiplier,
+  methodologyNote,
   MULTIPLIER_MIN,
   computeDistribution,
   dominantDriver,
@@ -770,5 +771,40 @@ describe('caveatsFor', () => {
     expect(caveatsFor('W01000001', 'S01006506')).toEqual([PREMIUM_CAVEAT, SCOTLAND_CAVEAT]);
     expect(caveatsFor('S01006506', 'S01006507')).toEqual([PREMIUM_CAVEAT, SCOTLAND_CAVEAT]);
     expect(caveatsFor('E01000001', 'W01000001')).toEqual([PREMIUM_CAVEAT]);
+  });
+});
+
+describe('methodologyNote', () => {
+  const full = {
+    normalisation: 'percentile',
+    r_squared: 0.93,
+    cv_r_squared: 0.90654,
+    cv_folds: 5,
+    n_matched: 106,
+    n_areas: 30,
+    n_quarters: 11,
+  };
+
+  it('names the panel, its quarters and the cross-validated fit', () => {
+    expect(methodologyNote(full)).toEqual({
+      panel: ' (106 observations across 30 postcode areas and 11 quarters)',
+      fit: '; cross-validated across 5 folds, R² holds at 0.907',
+    });
+  });
+
+  it('keeps the old parenthesis when the quarters are absent', () => {
+    expect(methodologyNote({ ...full, n_quarters: undefined }).panel).toBe(' (106 observations across 30 postcode areas)');
+  });
+
+  it('drops the fold count, then the whole fit clause, as the JSON thins', () => {
+    expect(methodologyNote({ ...full, cv_folds: undefined }).fit).toBe('; cross-validated, R² holds at 0.907');
+    expect(methodologyNote({ ...full, cv_r_squared: undefined }).fit).toBe('');
+  });
+
+  it('says nothing of the panel without its observation and area counts', () => {
+    expect(methodologyNote({ normalisation: 'percentile', r_squared: 0.93 })).toEqual({
+      panel: '',
+      fit: '',
+    });
   });
 });

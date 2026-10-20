@@ -132,7 +132,7 @@ export function countRankable(lookup: Map<string, Feature>, nation?: Nation): nu
 interface RawMethodology {
   feature_basis?: string;
   r_squared: number;
-  ridge_cv?: { cv_r_squared_mean?: number };
+  ridge_cv?: { cv_r_squared_mean?: number; cv_folds?: number };
   leave_one_area_out?: { mae_gbp?: number };
   spearman_pred_vs_actual?: { rho?: number };
   n_matched?: number;
@@ -177,6 +177,7 @@ export async function getMethodology(): Promise<Methodology | null> {
       normalisation: m.feature_basis ?? 'percentile',
       r_squared: m.r_squared,
       cv_r_squared: m.ridge_cv?.cv_r_squared_mean,
+      cv_folds: m.ridge_cv?.cv_folds,
       loao_mae: m.leave_one_area_out?.mae_gbp,
       spearman: m.spearman_pred_vs_actual?.rho,
       n_matched: m.n_matched,

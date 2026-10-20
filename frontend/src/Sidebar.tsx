@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { areasLabel, COLOR_MODES, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
+import { areasLabel, COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
 import { examplePairs } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -112,6 +112,7 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
   const features = Object.entries(m.feature_analysis ?? {})
     .map(([k, v]) => ({ key: k.replace(/_pct$/, ''), ...v }))
     .sort((a, b) => Math.abs(b.partial_r) - Math.abs(a.partial_r));
+  const note = methodologyNote(m);
 
   return (
     <div className="section">
@@ -143,11 +144,9 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
             A relative territorial index — <b>log(area premium ÷ national
             average)</b> — fitted on percentile features and calibrated against
             the published WTW/Confused.com price index
-            {m.n_matched && m.n_areas
-              ? ` (${m.n_matched} observations across ${m.n_areas} postcode areas)`
-              : ''}
+            {note.panel}
             . It explains {m.r_squared != null ? (m.r_squared * 100).toFixed(0) : '—'}%
-            of the variance in real average premiums; predictions rank areas at
+            of the variance in real average premiums{note.fit}; predictions rank areas at
             ρ {fmt(m.spearman, 2)} against actual.
           </p>
           <VarianceSplit variance={m.variance} />

@@ -104,6 +104,7 @@ describe('getMethodology', () => {
     expect(m.normalisation).toBe(raw.feature_basis);
     expect(m.r_squared).toBe(raw.r_squared);
     expect(m.cv_r_squared).toBe(raw.ridge_cv.cv_r_squared_mean);
+    expect(m.cv_folds).toBe(raw.ridge_cv.cv_folds);
     expect(m.loao_mae).toBe(raw.leave_one_area_out.mae_gbp);
     expect(m.spearman).toBe(raw.spearman_pred_vs_actual.rho);
     expect(m.n_matched).toBe(raw.n_matched);
