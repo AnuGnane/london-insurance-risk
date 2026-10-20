@@ -37,14 +37,14 @@ describe('user actions that set the panel bump selectionId', () => {
   });
 });
 
-// Escape closes the panel (keyboard.ts's escapeAction) and hands focus back to
-// the search box, as "Back to rankings" does.
 describe('clearDetail', () => {
   it('is memoised, so the Escape listener is not re-registered on every App render', () => {
     expect(src).toMatch(/const clearDetail = useCallback\(\(\) => \{/);
   });
 });
 
+// Escape closes the panel (keyboard.ts's escapeAction) and hands focus back to
+// the search box, as "Back to rankings" does.
 describe('Escape in Sidebar.tsx', () => {
   const sidebar = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8');
   it('registers and removes the keydown listener in the same effect', () => {
