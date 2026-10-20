@@ -8,7 +8,7 @@ import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
 import { areasLabel, COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
-import { examplePairs } from './api';
+import { examplePairs, premiumSpan } from './api';
 import { useAnnouncer } from './announce';
 import {
   CALLOUT_COPY,
@@ -255,6 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const showRecents = focused && term === '' && recentSearches.length > 0;
   // The landing's one-tap comparisons, once the areas have loaded (empty before).
   const pairs = useMemo(() => examplePairs(lookup), [lookup]);
+  const span = useMemo(() => premiumSpan(lookup), [lookup]);
   // About's per-nation table, counted from the same loaded areas.
   const byNation = useMemo(() => nationCounts(lookup.keys()), [lookup]);
   const [pairSaid, sayPair, setPairSaid] = useAnnouncer<string>('');
@@ -517,7 +518,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         <MethodologyPanel m={methodology} />
-        <AboutPanel areaCount={lookup.size} nationCounts={byNation} />
+        <AboutPanel areaCount={lookup.size} nationCounts={byNation} premiumSpan={span} />
 
         <div className="section" style={{ borderTop: 'none', paddingTop: 8 }}>
           <div className="disclaimer">

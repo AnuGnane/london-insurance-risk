@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Feature } from 'geojson';
-import { countRankable, examplePairs, getGeojson, getMethodology, getRankings, tilesUrl } from './api';
+import { countRankable, examplePairs, premiumSpan, getGeojson, getMethodology, getRankings, tilesUrl } from './api';
 import type { LsoaProps } from './types';
 import { MultiplierChecks, VarianceSplit } from './Sidebar';
 import { buildLookup, formatFigure } from './utils';
@@ -338,5 +338,45 @@ describe('examplePairs', () => {
       ],
     });
     expect(examplePairs(noWales).map((p) => p.label)).toEqual(['Dearest vs cheapest']);
+  });
+});
+
+describe('premiumSpan', () => {
+  it('names the cheapest and dearest areas with their premiums', () => {
+    const lookup = buildLookup({
+      type: 'FeatureCollection',
+      features: [
+        area('E01000001', { lsoa_name: 'Dear England', calibrated_premium: 1200 }),
+        area('W01000001', { lsoa_name: 'Mid Wales', calibrated_premium: 600 }),
+        area('S01000001', { lsoa_name: 'Cheap Scotland', calibrated_premium: 300 }),
+        area('S01000002', { lsoa_name: 'No premium' }),
+      ],
+    });
+    expect(premiumSpan(lookup)).toEqual({
+      low: { name: 'Cheap Scotland', premium: 300 },
+      high: { name: 'Dear England', premium: 1200 },
+    });
+  });
+
+  it('matches the landing pair "Dearest vs cheapest"', () => {
+    const lookup = buildLookup({
+      type: 'FeatureCollection',
+      features: [
+        area('E01000001', { lsoa_name: 'A', calibrated_premium: 900 }),
+        area('E01000002', { lsoa_name: 'B', calibrated_premium: 400 }),
+      ],
+    });
+    const [pair] = examplePairs(lookup);
+    const span = premiumSpan(lookup)!;
+    expect([span.high.name, span.low.name]).toEqual([pair.a.name, pair.b.name]);
+  });
+
+  it('is null before the areas load or when none has a premium', () => {
+    expect(premiumSpan(new Map())).toBeNull();
+    const bare = buildLookup({
+      type: 'FeatureCollection',
+      features: [area('E01000001', { lsoa_name: 'No premium' })],
+    });
+    expect(premiumSpan(bare)).toBeNull();
   });
 });
