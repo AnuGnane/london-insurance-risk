@@ -27,6 +27,7 @@ import {
   rankingsScope,
   formatFigure,
   formatSci,
+  nationCounts,
   nationOf,
   rankingGroup,
   gbp,
@@ -421,6 +422,16 @@ describe('nationOf', () => {
   });
 });
 
+describe('nationCounts', () => {
+  it('counts areas per nation, ignoring unknown prefixes', () => {
+    const codes = ['E01000001', 'E01000002', 'W01000001', 'S01006506', 'N01000001', ''];
+    expect(nationCounts(codes)).toEqual({ england: 2, wales: 1, scotland: 1 });
+  });
+  it('gives zero for every nation when there are no areas', () => {
+    expect(nationCounts([])).toEqual({ england: 0, wales: 0, scotland: 0 });
+  });
+});
+
 describe('compareSummary', () => {
   it('names the dearer area and the £ gap, whichever side it is on', () => {
     const a = { name: 'City of London 001A', premium: 1210.4 };
@@ -632,6 +643,19 @@ describe('About the data covers every colour mode', () => {
       expect(entry?.description).toMatch(/diagnostic/);
     }
   );
+});
+
+describe('About the data counts the areas by nation', () => {
+  const src = readFileSync(new URL('./AboutPanel.tsx', import.meta.url), 'utf8');
+  it('renders one captioned table with two column headers', () => {
+    expect(src.match(/<table/g) ?? []).toHaveLength(1);
+    expect(src).toMatch(/<caption[^>]*>/);
+    expect(src.match(/<th scope="col"/g) ?? []).toHaveLength(2);
+  });
+  it('takes its rows from NATIONS, labelled from there', () => {
+    expect(src).toContain('NATIONS.map(');
+    expect(src).toMatch(/\.label/);
+  });
 });
 
 describe('rankingsScope', () => {

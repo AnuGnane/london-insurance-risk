@@ -121,6 +121,16 @@ export function nationOf(code: string | null | undefined): Nation | undefined {
   return NATIONS.find((n) => n.prefix === first)?.id;
 }
 
+/** How many area codes fall in each nation, by `nationOf`; unknown prefixes are skipped. */
+export function nationCounts(codes: Iterable<string>): Record<Nation, number> {
+  const counts = Object.fromEntries(NATIONS.map((n) => [n.id, 0])) as Record<Nation, number>;
+  for (const code of codes) {
+    const nation = nationOf(code);
+    if (nation) counts[nation] += 1;
+  }
+  return counts;
+}
+
 /**
  * The group a layer is ranked within for an area, from its code: crime
  * deprivation within each nation, vehicle crime within Scotland or within England
