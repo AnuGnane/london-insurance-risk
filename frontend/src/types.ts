@@ -46,6 +46,8 @@ export interface Methodology {
   normalisation: string;
   r_squared: number;
   cv_r_squared?: number;
+  /** How many folds the ridge cross-validation used. */
+  cv_folds?: number;
   loao_mae?: number;
   spearman?: number;
   n_matched?: number;

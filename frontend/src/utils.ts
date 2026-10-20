@@ -1,6 +1,6 @@
 // Small client-side helpers. No new dependencies.
 import type { Feature, FeatureCollection, Position } from 'geojson';
-import type { AreaDetail, ColorMode, LsoaProps, RankingGroup, WaterfallStep } from './types';
+import type { AreaDetail, ColorMode, LsoaProps, Methodology, RankingGroup, WaterfallStep } from './types';
 
 // Drivers that actually move the calibrated premium (place + composition) — these
 // carry a £ `_contrib`. Diagnostics are mapped layers the calibration evidence-gated
@@ -639,6 +639,26 @@ export function explainDifference(a: ExplainSide, b: ExplainSide): string {
 /** A figure as the write-up prints it: fixed decimals, en-GB thousands ("41,729", "76.51"). */
 export const formatFigure = (n: number, dp = 0): string =>
   n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+/**
+ * The two fragments of the methodology note that carry figures: the panel's size
+ * (" (N observations across N postcode areas and N quarters)") and the
+ * out-of-sample fit ("; cross-validated across K folds, R² holds at X").
+ * Each part drops what the JSON lacks; an empty string when nothing is there.
+ */
+export function methodologyNote(m: Methodology): { panel: string; fit: string } {
+  const panel =
+    m.n_matched && m.n_areas
+      ? ` (${m.n_matched} observations across ${m.n_areas} postcode areas${
+          m.n_quarters ? ` and ${m.n_quarters} quarters` : ''
+        })`
+      : '';
+  const fit =
+    m.cv_r_squared != null
+      ? `; cross-validated${m.cv_folds ? ` across ${m.cv_folds} folds` : ''}, R² holds at ${m.cv_r_squared.toFixed(3)}`
+      : '';
+  return { panel, fit };
+}
 
 /**
  * "41,729 areas" once the GeoJSON has loaded, a count-free "areas" before: the
