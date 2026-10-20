@@ -39,6 +39,8 @@ export interface FeatureStat {
   partial_r: number;
   vif: number;
   verdict: string;
+  /** The driver's p-value from the clustered-SE fit; absent when the JSON lacks it. */
+  p?: number;
 }
 export interface Methodology {
   normalisation: string;

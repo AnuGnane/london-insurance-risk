@@ -730,6 +730,13 @@ export function formatSci(n: number, dp = 1): string {
   return `${mantissa}×10${power}`;
 }
 
+/** Below this a p-value is printed in scientific notation, at or above it fixed. */
+export const P_SCI_BELOW = 0.001;
+
+/** A p-value as the feature table prints it: 5.7×10⁻⁸ below P_SCI_BELOW, else 0.182. */
+export const formatP = (p: number): string =>
+  p < P_SCI_BELOW ? formatSci(p, 1) : p.toFixed(3);
+
 /**
  * What a tap on the map says while the areas cannot answer it yet: the streamed tiles
  * colour the map long before the GeoJSON behind the area details has downloaded.

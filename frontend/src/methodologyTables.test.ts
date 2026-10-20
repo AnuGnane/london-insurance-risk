@@ -50,7 +50,15 @@ describe('methodology tables', () => {
     expect(caps).toContain(c);
   });
 
-  it.each(['Signal', 'Partial r', 'VIF', 'Area', 'Predicted', 'Published'])(
+  it('gives the feature table four columns, the last its p-value', () => {
+    const t = tables.find((x) => x.includes('Independent signal'))!;
+    const heads = [...t.matchAll(/<th scope="col">([^<]*)<\/th>/g)].map((h) => h[1]);
+    expect(heads).toHaveLength(4);
+    expect(heads).toContain('p');
+    expect(t).toContain('formatP(');
+  });
+
+  it.each(['Signal', 'Partial r', 'VIF', 'p', 'Area', 'Predicted', 'Published'])(
     'names the column "%s"',
     (h) => {
       expect(block).toContain(`<th scope="col">${h}</th>`);

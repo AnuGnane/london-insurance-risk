@@ -140,6 +140,7 @@ interface RawMethodology {
   n_quarters?: number;
   national_avg_latest?: number;
   feature_analysis?: Record<string, FeatureStat>;
+  feature_p_values?: Record<string, number>;
   cross_source_agreement?: {
     moneysupermarket?: {
       rows?: { area_name: string; actual_gbp: number; predicted_gbp: number }[];
@@ -168,6 +169,8 @@ export async function getMethodology(): Promise<Methodology | null> {
         vif: v.vif,
         verdict: v.verdict,
       };
+      const p = m.feature_p_values?.[k];
+      if (p !== undefined) fa![k].p = p;
     }
     const xs = m.cross_source_agreement?.moneysupermarket;
     return {
