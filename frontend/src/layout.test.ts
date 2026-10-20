@@ -11,6 +11,7 @@ import {
   SMALL_MAX_WIDTH,
   layoutCssVars,
   MASTHEAD_META_MIN_HEIGHT_PX,
+  MASTHEAD_META_WRAP_MAX_WIDTH,
   TAP_TARGET_MIN_PX,
 } from './layout';
 
@@ -20,7 +21,9 @@ describe('breakpoints', () => {
 
   it('index.css uses only the breakpoints declared in layout.ts', () => {
     expect(widths.length).toBeGreaterThan(0);
-    expect(new Set(widths)).toEqual(new Set([PHONE_MAX_WIDTH, SMALL_MAX_WIDTH]));
+    expect(new Set(widths)).toEqual(
+      new Set([PHONE_MAX_WIDTH, SMALL_MAX_WIDTH, MASTHEAD_META_WRAP_MAX_WIDTH])
+    );
   });
 
   it('index.css reads the sheet and tap-target values from layout.ts', () => {
@@ -29,15 +32,23 @@ describe('breakpoints', () => {
     expect(TAP_TARGET_MIN_PX).toBeGreaterThanOrEqual(44);
   });
 
-  it('reserves the masthead meta line its wrapped height on a small screen', () => {
-    // The model figures arrive with methodology.json; below the small breakpoint
+  it('reserves the masthead meta line its wrapped height only where it wraps', () => {
+    // The model figures arrive with methodology.json; below the wrap breakpoint
     // they wrap the line onto a second row, which pushed the sidebar down (CLS).
+    // Between it and the small breakpoint the line fits, so nothing is reserved.
     expect(layoutCssVars).toMatchObject({
       '--masthead-meta-min': `${MASTHEAD_META_MIN_HEIGHT_PX}px`,
     });
-    const small = css.slice(css.indexOf(`@media (max-width: ${SMALL_MAX_WIDTH}px)`));
-    const block = small.slice(0, small.indexOf('\n}'));
-    expect(block).toMatch(/\.masthead-meta\s*\{[^}]*min-height:\s*var\(--masthead-meta-min\)/);
+    const block = (width: number) => {
+      const at = css.indexOf(`@media (max-width: ${width}px)`);
+      expect(at, `no @media block at ${width}px`).toBeGreaterThanOrEqual(0);
+      const rest = css.slice(at);
+      return rest.slice(0, rest.indexOf('\n}'));
+    };
+    const reserve = /\.masthead-meta\s*\{[^}]*min-height:\s*var\(--masthead-meta-min\)/;
+    expect(MASTHEAD_META_WRAP_MAX_WIDTH).toBeLessThan(SMALL_MAX_WIDTH);
+    expect(block(MASTHEAD_META_WRAP_MAX_WIDTH)).toMatch(reserve);
+    expect(block(SMALL_MAX_WIDTH)).not.toMatch(reserve);
   });
 });
 

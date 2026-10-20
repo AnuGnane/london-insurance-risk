@@ -1,5 +1,5 @@
 // Layout tunables for the phone sheet, touch and map framing — one module.
-// CSS media queries cannot read variables, so the two breakpoints are repeated
+// CSS media queries cannot read variables, so the three breakpoints are repeated
 // as literals in index.css; layout.test.ts fails if they drift apart.
 import { useCallback, useSyncExternalStore } from 'react';
 
@@ -7,6 +7,10 @@ import { useCallback, useSyncExternalStore } from 'react';
 export const PHONE_MAX_WIDTH = 820;
 /** Narrow phones: the waterfall drops its bars (index.css `@media (max-width: 560px)`). */
 export const SMALL_MAX_WIDTH = 560;
+/** Where the masthead meta line wraps onto a second row once methodology.json
+ *  fills it in (index.css `@media (max-width: 440px)`; measured in headless
+ *  Chromium: two rows up to 437 px, one from 439 px, rounded up to 440). */
+export const MASTHEAD_META_WRAP_MAX_WIDTH = 440;
 
 /** Touch-first devices: no hover popup, a tap card instead. */
 export const TOUCH_QUERY = '(hover: none)';
@@ -21,7 +25,7 @@ export const SHEET_HEIGHT = { collapsed: '40%', expanded: '70%' } as const;
 export const TAP_TARGET_MIN_PX = 44;
 
 /** The masthead's meta line (R², the ± error, the area count, "How it works")
- *  wraps onto a second row below the small breakpoint once methodology.json
+ *  wraps onto a second row below MASTHEAD_META_WRAP_MAX_WIDTH once methodology.json
  *  fills in the model figures. Its two-row height, CSS px, is reserved from
  *  first paint so the sidebar under it does not shift (measured at 320 to 430 px,
  *  with the web fonts and with the fallbacks: 43 either way). */
