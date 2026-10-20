@@ -388,7 +388,9 @@ function App() {
     if (bounds) setFocus({ bounds, nonce: Date.now() });
   };
 
-  const clearDetail = () => {
+  // Memoised so the Sidebar's Escape listener (which depends on it through
+  // closeDetail) registers once per state change, not on every App render.
+  const clearDetail = useCallback(() => {
     selectionId.current++; // a late "Near me" fix must not reopen the panel
     userSelected.current = true;
     setDetail(null);
@@ -397,7 +399,7 @@ function App() {
     setMarker(null);
     setCompare(null);
     setComparing(false);
-  };
+  }, []);
 
   return (
     <div
