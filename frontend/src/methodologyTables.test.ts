@@ -67,7 +67,9 @@ describe('methodology tables', () => {
 });
 
 describe('metric tile sub-lines', () => {
-  const strip = block.slice(block.indexOf('<div className="metric-strip">'));
+  const from = block.indexOf('<div className="metric-strip">');
+  // The strip ends where the note under it begins, so no tile runs past it.
+  const strip = block.slice(from, block.indexOf('<p className="note">', from));
   const tiles = strip.split('<div className="metric">').slice(1, 4);
 
   it('finds the three tiles', () => {
