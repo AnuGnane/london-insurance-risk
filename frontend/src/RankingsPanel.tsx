@@ -12,6 +12,7 @@ import {
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
+import { RANKINGS_COUNT } from './layout';
 import { useRovingList } from './keyboard';
 import { Segmented, type SegmentedOption } from './Segmented';
 
@@ -49,7 +50,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
 
   // Rankings are derived from the already-loaded GeoJSON (no API on Pages).
   const rankings = useMemo(
-    () => getRankings(lookup, order, 10, nation ?? undefined),
+    () => getRankings(lookup, order, RANKINGS_COUNT, nation ?? undefined),
     [order, lookup, nation]
   );
   const nationLabel = NATIONS.find((n) => n.id === nation)?.label;

@@ -6,7 +6,10 @@ import {
   DESKTOP_FIT_PADDING,
   detailBodyState,
   fitPadding,
+  PERCENTILE_RAMP_STOPS,
   PHONE_MAX_WIDTH,
+  RANKINGS_COUNT,
+  SHARE_CONFIRM_MS,
   REDUCED_MOTION_QUERY,
   SMALL_MAX_WIDTH,
   layoutCssVars,
@@ -120,5 +123,34 @@ describe('detailBodyState', () => {
   ];
   it.each(cases)('loading=%s comparing=%s hasDetail=%s → %s', (l, c, d, want) => {
     expect(detailBodyState(l, c, d)).toBe(want);
+  });
+});
+
+describe('component tunables', () => {
+  const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
+
+  it('keeps the rankings length, ramp stops and share confirmation', () => {
+    expect(RANKINGS_COUNT).toBe(10);
+    expect(PERCENTILE_RAMP_STOPS).toEqual([
+      [0, 0],
+      [33, 2],
+      [50, 3],
+      [67, 4],
+      [100, 6],
+    ]);
+    expect(SHARE_CONFIRM_MS).toBe(2000);
+  });
+
+  it.each([
+    ['./RankingsPanel.tsx', 'RANKINGS_COUNT'],
+    ['./MapView.tsx', 'PERCENTILE_RAMP_STOPS'],
+    ['./ShareButton.tsx', 'SHARE_CONFIRM_MS'],
+  ])('%s imports %s from layout.ts', (f, name) => {
+    expect(read(f)).toMatch(new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from './layout'`));
+  });
+
+  it('MapView types no ramp stop and ShareButton no timeout', () => {
+    expect(read('./MapView.tsx')).not.toMatch(/\d+,\s*RAMP\[\d\]/);
+    expect(read('./ShareButton.tsx')).not.toMatch(/setTimeout\([^)]*\d{3,}/);
   });
 });

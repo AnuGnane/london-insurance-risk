@@ -49,3 +49,16 @@ describe('no anchor sample size typed in', () => {
     expect(src).not.toMatch(new RegExp(`\\b${n}\\b`));
   });
 });
+
+// The rankings length is RANKINGS_COUNT in layout.ts: no component types it in.
+describe('no ranking count typed into a component', () => {
+  const dir = new URL('./', import.meta.url);
+  const files = readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter((f) =>
+    f.endsWith('.tsx'),
+  );
+
+  it.each(files)('%s passes no literal count to getRankings', (f) => {
+    const src = readFileSync(new URL(f, dir), 'utf8');
+    expect(src).not.toMatch(/getRankings\(\s*[^,]+,\s*[^,]+,\s*\d/);
+  });
+});

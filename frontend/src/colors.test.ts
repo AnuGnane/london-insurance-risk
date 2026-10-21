@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { QUINTILE_FILL, QUINTILE_TEXT, RAMP } from './utils';
+import { PERCENTILE_RAMP_STOPS } from './layout';
 
 const channels = (hex: string): [number, number, number] => {
   const h = hex.replace('#', '');
@@ -89,5 +90,26 @@ describe('index.css tokens', () => {
     for (const t of ['--paper', '--paper-panel', '--ink', '--ink-soft', '--ink-faint', '--rule', '--map-area-line', '--map-selected', '--map-compare']) {
       expect(dark).toContain(`${t}:`);
     }
+  });
+});
+
+// The driver fill's interpolate stops are built from layout.ts's pairs: pinned once
+// against the literal list the expression carried before R-65, so it is unchanged.
+describe('percentile ramp stops in the fill expression', () => {
+  it('flattens to the same stops and colours as before', () => {
+    expect(PERCENTILE_RAMP_STOPS.flatMap(([stop, i]) => [stop, RAMP[i]])).toEqual([
+      0, RAMP[0],
+      33, RAMP[2],
+      50, RAMP[3],
+      67, RAMP[4],
+      100, RAMP[6],
+    ]);
+  });
+  it('MapView builds its interpolate from exactly that flattening', () => {
+    const src = readFileSync(new URL('./MapView.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('...PERCENTILE_RAMP_STOPS.flatMap(([stop, i]) => [stop, RAMP[i]])');
+  });
+  it('every stop indexes a ramp colour', () => {
+    for (const [, i] of PERCENTILE_RAMP_STOPS) expect(RAMP[i]).toMatch(/^#/);
   });
 });

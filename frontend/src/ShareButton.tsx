@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { pageTitle, SHARE_BASE } from './url';
-
-// How long the "Link copied" confirmation stays up.
-const CONFIRM_MS = 2000;
+import { SHARE_CONFIRM_MS } from './layout';
 
 /**
  * Share the current URL (which App keeps in sync through url.ts: ?pc= / ?area= /
@@ -18,7 +16,7 @@ export const ShareButton: React.FC<{ title: string }> = ({ title }) => {
   const flash = (s: 'copied' | 'failed') => {
     setStatus(s);
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setStatus('idle'), CONFIRM_MS);
+    timer.current = window.setTimeout(() => setStatus('idle'), SHARE_CONFIRM_MS);
   };
 
   const share = async () => {
