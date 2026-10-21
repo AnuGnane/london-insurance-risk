@@ -135,6 +135,22 @@ export function escapeAction(
   return null;
 }
 
+/** The areas the sheet shows: the detail's code and, while comparing, the second one's. */
+export interface SheetCodes {
+  code: string | null;
+  code2: string | null;
+}
+
+/**
+ * Whether the sheet scrolls back to the top: true when either area changes to a new
+ * one, so its headline premium is in view; false when an area closes or nothing
+ * changed (a re-render).
+ */
+export function shouldScrollToTop(prev: SheetCodes, next: SheetCodes): boolean {
+  const opened = (a: string | null, b: string | null) => b != null && b !== a;
+  return opened(prev.code, next.code) || opened(prev.code2, next.code2);
+}
+
 /** `<input>` types that are not typed into, so do not keep their own Escape. */
 const NON_TEXT_INPUTS = ['button', 'checkbox', 'color', 'file', 'image', 'radio', 'range', 'reset', 'submit'];
 

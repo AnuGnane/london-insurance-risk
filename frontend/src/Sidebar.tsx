@@ -16,8 +16,8 @@ import {
   saveCalloutDismissed,
   shouldShowCallout,
 } from './callout';
-import { detailBodyState } from './layout';
-import { escapeAction, isTextField } from './keyboard';
+import { detailBodyState, REDUCED_MOTION_QUERY, useMediaQuery } from './layout';
+import { escapeAction, isTextField, shouldScrollToTop, type SheetCodes } from './keyboard';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -281,6 +281,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setSaidFor(compareCode);
     if (compareCode == null) setPairSaid('');
   }
+  // A new area (or a new second area) opens at the top of the sheet, its premium in
+  // view, even when the sheet was scrolled down into the rankings or the methodology.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
+  const detailCode = detail?.lsoa11cd ?? null;
+  const shownCodes = useRef<SheetCodes>({ code: detailCode, code2: compareCode });
+  useEffect(() => {
+    const next = { code: detailCode, code2: compareCode };
+    if (shouldScrollToTop(shownCodes.current, next)) {
+      contentRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+    }
+    shownCodes.current = next;
+  }, [detailCode, compareCode, reducedMotion]);
   const [locating, setLocating] = useState(false);
   // The first-visit "what am I looking at" card (callout.ts).
   const [calloutDismissed, setCalloutDismissed] = useState(loadCalloutDismissed);
@@ -365,7 +378,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </header>
 
-      <div className="sidebar-content">
+      <div className="sidebar-content" ref={contentRef}>
         <div className="section">
           <form
             className="search-bar"
