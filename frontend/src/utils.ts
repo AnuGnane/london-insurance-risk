@@ -772,3 +772,10 @@ export function tapFeedback(
   const base = 'Area details arrive once the map data has loaded';
   return loadedBytes > 0 ? `${base} (${(loadedBytes / 1e6).toFixed(1)} MB so far)` : base;
 }
+
+// What the map, the rankings and the search say when the GeoJSON has not arrived.
+export const STILL_LOADING_MESSAGE = 'The map is still loading. Try again in a moment.';
+export const LOAD_FAILED_MESSAGE = 'The map data did not load.';
+export const SEARCH_LOAD_FAILED_MESSAGE =
+  'The map data did not load, so a postcode cannot be placed. Try again.';
+export const RETRY_LABEL = 'Try again';

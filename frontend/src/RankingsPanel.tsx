@@ -6,6 +6,8 @@ import {
   quintileColor,
   COMPONENT_LABELS,
   NATIONS,
+  LOAD_FAILED_MESSAGE,
+  RETRY_LABEL,
   rankingsScope,
   type Nation,
 } from './utils';
@@ -18,6 +20,8 @@ interface RankingsPanelProps {
   lookup: Map<string, Feature>;
   nation: Nation | null;
   onNationChange: (n: Nation | null) => void;
+  loadError: string | null;
+  onRetry: () => void;
 }
 
 type Order = 'desc' | 'asc';
@@ -38,6 +42,8 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   lookup,
   nation,
   onNationChange,
+  loadError,
+  onRetry,
 }) => {
   const [order, setOrder] = useState<Order>('desc');
 
@@ -82,51 +88,61 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
         />
       </div>
 
-      <div
-        role="listbox"
-        aria-label={`${order === 'desc' ? 'Most' : 'Least'} expensive areas${nationLabel ? ` in ${nationLabel}` : ''}`}
-      >
-        {rankings.map((r, i) => {
-          const coords =
-            r.lng != null && r.lat != null
-              ? ([r.lng, r.lat] as [number, number])
-              : undefined;
+      {loadError ? (
+        // The listbox would stay empty for ever: say why, and offer the same retry as the map.
+        <div className="rankings-error">
+          <p>{LOAD_FAILED_MESSAGE}</p>
+          <button type="button" className="retry-btn" onClick={onRetry}>
+            {RETRY_LABEL}
+          </button>
+        </div>
+      ) : (
+        <div
+          role="listbox"
+          aria-label={`${order === 'desc' ? 'Most' : 'Least'} expensive areas${nationLabel ? ` in ${nationLabel}` : ''}`}
+        >
+          {rankings.map((r, i) => {
+            const coords =
+              r.lng != null && r.lat != null
+                ? ([r.lng, r.lat] as [number, number])
+                : undefined;
 
-          const feature = lookup.get(r.code);
-          const driver = feature?.properties
-            ? dominantDriver(feature.properties)
-            : null;
+            const feature = lookup.get(r.code);
+            const driver = feature?.properties
+              ? dominantDriver(feature.properties)
+              : null;
 
-          return (
-            <button
-              key={r.code}
-              className="rank-row"
-              role="option"
-              // Selection follows focus, a single-select listbox's convention (R-26 ruling).
-              aria-selected={i === roving.active}
-              {...roving.itemProps(i)}
-              onClick={() => onSelectRanking(r.code, coords)}
-            >
-              <span className="rank-num">{i + 1}</span>
-              <span
-                className="rank-dot"
-                style={{ background: quintileColor(r.quintile) }}
-              />
-              <span className="rank-info">
-                <span className="rank-name">{r.name}</span>
-                <span className="rank-meta">
-                  {driver && (
-                    <span className={`driver-chip ${driver.dir === 'up' ? 'chip-up' : 'chip-down'}`}>
-                      {driver.dir === 'up' ? '▲' : '▼'} {COMPONENT_LABELS[driver.key] ?? driver.key}
-                    </span>
-                  )}
+            return (
+              <button
+                key={r.code}
+                className="rank-row"
+                role="option"
+                // Selection follows focus, a single-select listbox's convention (R-26 ruling).
+                aria-selected={i === roving.active}
+                {...roving.itemProps(i)}
+                onClick={() => onSelectRanking(r.code, coords)}
+              >
+                <span className="rank-num">{i + 1}</span>
+                <span
+                  className="rank-dot"
+                  style={{ background: quintileColor(r.quintile) }}
+                />
+                <span className="rank-info">
+                  <span className="rank-name">{r.name}</span>
+                  <span className="rank-meta">
+                    {driver && (
+                      <span className={`driver-chip ${driver.dir === 'up' ? 'chip-up' : 'chip-down'}`}>
+                        {driver.dir === 'up' ? '▲' : '▼'} {COMPONENT_LABELS[driver.key] ?? driver.key}
+                      </span>
+                    )}
+                  </span>
                 </span>
-              </span>
-              <span className="rank-premium">{gbp(r.calibrated_premium)}</span>
-            </button>
-          );
-        })}
-      </div>
+                <span className="rank-premium">{gbp(r.calibrated_premium)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

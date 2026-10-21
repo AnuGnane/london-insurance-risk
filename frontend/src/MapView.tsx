@@ -32,6 +32,8 @@ import {
   QUINTILE_TEXT,
   tapFeedback,
   areasLabel,
+  LOAD_FAILED_MESSAGE,
+  RETRY_LABEL,
 } from './utils';
 import { dataUrl, tilesUrl } from './api';
 import { useAnnouncer } from './announce';
@@ -48,6 +50,8 @@ import { AREA_STYLE, BASEMAP_STYLE, cssToken, DARK_QUERY, MARKER_STYLE } from '.
 interface MapViewProps {
   geojson: FeatureCollection | null;
   loadError: string | null;
+  /** Re-runs the GeoJSON load after a failure (the toast's "Try again"). */
+  onRetry: () => void;
   loadedBytes: number;
   colorMode: ColorMode;
   focus: FocusTarget | null;
@@ -137,6 +141,7 @@ const MAP_LABEL =
 export const MapView: React.FC<MapViewProps> = ({
   geojson,
   loadError,
+  onRetry,
   loadedBytes,
   colorMode,
   focus,
@@ -407,7 +412,14 @@ export const MapView: React.FC<MapViewProps> = ({
           </span>
         </div>
       )}
-      {loadError && <div className="map-toast map-toast-error">{loadError}</div>}
+      {loadError && (
+        <div className="map-toast map-toast-error" role="alert">
+          <span>{LOAD_FAILED_MESSAGE}</span>
+          <button type="button" className="retry-btn" onClick={onRetry}>
+            {RETRY_LABEL}
+          </button>
+        </div>
+      )}
       {comparing && geojson && areasDrawn && (
         <div className="map-toast">
           <span role="status">Comparing: tap an area, or search a postcode</span>

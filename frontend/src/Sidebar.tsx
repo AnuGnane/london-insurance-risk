@@ -38,6 +38,9 @@ interface SidebarProps {
   onToggleSheet: () => void;
   nation: Nation | null;
   onNationChange: (n: Nation | null) => void;
+  /** Set when the GeoJSON failed to load: the rankings offer a retry instead. */
+  loadError: string | null;
+  onRetry: () => void;
   compare: AreaDetail | null;
   comparing: boolean;
   onCompareToggle: () => void;
@@ -248,6 +251,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleSheet,
   nation,
   onNationChange,
+  loadError,
+  onRetry,
   compare,
   comparing,
   onCompareToggle,
@@ -522,6 +527,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               lookup={lookup}
               nation={nation}
               onNationChange={onNationChange}
+              loadError={loadError}
+              onRetry={onRetry}
             />
           </div>
         )}
