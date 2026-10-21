@@ -112,6 +112,22 @@ export const CAMERA = {
 /** How long a camera move takes: a cut (0) under Reduce Motion, else a flight. */
 export const cameraDuration = (reduced: boolean): number => (reduced ? 0 : CAMERA.flightMs);
 
+/** How many areas the rankings list. */
+export const RANKINGS_COUNT = 10;
+
+/** The driver map's percentile ramp: `[percentile stop, index into utils.ts RAMP]`
+ *  pairs, so a stop and its colour cannot drift apart. */
+export const PERCENTILE_RAMP_STOPS: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [33, 2],
+  [50, 3],
+  [67, 4],
+  [100, 6],
+];
+
+/** How long the share button's "Link copied" confirmation stays up, ms. */
+export const SHARE_CONFIRM_MS = 2000;
+
 /** Subscribe to a media query (SSR-free: this app is client-only). */
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback(

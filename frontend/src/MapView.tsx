@@ -41,6 +41,7 @@ import {
   CAMERA,
   cameraDuration,
   fitPadding,
+  PERCENTILE_RAMP_STOPS,
   REDUCED_MOTION_QUERY,
   TOUCH_QUERY,
   useMediaQuery,
@@ -102,11 +103,7 @@ function fillColor(mode: ColorMode): FillPaint['fill-color'] {
       'interpolate',
       ['linear'],
       ['to-number', ['coalesce', ['get', pctField], 0]],
-      0, RAMP[0],
-      33, RAMP[2],
-      50, RAMP[3],
-      67, RAMP[4],
-      100, RAMP[6],
+      ...PERCENTILE_RAMP_STOPS.flatMap(([stop, i]) => [stop, RAMP[i]]),
     ],
   ];
 }
