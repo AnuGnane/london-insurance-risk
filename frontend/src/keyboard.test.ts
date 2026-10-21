@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { escapeAction, nextIndex, segmentedIndex, typeAheadIndex } from './keyboard';
+import {
+  escapeAction,
+  nextIndex,
+  segmentedIndex,
+  shouldScrollToTop,
+  typeAheadIndex,
+} from './keyboard';
 
 describe('nextIndex', () => {
   it('steps down and up, stopping at the ends', () => {
@@ -91,5 +97,30 @@ describe('escapeAction', () => {
   it('ignores other keys and an idle page', () => {
     expect(escapeAction('Enter', { ...base, detailOpen: true })).toBeNull();
     expect(escapeAction('Escape', base)).toBeNull();
+  });
+});
+
+describe('shouldScrollToTop', () => {
+  const none = { code: null, code2: null };
+  it('scrolls when an area opens or changes', () => {
+    expect(shouldScrollToTop(none, { code: 'E01000001', code2: null })).toBe(true);
+    expect(
+      shouldScrollToTop({ code: 'E01000001', code2: null }, { code: 'W01000002', code2: null })
+    ).toBe(true);
+  });
+  it('scrolls when the second area of a comparison opens (ruling 1)', () => {
+    expect(
+      shouldScrollToTop(
+        { code: 'E01000001', code2: null },
+        { code: 'E01000001', code2: 'S01000003' }
+      )
+    ).toBe(true);
+  });
+  it('stays put on a re-render and when an area closes', () => {
+    const open = { code: 'E01000001', code2: 'S01000003' };
+    expect(shouldScrollToTop(open, { ...open })).toBe(false);
+    expect(shouldScrollToTop(open, { code: 'E01000001', code2: null })).toBe(false);
+    expect(shouldScrollToTop(open, none)).toBe(false);
+    expect(shouldScrollToTop(none, none)).toBe(false);
   });
 });
