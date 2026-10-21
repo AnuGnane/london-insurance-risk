@@ -151,6 +151,6 @@ describe('component tunables', () => {
 
   it('MapView types no ramp stop and ShareButton no timeout', () => {
     expect(read('./MapView.tsx')).not.toMatch(/\d+,\s*RAMP\[\d\]/);
-    expect(read('./ShareButton.tsx')).not.toMatch(/setTimeout\([^)]*\d{3,}/);
+    expect(read('./ShareButton.tsx')).not.toMatch(/,\s*\d{3,}\s*\)/);
   });
 });
