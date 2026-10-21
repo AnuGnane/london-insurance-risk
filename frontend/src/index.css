@@ -717,6 +717,13 @@ body {
   display: flex; align-items: center; gap: 10px;
 }
 .map-toast-error { color: var(--accent); border-color: var(--accent-soft); }
+.retry-btn {
+  min-height: var(--tap-min); padding: 0 14px;
+  font: inherit; font-weight: 600; color: var(--ink);
+  background: var(--paper-panel); border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm); cursor: pointer;
+}
+.rankings-error p { margin: 8px 0; color: var(--ink); }
 /* With a colour mode on, the filter chip holds the top centre: toasts sit below it */
 .map-container:has(.filter-indicator) .map-toast { top: 72px; }
 

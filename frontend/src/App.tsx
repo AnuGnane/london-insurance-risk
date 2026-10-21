@@ -19,6 +19,7 @@ import {
   type Nation,
 } from './utils';
 import { getGeojson, getMethodology } from './api';
+import { nextAttempt, searchBlockedMessage } from './loadState';
 import { findMyArea } from './locate';
 import { isCurrent, searchTarget } from './search';
 import { buildShareUrl, pageTitle, parseShareUrl } from './url';
@@ -69,6 +70,8 @@ function App() {
   // instant click-details, and client-side fly-to (no per-click round-trips).
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  // Bumped by "Try again" after a failed load: re-runs the GeoJSON effect.
+  const [attempt, setAttempt] = useState(0);
   const [loadedBytes, setLoadedBytes] = useState(0);
   const [methodology, setMethodology] = useState<Methodology | null>(null);
   const lookup = useMemo(
@@ -260,7 +263,13 @@ function App() {
       })
       .catch((e) => setGeoError(e.message));
     getMethodology().then((m) => m && setMethodology(m));
-  }, [initialLink, focusFeature, showPostcodeHit]);
+  }, [initialLink, focusFeature, showPostcodeHit, attempt]);
+
+  const retryGeojson = () => {
+    setGeoError(null);
+    setLoadedBytes(0);
+    setAttempt(nextAttempt);
+  };
 
   const handleSearch = async (postcode: string) => {
     userSelected.current = true;
@@ -275,7 +284,9 @@ function App() {
       const hit = await resolvePostcode(postcode);
       const target = searchTarget(asCompare, comparingRef.current);
       if (target === 'drop') return;
-      if (!geojson) throw new Error('The map is still loading. Try again in a moment.');
+      const blocked = searchBlockedMessage(geojson != null, geoError);
+      if (blocked) throw new Error(blocked);
+      if (!geojson) return; // unreachable: no areas means blocked above
       if (target === 'compare') showCompareHit(geojson.features, hit);
       else showPostcodeHit(geojson.features, hit);
       setRecentSearches((list) => addRecentSearch(list, hit.label));
@@ -426,6 +437,8 @@ function App() {
         onToggleSheet={() => setSheetExpanded((e) => !e)}
         nation={nation}
         onNationChange={setNation}
+        loadError={geoError}
+        onRetry={retryGeojson}
         compare={activeCompare}
         comparing={comparing && detail != null}
         onCompareToggle={() => setComparing((c) => !c)}
@@ -440,6 +453,7 @@ function App() {
       <MapView
         geojson={geojson}
         loadError={geoError}
+        onRetry={retryGeojson}
         loadedBytes={loadedBytes}
         colorMode={colorMode}
         focus={focus}
