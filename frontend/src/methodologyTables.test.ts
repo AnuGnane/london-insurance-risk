@@ -65,3 +65,28 @@ describe('methodology tables', () => {
     },
   );
 });
+
+describe('metric tile sub-lines', () => {
+  const from = block.indexOf('<div className="metric-strip">');
+  // The strip ends where the note under it begins, so no tile runs past it.
+  const strip = block.slice(from, block.indexOf('<p className="note">', from));
+  const tiles = strip.split('<div className="metric">').slice(1, 4);
+
+  it('finds the three tiles', () => {
+    expect(tiles).toHaveLength(3);
+  });
+
+  it.each([
+    ['Panel R²', 'm.adj_r_squared', 'fmt(m.adj_r_squared, 3)'],
+    ['LOAO MAE', 'm.loao_n', 'formatFigure(m.loao_n)'],
+    ['Spearman ρ', 'm.spearman_p', 'formatP(m.spearman_p)'],
+  ])('the "%s" tile renders a metric-sub guarded on its value', (label, field, call) => {
+    const tile = tiles.find((t) => t.includes(`>${label}<`))!;
+    expect(tile).toBeDefined();
+    const guard = tile.indexOf(`{${field} != null && (`);
+    expect(guard).toBeGreaterThan(-1);
+    const sub = tile.indexOf('<span className="metric-sub">', guard);
+    expect(sub).toBeGreaterThan(guard);
+    expect(tile.slice(sub)).toContain(call);
+  });
+});

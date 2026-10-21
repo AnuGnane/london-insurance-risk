@@ -130,14 +130,23 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
             <div className="metric">
               <div className="metric-value">{fmt(m.r_squared, 3)}</div>
               <span className="metric-label">Panel R²</span>
+              {m.adj_r_squared != null && (
+                <span className="metric-sub">adj. {fmt(m.adj_r_squared, 3)}</span>
+              )}
             </div>
             <div className="metric">
               <div className="metric-value">£{Math.round(m.loao_mae ?? 0)}</div>
               <span className="metric-label">LOAO MAE</span>
+              {m.loao_n != null && (
+                <span className="metric-sub">over {formatFigure(m.loao_n)} hold-outs</span>
+              )}
             </div>
             <div className="metric">
               <div className="metric-value">{fmt(m.spearman, 2)}</div>
               <span className="metric-label">Spearman ρ</span>
+              {m.spearman_p != null && (
+                <span className="metric-sub">p = {formatP(m.spearman_p)}</span>
+              )}
             </div>
           </div>
           <p className="note">

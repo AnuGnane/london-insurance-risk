@@ -91,3 +91,24 @@ describe('PROJECT_SUMMARY.html figures R-7 corrected', () => {
     expect(html).toContain(`City of London at ≈${formatFigure(check.predicted_ratio, 1)}× Truro`);
   });
 });
+
+// The sidebar's metric tiles read these three for their sub-lines (R-61); a bake
+// that drops one goes red here, not on the phone.
+describe('metric tile sub-line figures in the committed methodology.json', () => {
+  it('carries the adjusted R² as a number between 0 and 1', () => {
+    expect(typeof m.adj_r_squared).toBe('number');
+    expect(m.adj_r_squared).toBeGreaterThan(0);
+    expect(m.adj_r_squared).toBeLessThanOrEqual(1);
+  });
+
+  it('carries the LOAO hold-out count as a positive integer', () => {
+    expect(Number.isInteger(m.leave_one_area_out.n_predictions)).toBe(true);
+    expect(m.leave_one_area_out.n_predictions).toBeGreaterThan(0);
+  });
+
+  it("carries Spearman ρ's p-value as a probability", () => {
+    expect(typeof m.spearman_pred_vs_actual.p_value).toBe('number');
+    expect(m.spearman_pred_vs_actual.p_value).toBeGreaterThanOrEqual(0);
+    expect(m.spearman_pred_vs_actual.p_value).toBeLessThanOrEqual(1);
+  });
+});
