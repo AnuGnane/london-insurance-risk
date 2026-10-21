@@ -45,11 +45,17 @@ export interface FeatureStat {
 export interface Methodology {
   normalisation: string;
   r_squared: number;
+  /** R² adjusted for the parameter count. */
+  adj_r_squared?: number;
   cv_r_squared?: number;
   /** How many folds the ridge cross-validation used. */
   cv_folds?: number;
   loao_mae?: number;
+  /** How many hold-out predictions the LOAO MAE was taken over. */
+  loao_n?: number;
   spearman?: number;
+  /** The p-value of Spearman's ρ, predicted vs actual. */
+  spearman_p?: number;
   n_matched?: number;
   n_areas?: number;
   n_quarters?: number;

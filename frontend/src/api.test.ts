@@ -107,6 +107,9 @@ describe('getMethodology', () => {
     expect(m.cv_folds).toBe(raw.ridge_cv.cv_folds);
     expect(m.loao_mae).toBe(raw.leave_one_area_out.mae_gbp);
     expect(m.spearman).toBe(raw.spearman_pred_vs_actual.rho);
+    expect(m.adj_r_squared).toBe(raw.adj_r_squared);
+    expect(m.loao_n).toBe(raw.leave_one_area_out.n_predictions);
+    expect(m.spearman_p).toBe(raw.spearman_pred_vs_actual.p_value);
     expect(m.n_matched).toBe(raw.n_matched);
     expect(m.n_areas).toBe(raw.n_areas);
     expect(m.n_quarters).toBe(raw.n_quarters);
@@ -233,6 +236,34 @@ describe('getMethodology', () => {
     const para = readme.split('**Place vs composition.**')[1]?.split('\n\n')[0] ?? '';
     expect(para).toContain('Composition alone explains more of the spread than');
     expect(para.replace(/\s+/g, ' ')).toContain('reported as a finding, not tuned away');
+  });
+
+  it('copies the metric tiles\' sub-line figures when present', async () => {
+    const fixture = {
+      r_squared: 0.5,
+      adj_r_squared: 0.45,
+      leave_one_area_out: { mae_gbp: 70, n_predictions: 12 },
+      spearman_pred_vs_actual: { rho: 0.9, p_value: 2e-5 },
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(fixture), { status: 200 })));
+    const m = (await getMethodology())!;
+    expect(m.adj_r_squared).toBe(0.45);
+    expect(m.loao_n).toBe(12);
+    expect(m.spearman_p).toBe(2e-5);
+  });
+
+  it('leaves each sub-line figure undefined when the JSON lacks it', async () => {
+    const fixture = {
+      r_squared: 0.5,
+      leave_one_area_out: { mae_gbp: 70 },
+      spearman_pred_vs_actual: { rho: 0.9 },
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(fixture), { status: 200 })));
+    const m = (await getMethodology())!;
+    expect(m.adj_r_squared).toBeUndefined();
+    expect(m.loao_n).toBeUndefined();
+    expect(m.spearman_p).toBeUndefined();
+    expect(m.loao_mae).toBe(70);
   });
 
   it('returns null when the file is missing', async () => {

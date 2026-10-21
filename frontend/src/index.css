@@ -586,6 +586,9 @@ body {
   font-size: 0.62rem; font-weight: 600; color: var(--ink-faint);
   text-transform: uppercase; letter-spacing: 0.05em; margin-top: 5px; display: block;
 }
+.metric-sub {
+  font-size: 0.56rem; color: var(--ink-faint); margin-top: 2px; display: block;
+}
 .note { font-size: 0.78rem; color: var(--ink-soft); line-height: 1.55; margin: 10px 0; }
 .note b { color: var(--ink); }
 .not-claimed { font-size: 0.78rem; line-height: 1.55; margin-top: 6px; padding-left: 18px; }
