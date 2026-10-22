@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  ATTRIBUTION_MIN_HEIGHT_PX,
   CAMERA,
+  META_RESERVE,
   cameraDuration,
   DESKTOP_FIT_PADDING,
   detailBodyState,
@@ -185,5 +187,33 @@ describe('component tunables', () => {
   it('MapView types no ramp stop and ShareButton no timeout', () => {
     expect(read('./MapView.tsx')).not.toMatch(/\d+,\s*RAMP\[\d\]/);
     expect(read('./ShareButton.tsx')).not.toMatch(/,\s*\d{3,}\s*\)/);
+  });
+
+  it('reserves the R² figure and the attribution corner from first paint (R-70)', () => {
+    // The model figures and MapLibre's attribution arrive after first paint; each
+    // shifted what sat beside it (Lighthouse layout-shift trace, R-70).
+    const sidebar = read('./Sidebar.tsx');
+    const css = read('./index.css');
+    expect(sidebar).toMatch(/methodology == null && \(/);
+    expect(sidebar).toContain('<b>{META_RESERVE.r2}</b>');
+    expect(sidebar).toContain('{META_RESERVE.mae}</span>');
+    expect(sidebar).toContain('{META_RESERVE.count}</span>');
+    expect(sidebar.match(/className="(sep )?meta-reserve" aria-hidden="true"/g)).toHaveLength(5);
+    // Each stand-in has the shape of what replaces it, and is no real figure.
+    expect(META_RESERVE.r2).toBe(`R² ${(0).toFixed(3)}`);
+    expect(META_RESERVE.count).toMatch(/^0{2},0{3}$/);
+    expect(META_RESERVE.mae).toMatch(/^±£0+ per area$/);
+    // A reserved height with one row in it keeps that row at the top.
+    expect(css).toMatch(/\.masthead-meta\s*\{[^}]*align-content:\s*flex-start/);
+    expect(css).toMatch(/\.masthead-meta \.meta-reserve\s*\{\s*visibility:\s*hidden;/);
+    expect(layoutCssVars).toMatchObject({ '--attrib-min': `${ATTRIBUTION_MIN_HEIGHT_PX}px` });
+    const at = css.indexOf(`@media (max-width: ${PHONE_MAX_WIDTH}px)`);
+    const phone = css.slice(at, at + css.slice(at).indexOf('\n}'));
+    expect(phone).toMatch(
+      /\.maplibregl-ctrl-bottom-right\s*\{[^}]*min-height:\s*var\(--attrib-min\)[^}]*justify-content:\s*flex-end/
+    );
+    expect(phone).toMatch(
+      /\.maplibregl-ctrl-attrib\.maplibregl-compact-show\s*\{[^}]*width:\s*calc\(100% - 20px\)/
+    );
   });
 });

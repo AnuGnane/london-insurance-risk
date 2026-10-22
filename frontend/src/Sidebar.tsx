@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { areasLabel, COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
+import { COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
 import { examplePairs, premiumSpan } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -16,7 +16,7 @@ import {
   saveCalloutDismissed,
   shouldShowCallout,
 } from './callout';
-import { detailBodyState, REDUCED_MOTION_QUERY, useMediaQuery } from './layout';
+import { detailBodyState, META_RESERVE, REDUCED_MOTION_QUERY, useMediaQuery } from './layout';
 import { escapeAction, isTextField, shouldScrollToTop, type SheetCodes } from './keyboard';
 
 interface SidebarProps {
@@ -362,6 +362,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           How much does where you park move your car-insurance premium?
         </p>
         <div className="masthead-meta">
+          {/* Until methodology.json arrives, invisible model figures of the same
+              shape hold their places, so nothing after them shifts right (R-70). */}
+          {methodology == null && (
+            <>
+              <span className="meta-reserve" aria-hidden="true">
+                <b>{META_RESERVE.r2}</b>
+              </span>
+              <span className="sep meta-reserve" aria-hidden="true">·</span>
+              <span className="meta-reserve" aria-hidden="true">{META_RESERVE.mae}</span>
+              <span className="sep meta-reserve" aria-hidden="true">·</span>
+            </>
+          )}
           {methodology?.r_squared != null && (
             <>
               <span>
@@ -376,7 +388,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="sep">·</span>
             </>
           )}
-          <span>{areasLabel(lookup.size)} mapped</span>
+          <span>
+            {/* The count's digits, or invisible ones until the areas load (R-70). */}
+            {lookup.size > 0 ? (
+              formatFigure(lookup.size)
+            ) : (
+              <span className="meta-reserve" aria-hidden="true">{META_RESERVE.count}</span>
+            )}{' '}
+            areas mapped
+          </span>
           <span className="sep">·</span>
           {/* Built into dist/ by scripts/copy-methodology.mjs (not served by `npm run dev`). */}
           <a href={`${import.meta.env.BASE_URL}methodology.html`}>How it works</a>
