@@ -317,16 +317,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const action = escapeAction(e.key, {
         detailOpen: detail != null,
         calloutShown,
-        // The search box has no Escape of its own, and focus stays there after
-        // a search, so Escape from it still closes the panel.
+        // Escape in the search box clears its text first; from an empty box
+        // (focus stays there after a search) it still closes the panel.
         inTextField: e.target !== inputRef.current && isTextField(e.target),
+        inSearchBox: e.target === inputRef.current,
+        searchHasText: term !== '',
       });
-      if (action === 'close') closeDetail();
+      if (action === 'clear-search') {
+        e.preventDefault();
+        setTerm('');  // as the clear button: focus stays in the box, recents showing
+      } else if (action === 'close') closeDetail();
       else if (action === 'dismiss') dismissCallout();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [detail, calloutShown, closeDetail, dismissCallout]);
+  }, [detail, calloutShown, closeDetail, dismissCallout, term]);
   const nearMe = async () => {
     if (locating) return;  // not `disabled`: that would drop keyboard focus
     setLocating(true);
