@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Feature } from 'geojson';
 import {
   gbp,
@@ -9,10 +9,12 @@ import {
   LOAD_FAILED_MESSAGE,
   RETRY_LABEL,
   rankingsScope,
+  showMoreLabel,
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
-import { RANKINGS_COUNT } from './layout';
+import { nextRankingsCount, RANKINGS_COUNT } from './layout';
+import { rankingsShownMessage, useAnnouncer } from './announce';
 import { useRovingList } from './keyboard';
 import { Segmented, type SegmentedOption } from './Segmented';
 
@@ -47,11 +49,20 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   onRetry,
 }) => {
   const [order, setOrder] = useState<Order>('desc');
+  const listKey = `${order}:${nation ?? 'all'}`;
+  // "Show more" lengthens the list; a new order or nation starts again from the default.
+  const [shown, setShown] = useState({ key: listKey, count: RANKINGS_COUNT });
+  // Reset in render (React's "adjusting state on a prop change"), so going back to an
+  // earlier order or nation does not bring its longer list back.
+  if (shown.key !== listKey) setShown({ key: listKey, count: RANKINGS_COUNT });
+  const count = shown.key === listKey ? shown.count : RANKINGS_COUNT;
+  const [shownSaid, sayShown] = useAnnouncer<string>('');
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Rankings are derived from the already-loaded GeoJSON (no API on Pages).
   const rankings = useMemo(
-    () => getRankings(lookup, order, RANKINGS_COUNT, nation ?? undefined),
-    [order, lookup, nation]
+    () => getRankings(lookup, order, count, nation ?? undefined),
+    [order, lookup, nation, count]
   );
   const nationLabel = NATIONS.find((n) => n.id === nation)?.label;
   const areaCount = useMemo(
@@ -61,7 +72,18 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
 
   // The list is one tab stop: arrows, Home/End and type-ahead move within it.
   const names = useMemo(() => rankings.map((r) => r.name), [rankings]);
-  const roving = useRovingList(names, `${order}:${nation ?? 'all'}`);
+  const roving = useRovingList(names, listKey);
+
+  const nextCount = nextRankingsCount(count, areaCount);
+  const showMore = () => {
+    if (nextCount == null) return;
+    setShown({ key: listKey, count: nextCount });
+    sayShown(rankingsShownMessage(nextCount, areaCount));
+    // The last press removes the button: keep focus in the list, on its roving row.
+    if (nextRankingsCount(nextCount, areaCount) == null) {
+      listRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus();
+    }
+  };
 
   return (
     <div className="rankings">
@@ -98,52 +120,61 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
           </button>
         </div>
       ) : (
-        <div
-          role="listbox"
-          aria-label={`${order === 'desc' ? 'Most' : 'Least'} expensive areas${nationLabel ? ` in ${nationLabel}` : ''}`}
-        >
-          {rankings.map((r, i) => {
-            const coords =
-              r.lng != null && r.lat != null
-                ? ([r.lng, r.lat] as [number, number])
-                : undefined;
+        <>
+          <div
+            ref={listRef}
+            role="listbox"
+            aria-label={`${order === 'desc' ? 'Most' : 'Least'} expensive areas${nationLabel ? ` in ${nationLabel}` : ''}`}
+          >
+            {rankings.map((r, i) => {
+              const coords =
+                r.lng != null && r.lat != null
+                  ? ([r.lng, r.lat] as [number, number])
+                  : undefined;
 
-            const feature = lookup.get(r.code);
-            const driver = feature?.properties
-              ? dominantDriver(feature.properties)
-              : null;
+              const feature = lookup.get(r.code);
+              const driver = feature?.properties
+                ? dominantDriver(feature.properties)
+                : null;
 
-            return (
-              <button
-                key={r.code}
-                className="rank-row"
-                role="option"
-                // Selection follows focus, a single-select listbox's convention (R-26 ruling).
-                aria-selected={i === roving.active}
-                {...roving.itemProps(i)}
-                onClick={() => onSelectRanking(r.code, coords)}
-              >
-                <span className="rank-num">{i + 1}</span>
-                <span
-                  className="rank-dot"
-                  style={{ background: quintileColor(r.quintile) }}
-                />
-                <span className="rank-info">
-                  <span className="rank-name">{r.name}</span>
-                  <span className="rank-meta">
-                    {driver && (
-                      <span className={`driver-chip ${driver.dir === 'up' ? 'chip-up' : 'chip-down'}`}>
-                        {driver.dir === 'up' ? '▲' : '▼'} {COMPONENT_LABELS[driver.key] ?? driver.key}
-                      </span>
-                    )}
+              return (
+                <button
+                  key={r.code}
+                  className="rank-row"
+                  role="option"
+                  // Selection follows focus, a single-select listbox's convention (R-26 ruling).
+                  aria-selected={i === roving.active}
+                  {...roving.itemProps(i)}
+                  onClick={() => onSelectRanking(r.code, coords)}
+                >
+                  <span className="rank-num">{i + 1}</span>
+                  <span
+                    className="rank-dot"
+                    style={{ background: quintileColor(r.quintile) }}
+                  />
+                  <span className="rank-info">
+                    <span className="rank-name">{r.name}</span>
+                    <span className="rank-meta">
+                      {driver && (
+                        <span className={`driver-chip ${driver.dir === 'up' ? 'chip-up' : 'chip-down'}`}>
+                          {driver.dir === 'up' ? '▲' : '▼'} {COMPONENT_LABELS[driver.key] ?? driver.key}
+                        </span>
+                      )}
+                    </span>
                   </span>
-                </span>
-                <span className="rank-premium">{gbp(r.calibrated_premium)}</span>
-              </button>
-            );
-          })}
-        </div>
+                  <span className="rank-premium">{gbp(r.calibrated_premium)}</span>
+                </button>
+              );
+            })}
+          </div>
+          {nextCount != null && (
+            <button type="button" className="rankings-more" onClick={showMore}>
+              {showMoreLabel(nextCount - count)}
+            </button>
+          )}
+        </>
       )}
+      <span className="sr-only" role="status">{shownSaid}</span>
     </div>
   );
 };
