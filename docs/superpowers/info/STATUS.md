@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-18 (model); frontend section updated 2026-10-20 for the October
+Last updated: 2026-07-18 (model); frontend section updated 2026-10-22 for the October
 holiday queue (`HOLIDAY.md`). July's branch: `docs-finalize-transparency`.
 
 **2026-07 model wave — COMPLETE (Phase 4 flood + uncertainty bands + IMD sub-domains + Vouched bridge).**
@@ -188,6 +188,19 @@ panel spans and the cross-validated R² beside the in-sample one. Two leftovers 
 tidied: a blank band under the masthead on mid-width phones, and a keyboard listener that
 re-registered on every render. A third Lighthouse pass and a second docs catch-up ran
 along the way.
+
+**And then (R-61 to R-70).** The metric tiles show the adjusted R², the leave-one-area-out
+hold-out count and the p-value beside the rank correlation. If the areas fail to load,
+the map says so and offers "Try again", and a search made before they arrive says the
+map is still loading, or that the data did not load. On a phone the sheet scrolls back to the top when a
+new area opens, so its premium is in view. The rankings show ten areas and a "Show more"
+button for the rest, reset whenever the order or the nation changes. The cheapest and
+dearest areas named in "About the data" open on a tap, with how many times dearer one is
+than the other. Windows High Contrast keeps the colour swatches, dots and bars. Escape
+in the search box clears it before it closes the panel. The last layout shifts on a
+phone's first load are gone: the masthead's figures and the map's attribution keep their
+places while they arrive. Three more tunables moved into `layout.ts`, and a fourth
+Lighthouse pass ran along the way.
 
 ### Infrastructure
 
