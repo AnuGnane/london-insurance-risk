@@ -71,7 +71,8 @@ most with their own test file (see below):
 | `callout.ts` | The landing's first-visit "What am I looking at" card: when it shows, its copy, its dismissal |
 | `dataSources.ts` | "About the data": one entry per data source behind a colour mode |
 | `keyboard.ts` | Roving-tabindex lists and type-ahead, and what Escape does |
-| `layout.ts` | Layout tunables: breakpoints, sheet heights, tap size, timeouts, map fit padding and camera |
+| `layout.ts` | Layout tunables: breakpoints, sheet heights, tap size, timeouts, map fit padding and camera, the reserved heights and the masthead's loading stand-ins (`META_RESERVE`) |
+| `loadState.ts` | The GeoJSON load: what a search says while the areas load or after they fail, and the "Try again" counter |
 | `locate.ts` | "Near me": a browser location to the area it falls in |
 | `postcode.ts` | Postcode normalising and validation, the postcodes.io lookup, recent searches |
 | `search.ts` | Where a search's result goes when a compare is armed or cancelled |
@@ -88,8 +89,10 @@ most with their own test file (see below):
 | `src/api.test.ts` | `getRankings` ordering and its nation filter, `getMethodology`, `getGeojson`'s streaming and progress, `tilesUrl`, `examplePairs` and `premiumSpan` |
 | `src/callout.test.ts` | When the first-visit card shows, that its sentences match `README.md` and the About intro, and how its dismissal is stored |
 | `src/colors.test.ts` | Each step of the colour ramp and quintile fill gets darker (CIE L*), so the scale reads without colour; WCAG AA contrast for legend labels and faint ink; `index.css` tokens mirror the JS colours, keep hard-coded colours out, and define a dark scheme |
+| `src/css.test.ts` | One forced-colours block in `index.css`: the swatches, dots and bars keep their colour, it borders the legend and the toast, rings focus in `Highlight`, and uses system colour keywords only |
 | `src/keyboard.test.ts` | Arrow, Home/End and type-ahead index maths for the rankings and segmented controls; `escapeAction` |
-| `src/layout.test.ts` | `index.css` uses only the breakpoints, tap sizes and reserved heights declared in `layout.ts`; map fit padding and camera; what the detail section shows while a lookup runs |
+| `src/layout.test.ts` | `index.css` uses only the breakpoints, tap sizes and reserved heights declared in `layout.ts`; map fit padding and camera; what the detail section shows while a lookup runs; the masthead figures and the phone attribution keep their places while they load |
+| `src/loadState.test.ts` | What a search says while the areas load, after a failed load and once they have loaded, and the "Try again" counter |
 | `src/locate.test.ts` | "Near me": finding the area containing a point, the nearest-edge fallback and its threshold |
 | `src/methodology.test.ts` | The figures on `docs/PROJECT_SUMMARY.html` (served as `methodology.html`) match the committed data |
 | `src/methodologyTables.test.ts` | The methodology block's lists are tables with captions and column headers; the feature table's p-value column goes through `formatP` |

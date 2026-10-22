@@ -374,8 +374,9 @@ deferred** — it's ingested and evidence-gated to a diagnostic (item 9 above).
 - **Anchor is itself a market average,** not ground-truth claims data — the model is
   calibrated to *published index figures*, transcribed and cited per row, with a strict
   no-invented-figures rule.
-- **Contributions are counterfactual deltas, not an exact additive split** (multiplicative
-  model).
+- **Contributions are an exact, order-invariant split:** the app's waterfall bridges the
+  baseline to the premium with log-mean (LMDI) weights, so the drivers' £ steps add up
+  exactly to the gap between them, whatever order they are taken in.
 - **Grain caveat in the model card:** wealthy-but-central LSOAs can be under-priced
   because `imd_crime` (the strong clean signal, since the 2026-07 gate — see §7) is low
   there while real premiums are driven by unmodelled factors (vehicle value, congestion,
