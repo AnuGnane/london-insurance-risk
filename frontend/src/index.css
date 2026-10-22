@@ -237,7 +237,7 @@ body {
 .masthead-meta a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule); }
 .masthead-meta a:hover { color: var(--accent); border-color: var(--accent); }
 .masthead-meta .sep { color: var(--rule-strong); }
-/* Holds the R² figure's place until methodology.json arrives (R-70) */
+/* Holds the places of R², the ± error and the area count while they load (R-70) */
 .masthead-meta .meta-reserve { visibility: hidden; }
 
 /* ===========================================================================
