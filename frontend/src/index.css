@@ -627,7 +627,7 @@ body {
 /* The span sentence's two area names: in-text buttons that open the area */
 .about-area {
   padding: 0; border: none; background: transparent; cursor: pointer;
-  font: inherit; color: var(--ink); text-decoration: underline;
+  font: inherit; color: var(--accent); text-decoration: underline;
 }
 
 /* ===========================================================================

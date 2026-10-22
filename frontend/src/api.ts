@@ -119,7 +119,6 @@ export function examplePairs(lookup: Map<string, Feature>): ExamplePair[] {
   );
 }
 
-/** The cheapest and dearest areas' premiums, for the About panel's one-line span. */
 /** One end of the premium span: the area, its premium, and its point if the row has one. */
 export interface SpanEnd {
   code: string;
@@ -129,6 +128,7 @@ export interface SpanEnd {
   lat?: number;
 }
 
+/** The cheapest and dearest areas' premiums, for the About panel's one-line span. */
 export interface PremiumSpan {
   low: SpanEnd;
   high: SpanEnd;
