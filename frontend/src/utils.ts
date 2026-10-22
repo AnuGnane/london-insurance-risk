@@ -552,6 +552,23 @@ export function premiumMultiplier(
 }
 
 /**
+ * The words around the two area names in "About the data"'s span sentence:
+ * `before` low-name `middle` high-name `after`. `after` adds ", about N× the price"
+ * when `premiumMultiplier` gives a ratio.
+ */
+export function premiumSpanSentence(span: {
+  low: { premium: number };
+  high: { premium: number };
+}): { before: string; middle: string; after: string } {
+  const ratio = premiumMultiplier(span.high.premium, span.low.premium);
+  return {
+    before: `Modelled premiums run from ${gbp(span.low.premium)} in `,
+    middle: ` to ${gbp(span.high.premium)} in `,
+    after: ratio ? `, about ${ratio} the price.` : '.',
+  };
+}
+
+/**
  * One sentence comparing two areas' estimated premiums: which is dearer and by
  * how many £ (the difference of the two baked premiums, rounded as `gbp` rounds).
  */

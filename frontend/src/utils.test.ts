@@ -7,6 +7,7 @@ import {
   COLOR_MODES,
   compareSummary,
   premiumMultiplier,
+  premiumSpanSentence,
   methodologyNote,
   MULTIPLIER_MIN,
   computeDistribution,
@@ -469,6 +470,21 @@ describe('compareSummary', () => {
   });
 });
 
+describe('premiumSpanSentence', () => {
+  it('adds the ratio when the dearer end clears the multiplier floor', () => {
+    const w = premiumSpanSentence({ low: { premium: 400 }, high: { premium: 1000 } });
+    expect(`${w.before}A${w.middle}B${w.after}`).toBe(
+      `Modelled premiums run from £400 in A to £1,000 in B, about ${premiumMultiplier(1000, 400)} the price.`,
+    );
+    expect(w.after).toContain('2.5×');
+  });
+
+  it('ends at the second name when there is no ratio', () => {
+    const w = premiumSpanSentence({ low: { premium: 500 }, high: { premium: 500 } });
+    expect(w.after).toBe('.');
+  });
+});
+
 describe('premiumMultiplier', () => {
   it('keeps one decimal below ten', () => {
     expect(premiumMultiplier(1578, 400)).toBe('3.9×');
@@ -677,12 +693,20 @@ describe('About the data counts the areas by nation', () => {
 
 describe('About the data gives the premium span from the data', () => {
   const src = readFileSync(new URL('./AboutPanel.tsx', import.meta.url), 'utf8');
+  // R-68 lifted the words into utils.ts's premiumSpanSentence (tested above).
+  const utilsSrc = readFileSync(new URL('./utils.ts', import.meta.url), 'utf8');
   it('renders the sentence from a premiumSpan prop, guarded on it', () => {
     expect(src).toMatch(/premiumSpan\??:\s*PremiumSpan \| null/);
     expect(src).toMatch(/premiumSpan &&/);
-    expect(src).toContain('Modelled premiums run from');
-    expect(src).toContain('gbp(premiumSpan.low.premium)');
-    expect(src).toContain('gbp(premiumSpan.high.premium)');
+    expect(src).toContain('premiumSpanSentence(premiumSpan)');
+    expect(utilsSrc).toContain('Modelled premiums run from');
+    expect(utilsSrc).toContain('gbp(span.low.premium)');
+    expect(utilsSrc).toContain('gbp(span.high.premium)');
+  });
+  it('opens each named area through the rankings handler (R-68)', () => {
+    const sidebar = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('onSelectArea(end.code');
+    expect(sidebar).toContain('onSelectArea={onSelectRanking}');
   });
   it('types no £ of its own', () => {
     expect(src).not.toContain('£');

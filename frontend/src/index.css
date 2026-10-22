@@ -624,6 +624,11 @@ body {
 .about-elsewhere { font-size: 0.74rem; color: var(--ink-soft); line-height: 1.5; margin-top: 12px; }
 .about-intro { font-size: 0.8125rem; color: var(--ink-soft); line-height: 1.6; margin-bottom: 14px; }
 .about-intro b { color: var(--ink); }
+/* The span sentence's two area names: in-text buttons that open the area */
+.about-area {
+  padding: 0; border: none; background: transparent; cursor: pointer;
+  font: inherit; color: var(--ink); text-decoration: underline;
+}
 
 /* ===========================================================================
    Disclaimer — pinned footnote
