@@ -1029,3 +1029,11 @@ body {
 @media (max-width: 440px) {
   .masthead-meta { min-height: var(--masthead-meta-min); }  /* the model figures wrap it */
 }
+
+/* Forced colours (Windows High Contrast): the swatches, dots and bars carry meaning,
+   so they keep their colour; system colour keywords only in this block. */
+@media (forced-colors: active) {
+  .seg-fill, .rank-dot, .dot-mark, .bar-fill { forced-color-adjust: none; }
+  .legend, .map-toast { border: 1px solid CanvasText; }
+  :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+}
