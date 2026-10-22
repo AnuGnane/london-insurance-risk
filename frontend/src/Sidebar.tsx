@@ -547,7 +547,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         <MethodologyPanel m={methodology} />
-        <AboutPanel areaCount={lookup.size} nationCounts={byNation} premiumSpan={span} />
+        <AboutPanel
+          areaCount={lookup.size}
+          nationCounts={byNation}
+          premiumSpan={span}
+          onSelectArea={onSelectRanking}
+        />
 
         <div className="section" style={{ borderTop: 'none', paddingTop: 8 }}>
           <div className="disclaimer">

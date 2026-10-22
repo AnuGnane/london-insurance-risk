@@ -119,11 +119,27 @@ export function examplePairs(lookup: Map<string, Feature>): ExamplePair[] {
   );
 }
 
+/** One end of the premium span: the area, its premium, and its point if the row has one. */
+export interface SpanEnd {
+  code: string;
+  name: string;
+  premium: number;
+  lon?: number;
+  lat?: number;
+}
+
 /** The cheapest and dearest areas' premiums, for the About panel's one-line span. */
 export interface PremiumSpan {
-  low: { name: string; premium: number };
-  high: { name: string; premium: number };
+  low: SpanEnd;
+  high: SpanEnd;
 }
+
+const spanEnd = (r: RankingArea, premium: number): SpanEnd => ({
+  code: r.code,
+  name: r.name,
+  premium,
+  ...(r.lng != null && r.lat != null ? { lon: r.lng, lat: r.lat } : {}),
+});
 
 /**
  * The lowest and highest calibrated premium over the loaded areas, each with the
@@ -135,8 +151,8 @@ export function premiumSpan(lookup: Map<string, Feature>): PremiumSpan | null {
   const high = getRankings(lookup, 'desc', 1)[0];
   if (low?.calibrated_premium == null || high?.calibrated_premium == null) return null;
   return {
-    low: { name: low.name, premium: low.calibrated_premium },
-    high: { name: high.name, premium: high.calibrated_premium },
+    low: spanEnd(low, low.calibrated_premium),
+    high: spanEnd(high, high.calibrated_premium),
   };
 }
 

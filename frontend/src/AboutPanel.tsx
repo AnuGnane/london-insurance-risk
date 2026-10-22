@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { COMPONENT_LABELS, ELSEWHERE_COPY, formatFigure, gbp, NATIONS, type Nation } from './utils';
-import type { PremiumSpan } from './api';
+import {
+  COMPONENT_LABELS,
+  ELSEWHERE_COPY,
+  formatFigure,
+  NATIONS,
+  premiumSpanSentence,
+  type Nation,
+} from './utils';
+import type { PremiumSpan, SpanEnd } from './api';
 import { DATA_SOURCES } from './dataSources';
 
 const [ELSEWHERE_BEFORE, ELSEWHERE_AFTER] = ELSEWHERE_COPY.split('vouched.autos');
@@ -10,11 +17,26 @@ export const AboutPanel: React.FC<{
   areaCount: number;
   nationCounts: Record<Nation, number>;
   premiumSpan: PremiumSpan | null;
-}> = ({ areaCount, nationCounts, premiumSpan }) => {
+  onSelectArea: (code: string, coords?: [number, number]) => void;
+}> = ({ areaCount, nationCounts, premiumSpan, onSelectArea }) => {
   // A nation's row is left out when the bake carries none of its areas.
   const anyNation = NATIONS.some((n) => nationCounts[n.id] > 0);
 
   const [open, setOpen] = useState(false);
+  const words = premiumSpan ? premiumSpanSentence(premiumSpan) : null;
+
+  // Each end of the span opens its area, as a ranking row does.
+  const areaButton = (end: SpanEnd) => (
+    <button
+      type="button"
+      className="about-area"
+      onClick={() =>
+        onSelectArea(end.code, end.lon != null && end.lat != null ? [end.lon, end.lat] : undefined)
+      }
+    >
+      {end.name}
+    </button>
+  );
 
   return (
     <div className="section">
@@ -55,11 +77,13 @@ export const AboutPanel: React.FC<{
               </tbody>
             </table>
           )}
-          {premiumSpan && (
+          {premiumSpan && words && (
             <p className="about-intro">
-              Modelled premiums run from {gbp(premiumSpan.low.premium)} in{' '}
-              {premiumSpan.low.name} to {gbp(premiumSpan.high.premium)} in{' '}
-              {premiumSpan.high.name}.
+              {words.before}
+              {areaButton(premiumSpan.low)}
+              {words.middle}
+              {areaButton(premiumSpan.high)}
+              {words.after}
             </p>
           )}
           <div>

@@ -384,8 +384,8 @@ describe('premiumSpan', () => {
       ],
     });
     expect(premiumSpan(lookup)).toEqual({
-      low: { name: 'Cheap Scotland', premium: 300 },
-      high: { name: 'Dear England', premium: 1200 },
+      low: { code: 'S01000001', name: 'Cheap Scotland', premium: 300 },
+      high: { code: 'E01000001', name: 'Dear England', premium: 1200 },
     });
   });
 
@@ -400,6 +400,7 @@ describe('premiumSpan', () => {
     const [pair] = examplePairs(lookup);
     const span = premiumSpan(lookup)!;
     expect([span.high.name, span.low.name]).toEqual([pair.a.name, pair.b.name]);
+    expect([span.high.code, span.low.code]).toEqual(['E01000001', 'E01000002']);
   });
 
   it('is null before the areas load or when none has a premium', () => {
