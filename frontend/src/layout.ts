@@ -115,6 +115,21 @@ export const cameraDuration = (reduced: boolean): number => (reduced ? 0 : CAMER
 /** How many areas the rankings list. */
 export const RANKINGS_COUNT = 10;
 
+/** How many more areas each "Show more" press adds to the rankings. */
+export const RANKINGS_STEP = 20;
+
+/** The most areas the rankings list: past this a phone list is a scroll, not a page. */
+export const RANKINGS_MAX = 100;
+
+/**
+ * The rankings length after one "Show more" press, clipped to RANKINGS_MAX and to the
+ * `available` areas; null when nothing more is left to show.
+ */
+export function nextRankingsCount(count: number, available: number): number | null {
+  const cap = Math.min(RANKINGS_MAX, available);
+  return count >= cap ? null : Math.min(count + RANKINGS_STEP, cap);
+}
+
 /** The driver map's percentile ramp: `[percentile stop, index into utils.ts RAMP]`
  *  pairs, so a stop and its colour cannot drift apart. */
 export const PERCENTILE_RAMP_STOPS: readonly (readonly [number, number])[] = [

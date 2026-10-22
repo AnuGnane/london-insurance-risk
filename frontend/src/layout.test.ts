@@ -9,6 +9,9 @@ import {
   PERCENTILE_RAMP_STOPS,
   PHONE_MAX_WIDTH,
   RANKINGS_COUNT,
+  RANKINGS_MAX,
+  RANKINGS_STEP,
+  nextRankingsCount,
   SHARE_CONFIRM_MS,
   REDUCED_MOTION_QUERY,
   SMALL_MAX_WIDTH,
@@ -126,6 +129,35 @@ describe('detailBodyState', () => {
   });
 });
 
+describe('nextRankingsCount', () => {
+  it('keeps the step and the cap (R-66 ruling 1)', () => {
+    expect(RANKINGS_STEP).toBe(20);
+    expect(RANKINGS_MAX).toBe(100);
+  });
+
+  it.each([
+    [RANKINGS_COUNT, 5000, RANKINGS_COUNT + RANKINGS_STEP],
+    [RANKINGS_MAX - 5, 5000, RANKINGS_MAX],
+    [RANKINGS_MAX, 5000, null],
+    [RANKINGS_COUNT, RANKINGS_COUNT + 3, RANKINGS_COUNT + 3],
+    [RANKINGS_COUNT, RANKINGS_COUNT, null],
+    [RANKINGS_COUNT, 4, null],
+    [RANKINGS_COUNT, 0, null],
+  ])('from %i of %i areas shows %s', (count, available, want) => {
+    expect(nextRankingsCount(count, available)).toBe(want);
+  });
+
+  it('walks from the default to the cap in steps', () => {
+    const seen: number[] = [];
+    for (let c: number | null = RANKINGS_COUNT; c != null; c = nextRankingsCount(c, 5000)) {
+      seen.push(c);
+    }
+    expect(seen[0]).toBe(RANKINGS_COUNT);
+    expect(seen.at(-1)).toBe(RANKINGS_MAX);
+    expect(seen.slice(1, -1).every((c, i) => c - seen[i] === RANKINGS_STEP)).toBe(true);
+  });
+});
+
 describe('component tunables', () => {
   const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
 
@@ -143,6 +175,7 @@ describe('component tunables', () => {
 
   it.each([
     ['./RankingsPanel.tsx', 'RANKINGS_COUNT'],
+    ['./RankingsPanel.tsx', 'nextRankingsCount'],
     ['./MapView.tsx', 'PERCENTILE_RAMP_STOPS'],
     ['./ShareButton.tsx', 'SHARE_CONFIRM_MS'],
   ])('%s imports %s from layout.ts', (f, name) => {

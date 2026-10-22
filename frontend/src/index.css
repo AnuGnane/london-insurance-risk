@@ -317,13 +317,13 @@ body {
    Segmented controls (map filter + most/least)
    =========================================================================== */
 .seg { display: flex; gap: 2px; flex-wrap: wrap; }
-.seg button {
+.seg button, .rankings-more {
   flex: 0 0 auto; border: 1px solid var(--rule); background: var(--paper-panel);
   cursor: pointer; font-family: var(--font-sans); font-size: 0.75rem; font-weight: 500;
   color: var(--ink-soft); padding: 6px 11px; border-radius: var(--r-xs);
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.seg button:hover { color: var(--ink); border-color: var(--rule-strong); }
+.seg button:hover, .rankings-more:hover { color: var(--ink); border-color: var(--rule-strong); }
 .seg .seg-on {
   background: var(--ink); color: var(--paper); border-color: var(--ink);
 }
@@ -536,6 +536,8 @@ body {
   font-family: var(--font-sans); transition: background 0.12s;
 }
 .rank-row:hover { background: var(--paper-wash); }
+/* "Show N more" under the rankings: the chip look, full width, a full tap target */
+.rankings-more { display: block; width: 100%; min-height: var(--tap-min); margin-top: 8px; }
 .rank-num {
   font-family: var(--font-display); font-size: 0.95rem; font-weight: 500;
   color: var(--ink-faint); width: 1.6ch; flex-shrink: 0; text-align: right;

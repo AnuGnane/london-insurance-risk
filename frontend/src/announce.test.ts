@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { announce } from './announce';
+import { announce, rankingsShownMessage } from './announce';
 import { ANNOUNCE_CLEAR_MS } from './layout';
 
 describe('announce', () => {
@@ -39,5 +39,12 @@ describe('announce', () => {
     announce<string | null>((v) => seen.push(v), null, 0);
     vi.runAllTimers();
     expect(seen).toEqual(['', null]);
+  });
+});
+
+describe('rankingsShownMessage', () => {
+  it('says how many of how many areas the list shows', () => {
+    expect(rankingsShownMessage(30, 1234)).toBe('Showing 30 of 1,234 areas');
+    expect(rankingsShownMessage(100, 100)).toBe('Showing 100 of 100 areas');
   });
 });

@@ -3,6 +3,7 @@
 // tap is read again.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ANNOUNCE_CLEAR_MS } from './layout';
+import { areasLabel, formatFigure } from './utils';
 
 /**
  * Clear the live region now, set `text` after `delayMs`. Returns a cancel function
@@ -39,3 +40,7 @@ export function useAnnouncer<T extends string | null>(
   }, []);
   return [text, say, set];
 }
+
+/** What the rankings' "Show more" button announces: "Showing 30 of 1,234 areas". */
+export const rankingsShownMessage = (shown: number, total: number): string =>
+  `Showing ${formatFigure(shown)} of ${areasLabel(total)}`;
