@@ -192,9 +192,10 @@ along the way.
 **And then (R-61 to R-70).** The metric tiles show the adjusted R², the leave-one-area-out
 hold-out count and the p-value beside the rank correlation. If the areas fail to load,
 the map says so and offers "Try again", and a search made before they arrive says the
-map is still loading, or that the data did not load. On a phone the sheet scrolls back to the top when a
-new area opens, so its premium is in view. The rankings show ten areas and a "Show more"
-button for the rest, reset whenever the order or the nation changes. The cheapest and
+map is still loading, or that the data did not load. On a phone the sheet scrolls back
+to the top when a new area opens, so its premium is in view. The rankings show ten areas
+and a "Show more" button that lengthens the list up to a cap, reset whenever the order
+or the nation changes. The cheapest and
 dearest areas named in "About the data" open on a tap, with how many times dearer one is
 than the other. Windows High Contrast keeps the colour swatches, dots and bars. Escape
 in the search box clears it before it closes the panel. The last layout shifts on a
