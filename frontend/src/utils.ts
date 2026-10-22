@@ -666,6 +666,9 @@ export function methodologyNote(m: Methodology): { panel: string; fit: string } 
  */
 export const areasLabel = (n: number): string => (n > 0 ? `${formatFigure(n)} areas` : 'areas');
 
+/** The rankings' "Show more" button: "Show 20 more". */
+export const showMoreLabel = (n: number): string => `Show ${formatFigure(n)} more`;
+
 /** The line under an area's £ figure and band (README "What it doesn't claim": the
  *  model validates at postcode-area grain and extrapolates to small areas). */
 export const PREMIUM_CAVEAT =

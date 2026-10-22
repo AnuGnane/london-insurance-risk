@@ -9,7 +9,7 @@ import {
   LOAD_FAILED_MESSAGE,
   RETRY_LABEL,
   rankingsScope,
-  formatFigure,
+  showMoreLabel,
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
@@ -52,6 +52,9 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   const listKey = `${order}:${nation ?? 'all'}`;
   // "Show more" lengthens the list; a new order or nation starts again from the default.
   const [shown, setShown] = useState({ key: listKey, count: RANKINGS_COUNT });
+  // Reset in render (React's "adjusting state on a prop change"), so going back to an
+  // earlier order or nation does not bring its longer list back.
+  if (shown.key !== listKey) setShown({ key: listKey, count: RANKINGS_COUNT });
   const count = shown.key === listKey ? shown.count : RANKINGS_COUNT;
   const [shownSaid, sayShown] = useAnnouncer<string>('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -166,7 +169,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
           </div>
           {nextCount != null && (
             <button type="button" className="rankings-more" onClick={showMore}>
-              Show {formatFigure(nextCount - count)} more
+              {showMoreLabel(nextCount - count)}
             </button>
           )}
         </>

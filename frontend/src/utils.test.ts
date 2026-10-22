@@ -18,6 +18,7 @@ import {
   featureBounds,
   featureToDetail,
   areasLabel,
+  showMoreLabel,
   GB_LABEL,
   PREMIUM_CAVEAT,
   ELSEWHERE_COPY,
@@ -574,6 +575,13 @@ describe('explainDifference', () => {
       'A costs £60 a year more than B despite cars per household pulling the other way £12, ' +
         'through several small differences, none of them £10 or more.'
     );
+  });
+});
+
+describe('showMoreLabel', () => {
+  it('names how many rows the press adds', () => {
+    expect(showMoreLabel(20)).toBe('Show 20 more');
+    expect(showMoreLabel(3)).toBe('Show 3 more');
   });
 });
 
