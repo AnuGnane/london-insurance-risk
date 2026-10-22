@@ -231,11 +231,14 @@ body {
 .masthead-meta {
   display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px;
   font-size: 0.6875rem; color: var(--ink-faint); align-items: center;
+  align-content: flex-start;  /* rows from the top of the reserved height (R-70) */
 }
 .masthead-meta b { color: var(--ink); font-weight: 600; }
 .masthead-meta a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule); }
 .masthead-meta a:hover { color: var(--accent); border-color: var(--accent); }
 .masthead-meta .sep { color: var(--rule-strong); }
+/* Holds the R² figure's place until methodology.json arrives (R-70) */
+.masthead-meta .meta-reserve { visibility: hidden; }
 
 /* ===========================================================================
    Search
@@ -883,6 +886,18 @@ body {
   .compare-clear { width: var(--tap-min); height: var(--tap-min); }
   .search-bar input { padding-right: var(--tap-min); }
   .filter-indicator button { width: 32px; height: 32px; }
+
+  /* The attribution's corner keeps its height from first paint, the row at its
+     foot, so the attribution arriving with the style shifts nothing (R-70) */
+  .maplibregl-ctrl-bottom-right {
+    left: env(safe-area-inset-left, 0px); min-height: var(--attrib-min);
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end;
+  }
+  /* Open, it spans the map from the first credit, so the basemap's credits
+     arriving after MapLibre's do not widen it leftwards (R-70) */
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib.maplibregl-compact-show {
+    box-sizing: border-box; width: calc(100% - 20px); text-align: right;
+  }
 
   /* Compact legend: bottom-left, clear of the zoom control and above the
      attribution, which MapLibre shows as a full-width strip on narrow maps */
