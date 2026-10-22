@@ -98,6 +98,23 @@ describe('escapeAction', () => {
     expect(escapeAction('Enter', { ...base, detailOpen: true })).toBeNull();
     expect(escapeAction('Escape', base)).toBeNull();
   });
+  it('clears the search box first when it has text', () => {
+    const box = { ...base, inSearchBox: true };
+    expect(escapeAction('Escape', { ...box, searchHasText: true })).toBe('clear-search');
+    expect(escapeAction('Escape', { ...box, searchHasText: true, detailOpen: true })).toBe(
+      'clear-search'
+    );
+  });
+  it('closes the panel from an empty search box, and does nothing with none open', () => {
+    const box = { ...base, inSearchBox: true, searchHasText: false };
+    expect(escapeAction('Escape', { ...box, detailOpen: true })).toBe('close');
+    expect(escapeAction('Escape', box)).toBeNull();
+  });
+  it('only clears text when focus is in the search box', () => {
+    expect(escapeAction('Escape', { ...base, searchHasText: true, detailOpen: true })).toBe(
+      'close'
+    );
+  });
 });
 
 describe('shouldScrollToTop', () => {
