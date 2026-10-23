@@ -20,6 +20,8 @@ import { detailBodyState, META_RESERVE, REDUCED_MOTION_QUERY, useMediaQuery } fr
 import {
   escapeAction,
   isTextField,
+  nextIndex,
+  recentsShown,
   reopenedSameArea,
   shouldScrollToTop,
   type SheetCodes,
@@ -276,14 +278,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCompareClear,
 }) => {
   const [term, setTerm] = useState('');
-  const [focused, setFocused] = useState(false);
+  // Focus anywhere in the search field or the recents list (R-77).
+  const [focusWithin, setFocusWithin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const search = (q: string) => {
     if (loading || !q.trim()) return;
     setTerm(q);
     onSearch(q.trim());
   };
-  const showRecents = focused && term === '' && recentSearches.length > 0;
+  const showRecents = recentsShown({ focusWithin, term, count: recentSearches.length });
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const recentsRef = useRef<HTMLDivElement>(null);
+  const onFieldFocus = () => setFocusWithin(true);
+  // Focus moving between the box and the list keeps it; leaving both hides it.
+  const onFieldBlur = (e: React.FocusEvent) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && (fieldRef.current?.contains(next) || recentsRef.current?.contains(next))) return;
+    setFocusWithin(false);
+  };
+  // The list's buttons in arrow order: the recents, then "clear".
+  const recentButtons = (): HTMLButtonElement[] => {
+    const list = recentsRef.current;
+    if (!list) return [];
+    const clear = list.querySelector<HTMLButtonElement>('.recents-clear');
+    return [...list.querySelectorAll<HTMLButtonElement>('.recent'), ...(clear ? [clear] : [])];
+  };
+  // Up/Down go round the list (Home/End to its ends); Up from the first recent and
+  // Escape go back to the box.
+  const onRecentsKey = (e: React.KeyboardEvent) => {
+    const items = recentButtons();
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (i < 0) return;
+    if (e.key === 'Escape' || (e.key === 'ArrowUp' && i === 0)) {
+      e.preventDefault();  // and the page's Escape (close the panel) stands down
+      inputRef.current?.focus();
+      return;
+    }
+    const n = nextIndex(e.key, i, items.length, { wrap: true });
+    if (n !== null) {
+      e.preventDefault();
+      items[n].focus();
+    }
+  };
   // The landing's one-tap comparisons, once the areas have loaded (empty before).
   const pairs = useMemo(() => examplePairs(lookup), [lookup]);
   const span = useMemo(() => premiumSpan(lookup), [lookup]);
@@ -446,7 +482,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               search(term);
             }}
           >
-            <div className="search-field">
+            <div className="search-field" ref={fieldRef} onFocus={onFieldFocus} onBlur={onFieldBlur}>
             <Search className="search-icon" size={18} />
             <input
               ref={inputRef}
@@ -455,8 +491,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               placeholder="Postcode or district, e.g. E1 6AN"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
+              onKeyDown={(e) => {
+                // ArrowDown from the empty box steps into the recents.
+                if (e.key === 'ArrowDown' && showRecents) {
+                  e.preventDefault();
+                  recentButtons()[0]?.focus();
+                }
+              }}
               spellCheck={false}
               autoComplete="postal-code"
               autoCapitalize="characters"
@@ -490,18 +531,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {showRecents && (
             // onMouseDown keeps focus in the input so the list does not vanish mid-tap.
-            <div className="recents" onMouseDown={(e) => e.preventDefault()}>
+            // Its buttons stay out of the tab order (Tab leaves the field as before);
+            // the arrows reach them from the box.
+            <div
+              className="recents"
+              ref={recentsRef}
+              onMouseDown={(e) => e.preventDefault()}
+              onFocus={onFieldFocus}
+              onBlur={onFieldBlur}
+              onKeyDown={onRecentsKey}
+            >
               <div className="recents-head">
-                <span className="eyebrow">Recent</span>
-                <button type="button" className="recents-clear" onClick={onClearRecents}>
+                <span className="eyebrow" id="recents-label">Recent</span>
+                <button
+                  type="button"
+                  className="recents-clear"
+                  tabIndex={-1}
+                  onClick={() => {
+                    onClearRecents();
+                    inputRef.current?.focus();  // the list goes; focus stays in the field
+                  }}
+                >
                   clear
                 </button>
               </div>
-              {recentSearches.map((r) => (
-                <button key={r} type="button" className="recent" onClick={() => search(r)}>
-                  {r}
-                </button>
-              ))}
+              <ul className="recents-list" aria-labelledby="recents-label">
+                {recentSearches.map((r) => (
+                  <li key={r}>
+                    <button type="button" className="recent"
+                      tabIndex={-1}
+                      onClick={() => {
+                        inputRef.current?.focus();  // focus stays in the box after a search
+                        search(r);
+                      }}
+                    >
+                      {r}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

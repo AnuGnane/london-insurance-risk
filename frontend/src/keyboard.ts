@@ -142,6 +142,15 @@ export function escapeAction(
   return null;
 }
 
+/**
+ * Whether the recent searches show under the search box: while focus is anywhere
+ * in the search field or the list itself (so arrowing into the list keeps it),
+ * the box is empty and there is at least one recent.
+ */
+export function recentsShown(state: { focusWithin: boolean; term: string; count: number }): boolean {
+  return state.focusWithin && state.term === '' && state.count > 0;
+}
+
 /** The areas the sheet shows: the detail's code and, while comparing, the second one's. */
 export interface SheetCodes {
   code: string | null;
