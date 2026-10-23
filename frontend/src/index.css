@@ -283,6 +283,7 @@ body {
 }
 .recents-head { display: flex; justify-content: space-between; align-items: center; padding: 0 6px 4px; }
 .recents-head .eyebrow { margin: 0; }
+.recents-list { list-style: none; margin: 0; padding: 0; }
 .recents-clear {
   border: none; background: transparent; color: var(--ink-soft); cursor: pointer;
   font-family: var(--font-sans); font-size: 0.72rem; text-decoration: underline;

@@ -251,3 +251,19 @@ describe('the rankings mark the area opened last (R-73)', () => {
     expect(rule?.[1]).toContain('background: var(--paper-wash)');
   });
 });
+
+describe('recent searches are reachable from the keyboard (R-77)', () => {
+  const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
+
+  it('Sidebar shows the list from recentsShown and keeps it while focus moves within', () => {
+    const sidebar = read('./Sidebar.tsx');
+    expect(sidebar).toContain('recentsShown(');
+    expect(sidebar).toContain('relatedTarget');
+    expect(sidebar).toContain('aria-labelledby="recents-label"');
+  });
+
+  it('resets the list style on the recents <ul>', () => {
+    const rule = read('./index.css').match(/\.recents-list\s*\{([^}]*)\}/);
+    expect(rule?.[1]).toMatch(/list-style:\s*none/);
+  });
+});
