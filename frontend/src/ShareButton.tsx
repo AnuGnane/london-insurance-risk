@@ -5,7 +5,7 @@ import { SHARE_CONFIRM_MS } from './layout';
 
 /**
  * Share the current URL (which App keeps in sync through url.ts: ?pc= / ?area= /
- * ?area2= / ?filter= / ?nation=):
+ * ?area2= / ?filter= / ?nation= / ?order=):
  * the native share sheet where there is one, otherwise copy it to the clipboard.
  */
 export const ShareButton: React.FC<{ title: string }> = ({ title }) => {

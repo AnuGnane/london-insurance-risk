@@ -10,7 +10,7 @@ import {
 } from './url';
 import { COLOR_MODES } from './utils';
 
-const EMPTY: ShareState = { area: null, area2: null, pc: null, filter: 'composite', nation: null };
+const EMPTY: ShareState = { area: null, area2: null, pc: null, filter: 'composite', nation: null, order: 'desc' };
 
 describe('parseShareUrl', () => {
   it.each([
@@ -32,6 +32,12 @@ describe('parseShareUrl', () => {
     // Unknown nations fall back to all of GB.
     ['?nation=ireland', EMPTY],
     ['?nation=Wales', EMPTY],
+    ['?order=asc', { ...EMPTY, order: 'asc' }],
+    ['?nation=wales&order=asc', { ...EMPTY, nation: 'wales', order: 'asc' }],
+    // Anything but asc, or no order at all, is the default (most expensive first).
+    ['?order=ASC', EMPTY],
+    ['?order=up', EMPTY],
+    ['?order=desc', EMPTY],
   ] as const)('%j', (search, want) => {
     expect(parseShareUrl(search)).toEqual(want);
   });
@@ -56,8 +62,12 @@ describe('buildShareUrl', () => {
     [{ ...EMPTY, filter: 'composite' }, path],
     [{ ...EMPTY, filter: 'flood_risk' }, `${path}?filter=flood_risk`],
     [{ ...EMPTY, nation: 'scotland' }, `${path}?nation=scotland`],
+    // The default order is left out; asc is written after the nation.
+    [{ ...EMPTY, order: 'desc' }, path],
+    [{ ...EMPTY, order: 'asc' }, `${path}?order=asc`],
+    [{ ...EMPTY, nation: 'wales', order: 'asc' }, `${path}?nation=wales&order=asc`],
     [
-      { area: 'E01000001', area2: 'S01006877', pc: 'EC1A 1BB', filter: 'deprivation', nation: 'england' },
+      { area: 'E01000001', area2: 'S01006877', pc: 'EC1A 1BB', filter: 'deprivation', nation: 'england', order: 'desc' },
       `${path}?pc=EC1A+1BB&area=E01000001&area2=S01006877&filter=deprivation&nation=england`,
     ],
   ] as const)('%j', (state, want) => {
@@ -71,6 +81,7 @@ describe('buildShareUrl', () => {
       pc: 'EC1A 1BB',
       filter: 'aadf_intensity',
       nation: 'wales',
+      order: 'asc',
     };
     const url = buildShareUrl(path, state);
     expect(parseShareUrl(url.slice(path.length))).toEqual(state);

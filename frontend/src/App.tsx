@@ -17,6 +17,7 @@ import {
   featureToDetail,
   featureAtPoint,
   type Nation,
+  type Order,
 } from './utils';
 import { getGeojson, getMethodology } from './api';
 import { nextAttempt, searchBlockedMessage } from './loadState';
@@ -89,6 +90,8 @@ function App() {
   const [nation, setNation] = useState<Nation | null>(
     () => parseShareUrl(window.location.search).nation
   );
+  // The rankings' order (Most / Least), kept here so a shared link carries it.
+  const [order, setOrder] = useState<Order>(() => parseShareUrl(window.location.search).order);
   // Compare two areas: the second area (?area2=), and whether "Compare with…" is
   // armed so the next map tap or search picks it instead of the main area.
   // The second area is pinned against one main area (`forArea`): pick another main
@@ -129,7 +132,7 @@ function App() {
 
   // -----------------------------------------------------------------------
   // Deep-linkable URLs: encode
-  // ?pc=<postcode>&area=<lsoa>&area2=<lsoa>&filter=<mode>&nation=<id>.
+  // ?pc=<postcode>&area=<lsoa>&area2=<lsoa>&filter=<mode>&nation=<id>&order=asc.
   // -----------------------------------------------------------------------
   const updateUrl = useCallback(
     (
@@ -137,7 +140,8 @@ function App() {
       lsoa2: string | null,
       mode: ColorMode,
       pc: string | null,
-      nat: Nation | null
+      nat: Nation | null,
+      ord: Order
     ) => {
       const url = buildShareUrl(window.location.pathname, {
         area: lsoa,
@@ -145,6 +149,7 @@ function App() {
         pc,
         filter: mode,
         nation: nat,
+        order: ord,
       });
       window.history.replaceState(null, '', url);
     },
@@ -184,16 +189,17 @@ function App() {
       ? compare.detail
       : null;
 
-  // Keep the URL in sync whenever selection, filter or nation changes.
+  // Keep the URL in sync whenever selection, filter, nation or order changes.
   useEffect(() => {
     updateUrl(
       detail?.lsoa11cd ?? null,
       activeCompare?.lsoa11cd ?? null,
       colorMode,
       searchedPc,
-      nation
+      nation,
+      order
     );
-  }, [detail?.lsoa11cd, activeCompare?.lsoa11cd, colorMode, searchedPc, nation, updateUrl]);
+  }, [detail?.lsoa11cd, activeCompare?.lsoa11cd, colorMode, searchedPc, nation, order, updateUrl]);
 
   // The tab's title follows the selection (history, tab strip, bookmarks); the
   // plain title in index.html is the base, read once and restored on unmount.
@@ -447,6 +453,8 @@ function App() {
         onToggleSheet={() => setSheetExpanded((e) => !e)}
         nation={nation}
         onNationChange={setNation}
+        order={order}
+        onOrderChange={setOrder}
         loadError={geoError}
         onRetry={retryGeojson}
         compare={activeCompare}

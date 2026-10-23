@@ -12,6 +12,7 @@ import {
   showMoreLabel,
   yoursIsLabel,
   type Nation,
+  type Order,
 } from './utils';
 import { countRankable, getRankings } from './api';
 import {
@@ -31,11 +32,11 @@ interface RankingsPanelProps {
   lookup: Map<string, Feature>;
   nation: Nation | null;
   onNationChange: (n: Nation | null) => void;
+  order: Order;
+  onOrderChange: (o: Order) => void;
   loadError: string | null;
   onRetry: () => void;
 }
-
-type Order = 'desc' | 'asc';
 
 // The chip row: All, then each nation (null = all of GB).
 const NATION_CHIPS: readonly SegmentedOption<Nation | null>[] = [
@@ -54,10 +55,11 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   lookup,
   nation,
   onNationChange,
+  order,
+  onOrderChange,
   loadError,
   onRetry,
 }) => {
-  const [order, setOrder] = useState<Order>('desc');
   const listKey = `${order}:${nation ?? 'all'}`;
   // "Show more" lengthens the list; a new order or nation starts again from the default.
   const [shown, setShown] = useState({ key: listKey, count: RANKINGS_COUNT });
@@ -124,7 +126,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
           label="Order"
           options={ORDERS}
           value={order}
-          onChange={setOrder}
+          onChange={onOrderChange}
         />
       </div>
 
