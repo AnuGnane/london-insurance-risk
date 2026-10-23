@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { ALREADY_SHOWN, COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
+import { ALREADY_SHOWN, COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation, type Order } from './utils';
 import { examplePairs, premiumSpan } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -48,6 +48,9 @@ interface SidebarProps {
   onToggleSheet: () => void;
   nation: Nation | null;
   onNationChange: (n: Nation | null) => void;
+  /** The rankings' order (App keeps it for the share URL). */
+  order: Order;
+  onOrderChange: (o: Order) => void;
   /** Set when the GeoJSON failed to load: the rankings offer a retry instead. */
   loadError: string | null;
   onRetry: () => void;
@@ -263,6 +266,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleSheet,
   nation,
   onNationChange,
+  order,
+  onOrderChange,
   loadError,
   onRetry,
   compare,
@@ -594,6 +599,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               lookup={lookup}
               nation={nation}
               onNationChange={onNationChange}
+              order={order}
+              onOrderChange={onOrderChange}
               loadError={loadError}
               onRetry={onRetry}
             />

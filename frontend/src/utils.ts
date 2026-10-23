@@ -107,6 +107,9 @@ export const readQuintile = (p: Record<string, unknown>): number =>
 /** The three modelled nations (Northern Ireland is excluded: no open crime source). */
 export type Nation = 'england' | 'wales' | 'scotland';
 
+/** The rankings' order: most expensive first (desc) or least expensive first (asc). */
+export type Order = 'desc' | 'asc';
+
 /** Nations in display order, with the first letter of their area codes
  *  (ONS/NRS GSS codes: E01… England, W01… Wales, S01… Scotland). */
 export const NATIONS: readonly { id: Nation; label: string; prefix: string }[] = [

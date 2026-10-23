@@ -1,8 +1,8 @@
-// The share URL: ?pc=<postcode>&area=<lsoa>&area2=<lsoa>&filter=<mode>&nation=<id>.
+// The share URL: ?pc=<postcode>&area=<lsoa>&area2=<lsoa>&filter=<mode>&nation=<id>&order=asc.
 // App reads it once on load and keeps it in sync with the selection; ShareButton
 // shares whatever it currently says.
 import type { ColorMode } from './types';
-import { COLOR_MODES, NATIONS, type Nation } from './utils';
+import { COLOR_MODES, NATIONS, type Nation, type Order } from './utils';
 
 export interface ShareState {
   /** The main area. */
@@ -14,6 +14,8 @@ export interface ShareState {
   filter: ColorMode;
   /** The rankings' nation; null = all of GB. */
   nation: Nation | null;
+  /** The rankings' order; desc (most expensive first) is the default. */
+  order: Order;
 }
 
 /** The colour modes a ?filter= may name (the premium is the default, not a filter). */
@@ -21,7 +23,7 @@ export const VALID_FILTERS: readonly ColorMode[] = COLOR_MODES.map((m) => m.mode
   (m) => m !== 'composite'
 );
 
-/** A shared link's state; unknown filters and nations fall back to the defaults. */
+/** A shared link's state; unknown filters, nations and orders fall back to the defaults. */
 export function parseShareUrl(search: string): ShareState {
   const params = new URLSearchParams(search);
   const area = params.get('area');
@@ -33,6 +35,7 @@ export function parseShareUrl(search: string): ShareState {
     pc: params.get('pc'),
     filter: VALID_FILTERS.find((m) => m === f) ?? 'composite',
     nation: NATIONS.find((x) => x.id === n)?.id ?? null,
+    order: params.get('order') === 'asc' ? 'asc' : 'desc',
   };
 }
 
@@ -44,6 +47,7 @@ export function buildShareUrl(pathname: string, s: ShareState): string {
   if (s.area && s.area2) params.set('area2', s.area2);
   if (s.filter !== 'composite') params.set('filter', s.filter);
   if (s.nation) params.set('nation', s.nation);
+  if (s.order === 'asc') params.set('order', 'asc');
   const qs = params.toString();
   return qs ? `${pathname}?${qs}` : pathname;
 }
