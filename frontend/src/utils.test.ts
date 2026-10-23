@@ -20,6 +20,7 @@ import {
   featureToDetail,
   areasLabel,
   showMoreLabel,
+  yoursIsLabel,
   GB_LABEL,
   PREMIUM_CAVEAT,
   ELSEWHERE_COPY,
@@ -598,6 +599,19 @@ describe('showMoreLabel', () => {
   it('names how many rows the press adds', () => {
     expect(showMoreLabel(20)).toBe('Show 20 more');
     expect(showMoreLabel(3)).toBe('Show 3 more');
+  });
+});
+
+describe('yoursIsLabel', () => {
+  it.each([
+    [0, 'yours is 1st'],
+    [1, 'yours is 2nd'],
+    [10, 'yours is 11th'],
+    [21, 'yours is 22nd'],
+    [33, 'yours is 34th'],
+    [99, 'yours is 100th'],
+  ])('index %i reads "%s"', (i, want) => {
+    expect(yoursIsLabel(i)).toBe(want);
   });
 });
 

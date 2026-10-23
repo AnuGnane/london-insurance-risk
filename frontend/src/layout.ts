@@ -143,6 +143,17 @@ export function nextRankingsCount(count: number, available: number): number | nu
   return count >= cap ? null : Math.min(count + RANKINGS_STEP, cap);
 }
 
+/**
+ * Where the area opened last sits in the ordered rankings (0-based), or -1 when no area is
+ * open or it is not in the list (another nation, or past the rows given).
+ */
+export function currentRankIndex(
+  rankings: readonly { code: string }[],
+  currentCode: string | null
+): number {
+  return currentCode == null ? -1 : rankings.findIndex((r) => r.code === currentCode);
+}
+
 /** The driver map's percentile ramp: `[percentile stop, index into utils.ts RAMP]`
  *  pairs, so a stop and its colour cannot drift apart. */
 export const PERCENTILE_RAMP_STOPS: readonly (readonly [number, number])[] = [

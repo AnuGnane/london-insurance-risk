@@ -5,6 +5,7 @@ import {
   CAMERA,
   META_RESERVE,
   cameraDuration,
+  currentRankIndex,
   DESKTOP_FIT_PADDING,
   detailBodyState,
   fitPadding,
@@ -160,6 +161,23 @@ describe('nextRankingsCount', () => {
   });
 });
 
+describe('currentRankIndex', () => {
+  const rows = [{ code: 'E01000001' }, { code: 'E01000002' }, { code: 'W01000003' }];
+
+  it.each([
+    ['E01000001', 0],
+    ['W01000003', 2],
+    ['S01000004', -1],
+    [null, -1],
+  ])('finds %s at %i', (code, want) => {
+    expect(currentRankIndex(rows, code)).toBe(want);
+  });
+
+  it('is -1 in an empty list', () => {
+    expect(currentRankIndex([], 'E01000001')).toBe(-1);
+  });
+});
+
 describe('component tunables', () => {
   const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
 
@@ -215,5 +233,21 @@ describe('component tunables', () => {
     expect(phone).toMatch(
       /\.maplibregl-ctrl-attrib\.maplibregl-compact-show\s*\{[^}]*width:\s*calc\(100% - 20px\)/
     );
+  });
+});
+
+describe('the rankings mark the area opened last (R-73)', () => {
+  const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
+
+  it('RankingsPanel marks it with aria-current and Sidebar passes the code it keeps', () => {
+    expect(read('./RankingsPanel.tsx')).toContain('aria-current');
+    expect(read('./Sidebar.tsx')).toContain('currentCode={lastCode}');
+  });
+
+  it('styles the open row with an ink rule and the hover wash', () => {
+    const css = read('./index.css');
+    const rule = css.match(/\.rank-row\[aria-current="true"\]\s*\{([^}]*)\}/);
+    expect(rule?.[1]).toMatch(/border-left:\s*3px solid var\(--ink\)/);
+    expect(rule?.[1]).toContain('background: var(--paper-wash)');
   });
 });

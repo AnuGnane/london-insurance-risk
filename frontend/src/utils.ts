@@ -686,6 +686,10 @@ export const areasLabel = (n: number): string => (n > 0 ? `${formatFigure(n)} ar
 /** The rankings' "Show more" button: "Show 20 more". */
 export const showMoreLabel = (n: number): string => `Show ${formatFigure(n)} more`;
 
+/** The "Show more" button's suffix when the open area sits further down the
+ *  rankings: index 33 (0-based) -> "yours is 34th". */
+export const yoursIsLabel = (index: number): string => `yours is ${ordinalPct(index + 1)}`;
+
 /** The line under an area's £ figure and band (README "What it doesn't claim": the
  *  model validates at postcode-area grain and extrapolates to small areas). */
 export const PREMIUM_CAVEAT =

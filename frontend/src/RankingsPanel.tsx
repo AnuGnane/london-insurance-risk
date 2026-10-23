@@ -10,16 +10,24 @@ import {
   RETRY_LABEL,
   rankingsScope,
   showMoreLabel,
+  yoursIsLabel,
   type Nation,
 } from './utils';
 import { countRankable, getRankings } from './api';
-import { nextRankingsCount, RANKINGS_COUNT } from './layout';
+import {
+  currentRankIndex,
+  nextRankingsCount,
+  RANKINGS_COUNT,
+  RANKINGS_MAX,
+} from './layout';
 import { rankingsShownMessage, useAnnouncer } from './announce';
 import { useRovingList } from './keyboard';
 import { Segmented, type SegmentedOption } from './Segmented';
 
 interface RankingsPanelProps {
   onSelectRanking: (code: string, coords?: [number, number]) => void;
+  /** The area opened last (Sidebar keeps it after the detail closes): its row is marked. */
+  currentCode: string | null;
   lookup: Map<string, Feature>;
   nation: Nation | null;
   onNationChange: (n: Nation | null) => void;
@@ -42,6 +50,7 @@ const ORDERS: readonly SegmentedOption<Order>[] = [
 
 export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   onSelectRanking,
+  currentCode,
   lookup,
   nation,
   onNationChange,
@@ -75,6 +84,14 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
   const roving = useRovingList(names, listKey);
 
   const nextCount = nextRankingsCount(count, areaCount);
+  // When the area opened last sits below the shown rows (but within RANKINGS_MAX), the
+  // "Show more" button says where; the full ordered list is built only then.
+  const yoursIndex = useMemo(() => {
+    if (currentCode == null || nextCount == null) return -1;
+    if (currentRankIndex(rankings, currentCode) >= 0) return -1;
+    const full = getRankings(lookup, order, RANKINGS_MAX, nation ?? undefined);
+    return currentRankIndex(full, currentCode);
+  }, [currentCode, nextCount, rankings, lookup, order, nation]);
   const showMore = () => {
     if (nextCount == null) return;
     setShown({ key: listKey, count: nextCount });
@@ -137,6 +154,8 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
                 ? dominantDriver(feature.properties)
                 : null;
 
+              const isOpen = r.code === currentCode;
+
               return (
                 <button
                   key={r.code}
@@ -144,6 +163,8 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
                   role="option"
                   // Selection follows focus, a single-select listbox's convention (R-26 ruling).
                   aria-selected={i === roving.active}
+                  // The area opened last is marked apart from the roving selection (R-73).
+                  aria-current={isOpen ? 'true' : undefined}
                   {...roving.itemProps(i)}
                   onClick={() => onSelectRanking(r.code, coords)}
                 >
@@ -153,7 +174,10 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
                     style={{ background: quintileColor(r.quintile) }}
                   />
                   <span className="rank-info">
-                    <span className="rank-name">{r.name}</span>
+                    <span className="rank-name">
+                      {r.name}
+                      {isOpen && <span className="sr-only"> (last opened)</span>}
+                    </span>
                     <span className="rank-meta">
                       {driver && (
                         <span className={`driver-chip ${driver.dir === 'up' ? 'chip-up' : 'chip-down'}`}>
@@ -170,6 +194,7 @@ export const RankingsPanel: React.FC<RankingsPanelProps> = ({
           {nextCount != null && (
             <button type="button" className="rankings-more" onClick={showMore}>
               {showMoreLabel(nextCount - count)}
+              {yoursIndex >= count && ` · ${yoursIsLabel(yoursIndex)}`}
             </button>
           )}
         </>

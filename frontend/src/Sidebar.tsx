@@ -286,6 +286,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
   const detailCode = detail?.lsoa11cd ?? null;
+  // The rankings show only once the detail closes, so they mark the area opened last
+  // (R-73): kept until another opens, adjusted in render as `shown` is in RankingsPanel.
+  const [lastCode, setLastCode] = useState(detailCode);
+  if (detailCode != null && detailCode !== lastCode) setLastCode(detailCode);
   const shownCodes = useRef<SheetCodes>({ code: detailCode, code2: compareCode });
   useEffect(() => {
     const next = { code: detailCode, code2: compareCode };
@@ -562,6 +566,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="section">
             <RankingsPanel
               onSelectRanking={onSelectRanking}
+              currentCode={lastCode}
               lookup={lookup}
               nation={nation}
               onNationChange={onNationChange}

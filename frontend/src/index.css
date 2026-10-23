@@ -539,6 +539,11 @@ body {
   font-family: var(--font-sans); transition: background 0.12s;
 }
 .rank-row:hover { background: var(--paper-wash); }
+/* The area opened last (R-73): an ink rule and the hover wash; the
+   rule takes 3px of the row's 6px left padding, so nothing in the row moves */
+.rank-row[aria-current="true"] {
+  background: var(--paper-wash); border-left: 3px solid var(--ink); padding-left: 3px;
+}
 /* "Show N more" under the rankings: the chip look, full width, a full tap target */
 .rankings-more { display: block; width: 100%; min-height: var(--tap-min); margin-top: 8px; }
 .rank-num {
