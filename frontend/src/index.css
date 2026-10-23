@@ -253,8 +253,9 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .search-bar input::placeholder { color: var(--ink-faint); }
-.search-bar input:focus {
-  outline: none; border-color: var(--accent);
+/* outline-offset 0: the page's focus outline sits on the accent border, not as a second ring. */
+.search-bar input:focus-visible {
+  outline-offset: 0; border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .search-icon {
@@ -1061,4 +1062,5 @@ body {
   .seg-fill, .rank-dot, .dot-mark, .bar-fill { forced-color-adjust: none; }
   .legend, .map-toast { border: 1px solid CanvasText; }
   :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  .search-bar input:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
 }
