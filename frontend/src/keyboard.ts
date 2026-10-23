@@ -146,16 +146,26 @@ export function escapeAction(
 export interface SheetCodes {
   code: string | null;
   code2: string | null;
+  /** A count of openings of the main area (a search, a map tap, a ranking tap), so
+   *  opening the area already shown again is told apart from a re-render (R-74). */
+  tick: number;
+}
+
+/** Whether the main area was opened again while it was already shown: same code, new tick. */
+export function reopenedSameArea(prev: SheetCodes, next: SheetCodes): boolean {
+  return next.code != null && next.code === prev.code && next.tick !== prev.tick;
 }
 
 /**
  * Whether the sheet scrolls back to the top: true when either area changes to a new
- * one, so its headline premium is in view; false when an area closes or nothing
- * changed (a re-render).
+ * one, or the area shown is opened again, so its headline premium is in view; false
+ * when an area closes or nothing changed (a re-render).
  */
 export function shouldScrollToTop(prev: SheetCodes, next: SheetCodes): boolean {
   const opened = (a: string | null, b: string | null) => b != null && b !== a;
-  return opened(prev.code, next.code) || opened(prev.code2, next.code2);
+  return (
+    opened(prev.code, next.code) || opened(prev.code2, next.code2) || reopenedSameArea(prev, next)
+  );
 }
 
 /** `<input>` types that are not typed into, so do not keep their own Escape. */

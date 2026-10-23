@@ -21,6 +21,7 @@ import {
   areasLabel,
   showMoreLabel,
   yoursIsLabel,
+  ALREADY_SHOWN,
   GB_LABEL,
   PREMIUM_CAVEAT,
   ELSEWHERE_COPY,
@@ -599,6 +600,13 @@ describe('showMoreLabel', () => {
   it('names how many rows the press adds', () => {
     expect(showMoreLabel(20)).toBe('Show 20 more');
     expect(showMoreLabel(3)).toBe('Show 3 more');
+  });
+});
+
+describe('ALREADY_SHOWN', () => {
+  it('names the area and adds no figure (R-74)', () => {
+    expect(ALREADY_SHOWN('Leeds 056E')).toBe('That postcode is in Leeds 056E, the area already shown.');
+    expect(ALREADY_SHOWN('Leeds 056E').replace('Leeds 056E', '')).not.toMatch(/\d|£/);
   });
 });
 

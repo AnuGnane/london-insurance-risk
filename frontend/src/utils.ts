@@ -803,3 +803,8 @@ export const LOAD_FAILED_MESSAGE = 'The map data did not load.';
 export const SEARCH_LOAD_FAILED_MESSAGE =
   'The map data did not load, so a postcode cannot be placed. Try again.';
 export const RETRY_LABEL = 'Try again';
+
+/** Announced when a search opens the area already shown (R-74): the sheet scrolls to
+ *  the top but nothing on it changes, so a screen reader would otherwise hear nothing. */
+export const ALREADY_SHOWN = (name: string): string =>
+  `That postcode is in ${name}, the area already shown.`;

@@ -7,7 +7,7 @@ import { AboutPanel } from './AboutPanel';
 import { ShareButton } from './ShareButton';
 import { Segmented, type SegmentedOption } from './Segmented';
 import type { AreaDetail, ColorMode, Methodology } from './types';
-import { COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
+import { ALREADY_SHOWN, COLOR_MODES, methodologyNote, COMPONENT_LABELS, formatFigure, formatP, nationCounts, NOT_CLAIMED, notClaimedText, type Nation } from './utils';
 import { examplePairs, premiumSpan } from './api';
 import { useAnnouncer } from './announce';
 import {
@@ -17,7 +17,13 @@ import {
   shouldShowCallout,
 } from './callout';
 import { detailBodyState, META_RESERVE, REDUCED_MOTION_QUERY, useMediaQuery } from './layout';
-import { escapeAction, isTextField, shouldScrollToTop, type SheetCodes } from './keyboard';
+import {
+  escapeAction,
+  isTextField,
+  reopenedSameArea,
+  shouldScrollToTop,
+  type SheetCodes,
+} from './keyboard';
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
@@ -26,6 +32,10 @@ interface SidebarProps {
   onNearMe: () => Promise<void>;
   onClear: () => void;
   detail: AreaDetail | null;
+  /** Counts openings of the main area, so opening the one shown again scrolls (R-74). */
+  openTick: number;
+  /** The searched postcode behind the main area; null after a map or ranking tap. */
+  searchedPc: string | null;
   error: string | null;
   loading: boolean;
   colorMode: ColorMode;
@@ -239,6 +249,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNearMe,
   onClear,
   detail,
+  openTick,
+  searchedPc,
   error,
   loading,
   colorMode,
@@ -290,14 +302,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // (R-73): kept until another opens, adjusted in render as `shown` is in RankingsPanel.
   const [lastCode, setLastCode] = useState(detailCode);
   if (detailCode != null && detailCode !== lastCode) setLastCode(detailCode);
-  const shownCodes = useRef<SheetCodes>({ code: detailCode, code2: compareCode });
+  const shownCodes = useRef<SheetCodes>({
+    code: detailCode,
+    code2: compareCode,
+    tick: openTick,
+  });
+  // A search that lands on the area already shown changes nothing on the sheet: say so.
+  const [sameSaid, saySame] = useAnnouncer<string>('');
   useEffect(() => {
-    const next = { code: detailCode, code2: compareCode };
+    const next = { code: detailCode, code2: compareCode, tick: openTick };
     if (shouldScrollToTop(shownCodes.current, next)) {
       contentRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
     }
+    // A map or ranking tap on the open area only scrolls (R-74 ruling 1).
+    if (detailCode != null && searchedPc != null && reopenedSameArea(shownCodes.current, next)) {
+      const p = lookup.get(detailCode)?.properties;
+      saySame(ALREADY_SHOWN(p?.lsoa_name ? String(p.lsoa_name) : detailCode));
+    }
     shownCodes.current = next;
-  }, [detailCode, compareCode, reducedMotion]);
+  }, [detailCode, compareCode, openTick, searchedPc, lookup, reducedMotion, saySame]);
   const [locating, setLocating] = useState(false);
   // The first-visit "what am I looking at" card (callout.ts).
   const [calloutDismissed, setCalloutDismissed] = useState(loadCalloutDismissed);
@@ -408,6 +431,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </header>
 
       <div className="sidebar-content" ref={contentRef}>
+        <span className="sr-only" role="status">{sameSaid}</span>
         <div className="section">
           <form
             className="search-bar"

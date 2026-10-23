@@ -110,6 +110,11 @@ function App() {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   // The postcode behind the current selection (shared as ?pc=), if it came from a search.
   const [searchedPc, setSearchedPc] = useState<string | null>(null);
+  // A count of main-area openings (search, map tap, ranking tap; not the compare paths),
+  // so the sheet can tell the area already shown opened again from a re-render (R-74).
+  // New state, not selectionId: that ref does not re-render and counts compare and
+  // Near-me lookups too.
+  const [openTick, setOpenTick] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
 
   // A shared ?pc= / ?area= link, captured once on mount; restored after the
@@ -216,6 +221,7 @@ function App() {
         hit.query.kind === 'outcode' ? `${hit.label} · district centre` : hit.label;
       setDetail({ ...featureToDetail(props), title });
       setSearchedPc(hit.label);
+      setOpenTick((t) => t + 1);
       setSheetExpanded(true);
       focusFeature(feature, [hit.lng, hit.lat]);
     },
@@ -347,6 +353,7 @@ function App() {
     }
     setSearchedPc(null);
     setDetail(featureToDetail(props));
+    setOpenTick((t) => t + 1);
     focusLsoa(lsoa11cd);
   };
 
@@ -358,6 +365,7 @@ function App() {
     const props = lookup.get(code)?.properties as LsoaProps | undefined;
     if (props) {
       setDetail(featureToDetail(props));
+      setOpenTick((t) => t + 1);
       setSheetExpanded(true);
       focusLsoa(code, coords);
     } else if (coords) {
@@ -425,6 +433,8 @@ function App() {
         onNearMe={handleNearMe}
         onClear={clearDetail}
         detail={detail}
+        openTick={openTick}
+        searchedPc={searchedPc}
         error={searchError}
         loading={loading}
         colorMode={colorMode}

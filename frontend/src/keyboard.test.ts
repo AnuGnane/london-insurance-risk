@@ -4,6 +4,7 @@ import {
   nextIndex,
   segmentedIndex,
   shouldScrollToTop,
+  reopenedSameArea,
   typeAheadIndex,
 } from './keyboard';
 
@@ -118,26 +119,53 @@ describe('escapeAction', () => {
 });
 
 describe('shouldScrollToTop', () => {
-  const none = { code: null, code2: null };
+  const none = { code: null, code2: null, tick: 0 };
   it('scrolls when an area opens or changes', () => {
-    expect(shouldScrollToTop(none, { code: 'E01000001', code2: null })).toBe(true);
+    expect(shouldScrollToTop(none, { code: 'E01000001', code2: null, tick: 0 })).toBe(true);
     expect(
-      shouldScrollToTop({ code: 'E01000001', code2: null }, { code: 'W01000002', code2: null })
+      shouldScrollToTop(
+        { code: 'E01000001', code2: null, tick: 0 },
+        { code: 'W01000002', code2: null, tick: 0 }
+      )
     ).toBe(true);
   });
   it('scrolls when the second area of a comparison opens (ruling 1)', () => {
     expect(
       shouldScrollToTop(
-        { code: 'E01000001', code2: null },
-        { code: 'E01000001', code2: 'S01000003' }
+        { code: 'E01000001', code2: null, tick: 0 },
+        { code: 'E01000001', code2: 'S01000003', tick: 0 }
       )
     ).toBe(true);
   });
   it('stays put on a re-render and when an area closes', () => {
-    const open = { code: 'E01000001', code2: 'S01000003' };
+    const open = { code: 'E01000001', code2: 'S01000003', tick: 0 };
     expect(shouldScrollToTop(open, { ...open })).toBe(false);
-    expect(shouldScrollToTop(open, { code: 'E01000001', code2: null })).toBe(false);
+    expect(shouldScrollToTop(open, { code: 'E01000001', code2: null, tick: 0 })).toBe(false);
     expect(shouldScrollToTop(open, none)).toBe(false);
     expect(shouldScrollToTop(none, none)).toBe(false);
+  });
+});
+
+describe('opening the area already shown (R-74)', () => {
+  const open = { code: 'E01000001', code2: null, tick: 3 };
+
+  it('scrolls when the same area opens again', () => {
+    expect(shouldScrollToTop(open, { ...open, tick: 4 })).toBe(true);
+  });
+  it('stays put on a bare re-render of the same opening', () => {
+    expect(shouldScrollToTop(open, { ...open })).toBe(false);
+  });
+  it('stays put when the area clears, even with a new tick', () => {
+    expect(shouldScrollToTop(open, { code: null, code2: null, tick: 4 })).toBe(false);
+  });
+
+  it('reopenedSameArea: same code with a new tick only', () => {
+    expect(reopenedSameArea(open, { ...open, tick: 4 })).toBe(true);
+    expect(reopenedSameArea(open, { ...open })).toBe(false);
+    expect(reopenedSameArea(open, { ...open, code: 'W01000002', tick: 4 })).toBe(false);
+    expect(reopenedSameArea(open, { code: null, code2: null, tick: 4 })).toBe(false);
+    expect(
+      reopenedSameArea({ code: null, code2: null, tick: 3 }, { code: null, code2: null, tick: 4 })
+    ).toBe(false);
   });
 });
