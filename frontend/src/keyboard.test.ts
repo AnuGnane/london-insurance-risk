@@ -175,11 +175,9 @@ describe('recentsShown (R-77)', () => {
   const base = { focusWithin: true, term: '', count: 2 };
 
   it('shows while focus is in the field, the box is empty and there are recents', () => {
+    // focusWithin covers the box and the list alike (a recent button focused with the
+    // box blurred is still within); Sidebar's relatedTarget check sets it.
     expect(recentsShown(base)).toBe(true);
-  });
-  it('stays while focus is on a recent button with the box blurred', () => {
-    // focusWithin covers the box and the list alike: arrowing into the list keeps it.
-    expect(recentsShown({ ...base, focusWithin: true })).toBe(true);
   });
   it('hides once focus leaves the field', () => {
     expect(recentsShown({ ...base, focusWithin: false })).toBe(false);
