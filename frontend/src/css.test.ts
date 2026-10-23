@@ -52,7 +52,7 @@ describe('forced colours', () => {
   });
 
   it('never drops the search box outline on focus', () => {
-    expect(css).not.toMatch(/\.search-bar input:focus\s*\{[^}]*outline:\s*none/);
+    expect(css).not.toMatch(/\.search-bar input:focus(-visible)?\s*[,{][^}]*outline:\s*none/);
   });
 
   it('uses system colour keywords only', () => {
