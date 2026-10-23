@@ -42,6 +42,19 @@ describe('forced colours', () => {
     expect(forced).toMatch(/:focus-visible\s*\{\s*outline:\s*2px solid Highlight;/);
   });
 
+  // R-76: the search box's own focus rule must not hide the ring under High Contrast.
+  it('rings the search box in Highlight', () => {
+    const rule = forced.match(/([^{}]+)\{([^}]*)\}/g)?.find((r) =>
+      r.split('{')[0].split(',').map((s) => s.trim()).includes('.search-bar input:focus-visible'),
+    );
+    expect(rule).toMatch(/outline:\s*2px solid Highlight;/);
+    expect(rule).toMatch(/outline-offset:\s*2px;/);
+  });
+
+  it('never drops the search box outline on focus', () => {
+    expect(css).not.toMatch(/\.search-bar input:focus\s*\{[^}]*outline:\s*none/);
+  });
+
   it('uses system colour keywords only', () => {
     expect(forced).not.toMatch(/#|rgb\(|hsl\(|var\(/);
   });
