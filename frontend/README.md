@@ -70,15 +70,15 @@ most with their own test file (see below):
 | `api.ts` | The client-side data layer: rankings, the landing pairs and premium span, methodology, the streamed GeoJSON, the tiles URL |
 | `callout.ts` | The landing's first-visit "What am I looking at" card: when it shows, its copy, its dismissal |
 | `dataSources.ts` | "About the data": one entry per data source behind a colour mode |
-| `keyboard.ts` | Roving-tabindex lists and type-ahead, and what Escape does |
+| `keyboard.ts` | Roving-tabindex lists and type-ahead, what Escape does, when the recent searches show (`recentsShown`), and telling a reopened area from a re-render |
 | `layout.ts` | Layout tunables: breakpoints, sheet heights, tap size, timeouts, map fit padding and camera, the reserved heights and the masthead's loading stand-ins (`META_RESERVE`) |
 | `loadState.ts` | The GeoJSON load: what a search says while the areas load or after they fail, and the "Try again" counter |
 | `locate.ts` | "Near me": a browser location to the area it falls in |
-| `postcode.ts` | Postcode normalising and validation, the postcodes.io lookup, recent searches |
+| `postcode.ts` | Postcode normalising and validation, the postcodes.io lookup, recent searches, a shared link's postcode for the box (`initialTerm`) |
 | `search.ts` | Where a search's result goes when a compare is armed or cancelled |
 | `theme.ts` | Light and dark basemaps, and the CSS tokens MapLibre needs |
 | `types.ts` | The data shapes |
-| `url.ts` | The share URL codec and the tab title (`pageTitle`) |
+| `url.ts` | The share URL codec (area, comparison, postcode, filter, nation, the rankings' `order`) and the tab title (`pageTitle`) |
 | `utils.ts` | Formatting, geometry helpers, premium bands, the detail/explain/compare text, the compare multiplier, p-values, nation counts, the methodology note |
 
 ## Tests and what each pins
