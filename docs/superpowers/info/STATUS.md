@@ -203,9 +203,9 @@ phone's first load are gone: the masthead's figures and the map's attribution ke
 places while they arrive. Three more tunables moved into `layout.ts`, and a fourth
 Lighthouse pass ran along the way.
 
-**And then (R-72 to R-78).** The rankings mark the area that is open, and when it sits
+**And then (R-72 to R-78).** The rankings mark the area opened last, and when it sits
 below the rows shown, "Show more" says where it sits ("yours is Nth"). Searching a postcode in
-the area already shown scrolls the sheet back to the top and says so instead of
+the area already shown scrolls the sheet back to the top and announces it instead of
 changing nothing. The share URL carries the rankings' order beside the area, filter and
 nation, and a shared link that came from a search shows its postcode in the search box.
 Under Windows High Contrast the search box keeps a focus ring, and the arrow keys reach
