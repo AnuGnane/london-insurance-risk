@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addRecentSearch,
   clearRecentSearches,
+  initialTerm,
   isNorthernIreland,
   loadRecentSearches,
   normalisePostcode,
@@ -24,6 +25,25 @@ describe('normalisePostcode', () => {
     [' e1 ', 'E1'],
   ])('%j -> %j', (input, want) => {
     expect(normalisePostcode(input)).toBe(want);
+  });
+});
+
+describe('initialTerm', () => {
+  it('shows a full postcode in its normalised form', () => {
+    expect(initialTerm('SW1A 1AA')).toBe('SW1A 1AA');
+  });
+
+  it('shows a district as it is', () => {
+    expect(initialTerm('cv21')).toBe('CV21');
+  });
+
+  it('upper-cases and spaces a lower-case postcode with no space', () => {
+    expect(initialTerm('sw1a1aa')).toBe('SW1A 1AA');
+  });
+
+  it('is empty when the link carries no postcode', () => {
+    expect(initialTerm(null)).toBe('');
+    expect(initialTerm('')).toBe('');
   });
 });
 

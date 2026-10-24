@@ -267,3 +267,12 @@ describe('recent searches are reachable from the keyboard (R-77)', () => {
     expect(rule?.[1]).toMatch(/list-style:\s*none/);
   });
 });
+
+describe('a shared postcode link shows its postcode in the box (R-78)', () => {
+  const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
+
+  it('App passes the restored postcode and Sidebar seeds its term from it', () => {
+    expect(read('./App.tsx')).toContain('initialTerm={initialTerm(initialLink.pc)}');
+    expect(read('./Sidebar.tsx')).toContain('useState(initialTerm)');
+  });
+});
