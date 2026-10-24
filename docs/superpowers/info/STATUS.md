@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-18 (model); frontend section updated 2026-10-22 for the October
+Last updated: 2026-07-18 (model); frontend section updated 2026-10-24 for the October
 holiday queue (`HOLIDAY.md`). July's branch: `docs-finalize-transparency`.
 
 **2026-07 model wave — COMPLETE (Phase 4 flood + uncertainty bands + IMD sub-domains + Vouched bridge).**
@@ -146,7 +146,7 @@ All endpoints are NaN-safe; `estimate_premium` returns null (not a partial value
 - Postcode search → detail panel with **£ premium as the headline** + a **premium waterfall**
   (baseline → signed per-factor £ steps → estimate) that reconciles to the pound
 - Filter map by: premium · vehicle crime · collisions · deprivation · density
-- Quintile legend + deep-linkable URLs (`?area=<code>&filter=<mode>`)
+- Quintile legend + deep-linkable URLs (`?area=<code>&filter=<mode>&order=asc`)
 - Initial view: Great Britain (zoomed out to show all nations)
 
 **October 2026 holiday queue (R-1 to R-17, `HOLIDAY.md`).** The site is now a static
@@ -202,6 +202,15 @@ in the search box clears it before it closes the panel. The last layout shifts o
 phone's first load are gone: the masthead's figures and the map's attribution keep their
 places while they arrive. Three more tunables moved into `layout.ts`, and a fourth
 Lighthouse pass ran along the way.
+
+**And then (R-72 to R-78).** The rankings mark the area that is open, and when it sits
+below the rows shown, "Show more" says where it sits ("yours is Nth"). Searching a postcode in
+the area already shown scrolls the sheet back to the top and says so instead of
+changing nothing. The share URL carries the rankings' order beside the area, filter and
+nation, and a shared link that came from a search shows its postcode in the search box.
+Under Windows High Contrast the search box keeps a focus ring, and the arrow keys reach
+the recent searches from the box. A fifth Lighthouse pass (R-72) found accessibility
+still 100 on all three runs, performance 32 · 34 · 54 and CLS 0, with nothing to fix.
 
 ### Infrastructure
 
