@@ -29,6 +29,8 @@ import {
 
 interface SidebarProps {
   onSearch: (postcode: string) => void;
+  /** The search box's first value: a shared link's postcode, read once (R-78). */
+  initialTerm: string;
   onSelectRanking: (code: string, coords?: [number, number]) => void;
   onSelectPair: (a: string, b: string) => void;
   onNearMe: () => Promise<void>;
@@ -249,6 +251,7 @@ const MethodologyPanel: React.FC<{ m: Methodology | null }> = ({ m }) => {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   onSearch,
+  initialTerm,
   onSelectRanking,
   onSelectPair,
   onNearMe,
@@ -277,7 +280,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCompareToggle,
   onCompareClear,
 }) => {
-  const [term, setTerm] = useState('');
+  const [term, setTerm] = useState(initialTerm);
   // Focus anywhere in the search field or the recents list (R-77).
   const [focusWithin, setFocusWithin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

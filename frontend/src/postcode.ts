@@ -31,6 +31,11 @@ export function normalisePostcode(input: string): string {
   return compact;
 }
 
+/** A shared link's `?pc=` as the search box shows it on load (R-78); '' for none. */
+export function initialTerm(pc: string | null): string {
+  return pc ? normalisePostcode(pc) : '';
+}
+
 /** A valid full postcode or outcode, or null if the input is not UK-shaped. */
 export function parsePostcode(input: string): PostcodeQuery | null {
   const text = normalisePostcode(input);

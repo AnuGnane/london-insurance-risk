@@ -27,6 +27,7 @@ import { buildShareUrl, pageTitle, parseShareUrl } from './url';
 import {
   addRecentSearch,
   clearRecentSearches,
+  initialTerm,
   loadRecentSearches,
   resolvePostcode,
   type PostcodeHit,
@@ -434,6 +435,7 @@ function App() {
       <a className="skip-link" href="#postcode-search">Skip to postcode search</a>
       <Sidebar
         onSearch={handleSearch}
+        initialTerm={initialTerm(initialLink.pc)}
         onSelectRanking={handleSelectRanking}
         onSelectPair={handleSelectPair}
         onNearMe={handleNearMe}
