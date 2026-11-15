@@ -13,5 +13,11 @@ export function searchBlockedMessage(
   return geoError != null ? SEARCH_LOAD_FAILED_MESSAGE : STILL_LOADING_MESSAGE;
 }
 
+/** Whether the GeoJSON download may start: once the streamed tiles have coloured
+ *  the map (or failed to), or once the wait for them (AREAS_WAIT_FOR_TILES_MS) is
+ *  over. Until then the tiles have the bandwidth to themselves. */
+export const areasMayLoad = (tilesSettled: boolean, waitOver: boolean): boolean =>
+  tilesSettled || waitOver;
+
 /** The next load attempt: a new value re-runs the effect that fetches the GeoJSON. */
 export const nextAttempt = (attempt: number): number => attempt + 1;

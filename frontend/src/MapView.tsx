@@ -12,9 +12,9 @@ import type {
   MapRef,
   MapSourceDataEvent,
 } from 'react-map-gl/maplibre';
-import { addProtocol } from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import type { LayerSpecification } from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
+import { PMTiles, Protocol } from 'pmtiles';
 import type { Feature, FeatureCollection } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin, X } from 'lucide-react';
@@ -68,6 +68,8 @@ interface MapViewProps {
   onClick: (lsoa: string) => void;
   onResetFilter: () => void;
   onShowDetails: () => void;
+  /** The streamed tiles have coloured the map, or failed to: the GeoJSON may start. */
+  onTilesSettled?: () => void;
 }
 
 // First paint: the committed PMTiles archive (layer `lsoa`, every areas.geojson
@@ -75,8 +77,15 @@ interface MapViewProps {
 // download ends. At zoom 4 to 8 the tiles thin out dense cities, so they are
 // never interactive and are hidden once the GeoJSON is drawn; see
 // docs/superpowers/specs/2026-10-15-pmtiles-first-paint.md.
-addProtocol('pmtiles', new Protocol().tile);
+// The archive's header and root directory are fetched now, while MapLibre is still
+// fetching the basemap style, rather than after it (the source is only added once
+// the style has loaded): a round trip off the first paint.
 const TILES_URL = tilesUrl(dataUrl('lsoa-risk.pmtiles'), window.location.href);
+const tilesProtocol = new Protocol();
+const tilesArchive = new PMTiles(TILES_URL.slice('pmtiles://'.length));
+tilesProtocol.add(tilesArchive);
+tilesArchive.getHeader().catch(() => {});
+maplibregl.addProtocol('pmtiles', tilesProtocol.tile);
 
 type FillPaint = NonNullable<Extract<LayerSpecification, { type: 'fill' }>['paint']>;
 
@@ -151,6 +160,7 @@ export const MapView: React.FC<MapViewProps> = ({
   onClick,
   onResetFilter,
   onShowDetails,
+  onTilesSettled,
 }) => {
   const mapRef = useRef<MapRef>(null);
   // Name the canvas as soon as the map exists, not at its load event, so a reader
@@ -172,9 +182,15 @@ export const MapView: React.FC<MapViewProps> = ({
   const [drawnOn, setDrawnOn] = useState<string | null>(null);
   const [areasError, setAreasError] = useState(false);
   // MapLibre adds `sourceId` to errors raised while loading a source.
-  const onMapError = useCallback((e: MapErrorEvent) => {
-    if ((e as MapErrorEvent & { sourceId?: string }).sourceId === 'lsoa') setAreasError(true);
-  }, []);
+  const onMapError = useCallback(
+    (e: MapErrorEvent) => {
+      const sourceId = (e as MapErrorEvent & { sourceId?: string }).sourceId;
+      if (sourceId === 'lsoa') setAreasError(true);
+      // No tiles: the GeoJSON need not wait for them.
+      if (sourceId === 'lsoa-tiles') onTilesSettled?.();
+    },
+    [onTilesSettled]
+  );
   const isTouch = useMediaQuery(TOUCH_QUERY);
   const isDark = useMediaQuery(DARK_QUERY);
   // Read at flight time through a ref, so toggling the setting does not re-run
@@ -204,9 +220,12 @@ export const MapView: React.FC<MapViewProps> = ({
     (e: MapSourceDataEvent) => {
       if (!e.isSourceLoaded) return;
       if (e.sourceId === 'lsoa') setDrawnOn(mapColors.basemap);
-      if (e.sourceId === 'lsoa-tiles') setTilesOn(mapColors.basemap);
+      if (e.sourceId === 'lsoa-tiles') {
+        setTilesOn(mapColors.basemap);
+        onTilesSettled?.();
+      }
     },
-    [mapColors.basemap]
+    [mapColors.basemap, onTilesSettled]
   );
 
   const lookup = useMemo(() => {
@@ -435,6 +454,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
       <MapGL
         ref={setMapRef}
+        // The module this chunk already holds: without it react-map-gl imports
+        // maplibre-gl again, a separate chunk and one more round trip before the map.
+        mapLib={maplibregl}
         initialViewState={CAMERA.initialView}
         mapStyle={mapColors.basemap}
         interactiveLayerIds={geojson ? ['lsoa-fill'] : []}
