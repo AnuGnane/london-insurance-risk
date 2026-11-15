@@ -16,6 +16,13 @@ def test_postcode_helpers():
     assert postcode_district("en1 4qr") == "EN1"
 
 
+def test_postcode_district_of_an_unspaced_postcode():
+    # ONSPD's pcd7 drops the space from seven-character postcodes.
+    assert postcode_district("AB101AA") == "AB10"
+    assert postcode_district("EN14QR") == "EN1"
+    assert postcode_district("AB10") == "AB10"
+
+
 def test_normalise_percentile_bounds():
     s = pd.Series([1, 2, 3, 4])
     out = normalise(s, "percentile")

@@ -9,6 +9,7 @@
  */
 
 import { POSTCODE_LOOKUP_TIMEOUT_MS } from './layout';
+import { dataUrl } from './api';
 
 const POSTCODES_API = 'https://api.postcodes.io';
 
@@ -84,6 +85,64 @@ export interface PostcodeHit {
   label: string;   // "E1 6AN", or "SW1A" for a district
   lng: number;
   lat: number;
+}
+
+/** The lookup failures that mean postcodes.io is down, not that the entry is wrong:
+ *  only these fall back to the bundled outcode table ('offline' would not reach it). */
+const FALLBACK_CODES: readonly PostcodeErrorCode[] = ['network', 'timeout'];
+
+export interface OutcodeFallbackHit {
+  outcode: string;
+  lsoa11cd: string;
+  approximate: true;
+}
+
+/** An outcode, or a full postcode's outcode, looked up in the outcode → area table. */
+export function resolveOutcodeFallback(
+  input: string,
+  table: Record<string, string>
+): OutcodeFallbackHit | null {
+  const query = parsePostcode(input);
+  if (!query || isNorthernIreland(query)) return null;
+  const outcode = query.kind === 'outcode' ? query.text : query.text.split(' ')[0];
+  const lsoa11cd = table[outcode];
+  return lsoa11cd ? { outcode, lsoa11cd, approximate: true } : null;
+}
+
+/** The baked outcode table (make showcase-outcodes), or null when it is missing or
+ *  unreadable: no file means no fallback, never an error of its own. */
+export async function loadOutcodeTable(
+  fetchImpl: typeof fetch = fetch
+): Promise<Record<string, string> | null> {
+  try {
+    const res = await fetchImpl(dataUrl('outcodes.json'));
+    if (!res.ok) return null;
+    const table: unknown = await res.json();
+    return table && typeof table === 'object' ? (table as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Fetched on the first lookup that needs it, and kept once it loads; a failed load
+// is not kept, so the next outage tries again.
+let outcodeTable: Promise<Record<string, string> | null> | null = null;
+const cachedOutcodeTable = () =>
+  (outcodeTable ??= loadOutcodeTable().then((t) => {
+    if (!t) outcodeTable = null;
+    return t;
+  }));
+
+/** The approximate area for a search postcodes.io failed on, or null when the
+ *  failure is not an outage, there is no table, or the outcode is not in it. */
+export async function outcodeFallback(
+  input: string,
+  err: unknown,
+  load: () => Promise<Record<string, string> | null> = cachedOutcodeTable
+): Promise<OutcodeFallbackHit | null> {
+  if (!(err instanceof PostcodeError) || !FALLBACK_CODES.includes(err.code)) return null;
+  const table = await load();
+  return table ? resolveOutcodeFallback(input, table) : null;
 }
 
 interface PostcodesIoResult {

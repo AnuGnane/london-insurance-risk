@@ -708,6 +708,11 @@ export const SCOTLAND_CAVEAT =
 export const ELSEWHERE_COPY =
   "The model also powers the postcode-district premium estimates behind vouched.autos's First-Car Finder, via a frozen data contract with provenance stamps (model commit, calibration date, n, R²) — every model-changing ship here regenerates that pack.";
 
+/** The muted line under an area found through the bundled outcode table because
+ *  postcodes.io did not answer: the area is the outcode's centre, approximate. */
+export const outcodeFallbackNote = (outcode: string): string =>
+  `postcodes.io didn't answer, so this is the area at the centre of ${outcode}, not your postcode's.`;
+
 /** One README "What it doesn't claim" bullet, word for word: the bold lead, then the
  *  rest. The sample bullet's count is methodology.json's n_matched, never typed. */
 export type NotClaimed = { lead: string; text: string | ((n?: number) => string) };

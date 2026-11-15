@@ -114,6 +114,8 @@ export interface AreaDetailComponent {
 export interface AreaDetail {
   title: string;
   subtitle?: string;
+  /** A muted line under the title, e.g. the outcode fallback's approximate note. */
+  note?: string;
   lsoa11cd: string;
   risk_index: number;
   quintile: number;

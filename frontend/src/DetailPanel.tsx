@@ -216,6 +216,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     <div className="detail">
       <h2 className="detail-area">{data.title}</h2>
       {data.subtitle && <div className="detail-code">{data.subtitle}</div>}
+      {data.note && <p className="note">{data.note}</p>}
 
       {compare && <ComparePair a={data} b={compare} />}
       <div className="compare-actions">
