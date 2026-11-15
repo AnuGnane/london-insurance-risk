@@ -20,7 +20,7 @@ import {
   type Order,
 } from './utils';
 import { getGeojson, getMethodology } from './api';
-import { nextAttempt, searchBlockedMessage } from './loadState';
+import { areasMayLoad, nextAttempt, searchBlockedMessage } from './loadState';
 import { findMyArea } from './locate';
 import { isCurrent, searchTarget } from './search';
 import { buildShareUrl, pageTitle, parseShareUrl } from './url';
@@ -32,7 +32,7 @@ import {
   resolvePostcode,
   type PostcodeHit,
 } from './postcode';
-import { layoutCssVars } from './layout';
+import { AREAS_WAIT_FOR_TILES_MS, layoutCssVars } from './layout';
 import './index.css';
 
 // The map (react-map-gl, which in turn pulls in maplibre-gl) is its own chunk, so the
@@ -76,6 +76,17 @@ function App() {
   const [attempt, setAttempt] = useState(0);
   const [loadedBytes, setLoadedBytes] = useState(0);
   const [methodology, setMethodology] = useState<Methodology | null>(null);
+  // First paint: the GeoJSON download waits for the streamed tiles to colour the
+  // map (MapView reports it), or for AREAS_WAIT_FOR_TILES_MS, so the two do not
+  // share the first seconds of bandwidth.
+  const [tilesSettled, setTilesSettled] = useState(false);
+  const [tilesWaitOver, setTilesWaitOver] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setTilesWaitOver(true), AREAS_WAIT_FOR_TILES_MS);
+    return () => window.clearTimeout(id);
+  }, []);
+  const onTilesSettled = useCallback(() => setTilesSettled(true), []);
+  const startAreas = areasMayLoad(tilesSettled, tilesWaitOver);
   const lookup = useMemo(
     () => (geojson ? buildLookup(geojson) : new Map<string, Feature>()),
     [geojson]
@@ -260,6 +271,7 @@ function App() {
         setCompare({ forArea: area, detail: featureToDetail(feature.properties as LsoaProps) });
       }
     };
+    if (!startAreas) return;
     getGeojson(setLoadedBytes)
       .then((fc) => {
         setGeojson(fc);
@@ -275,8 +287,12 @@ function App() {
           .catch(() => restoreArea(fc));
       })
       .catch((e) => setGeoError(e.message));
+  }, [initialLink, focusFeature, showPostcodeHit, attempt, startAreas]);
+
+  // The model figures are small and do not wait for the tiles.
+  useEffect(() => {
     getMethodology().then((m) => m && setMethodology(m));
-  }, [initialLink, focusFeature, showPostcodeHit, attempt]);
+  }, [attempt]);
 
   const retryGeojson = () => {
     setGeoError(null);
@@ -487,6 +503,7 @@ function App() {
         onClick={handleMapClick}
         onResetFilter={() => setColorMode('composite')}
         onShowDetails={() => setSheetExpanded(true)}
+        onTilesSettled={onTilesSettled}
       />
       </Suspense>
       </MapErrorBoundary>

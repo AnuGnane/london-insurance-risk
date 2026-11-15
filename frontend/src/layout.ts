@@ -53,6 +53,13 @@ export const NEAR_ME_TIMEOUT_MS = 10_000;
 /** Postcode search: how long to wait for postcodes.io before giving up, ms. */
 export const POSTCODE_LOOKUP_TIMEOUT_MS = 8_000;
 
+/** First paint: the detailed areas (areas.geojson, ~8 MB on the wire) wait for the
+ *  streamed tiles to colour the map before they start downloading, so the two do
+ *  not split the first seconds of bandwidth (on a 4G phone the download held the
+ *  tiles back by a second or more). Past this many ms they start anyway, as the
+ *  tiles are slow or failed, ms. */
+export const AREAS_WAIT_FOR_TILES_MS = 5_000;
+
 /** "Near me": how old a cached fix may be and still be used, ms. */
 export const NEAR_ME_MAX_AGE_MS = 60_000;
 
