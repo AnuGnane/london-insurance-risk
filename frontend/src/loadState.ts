@@ -37,7 +37,12 @@ export function webglAvailable(doc: CanvasMaker | null = typeof document === 'un
   if (!doc) return false;
   try {
     const canvas = doc.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
+    const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as {
+      getExtension?(name: string): { loseContext?(): void } | null;
+    } | null;
+    // Hand the probe's context back: browsers cap how many a page may hold.
+    gl?.getExtension?.('WEBGL_lose_context')?.loseContext?.();
+    return gl != null;
   } catch {
     return false;
   }
