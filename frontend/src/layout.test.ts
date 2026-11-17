@@ -21,6 +21,7 @@ import {
   REDUCED_MOTION_QUERY,
   SMALL_MAX_WIDTH,
   layoutCssVars,
+  MASTHEAD_COMPACT_MAX_WIDTH,
   MASTHEAD_META_MIN_HEIGHT_PX,
   MASTHEAD_META_WRAP_MAX_WIDTH,
   TAP_TARGET_MIN_PX,
@@ -33,7 +34,12 @@ describe('breakpoints', () => {
   it('index.css uses only the breakpoints declared in layout.ts', () => {
     expect(widths.length).toBeGreaterThan(0);
     expect(new Set(widths)).toEqual(
-      new Set([PHONE_MAX_WIDTH, SMALL_MAX_WIDTH, MASTHEAD_META_WRAP_MAX_WIDTH])
+      new Set([
+        PHONE_MAX_WIDTH,
+        SMALL_MAX_WIDTH,
+        MASTHEAD_COMPACT_MAX_WIDTH,
+        MASTHEAD_META_WRAP_MAX_WIDTH,
+      ])
     );
   });
 
@@ -60,6 +66,31 @@ describe('breakpoints', () => {
     expect(MASTHEAD_META_WRAP_MAX_WIDTH).toBeLessThan(SMALL_MAX_WIDTH);
     expect(block(MASTHEAD_META_WRAP_MAX_WIDTH)).toMatch(reserve);
     expect(block(SMALL_MAX_WIDTH)).not.toMatch(reserve);
+    expect(block(MASTHEAD_COMPACT_MAX_WIDTH)).not.toMatch(reserve);
+  });
+
+  it('tightens the masthead on a phone in portrait without hiding it from screen readers', () => {
+    // On a phone the kicker, standfirst and two-row meta line took about half the
+    // collapsed sheet, pushing the search off a 568 px screen. Below the compact
+    // breakpoint the kicker and standfirst leave the layout, clipped like .sr-only
+    // (never display:none, visibility:hidden or aria-hidden, which would drop them
+    // from the accessibility tree), and the meta line sits closer under the title.
+    expect(MASTHEAD_COMPACT_MAX_WIDTH).toBeLessThan(SMALL_MAX_WIDTH);
+    expect(MASTHEAD_COMPACT_MAX_WIDTH).toBeGreaterThan(MASTHEAD_META_WRAP_MAX_WIDTH);
+    const at = css.indexOf(`@media (max-width: ${MASTHEAD_COMPACT_MAX_WIDTH}px)`);
+    expect(at).toBeGreaterThanOrEqual(0);
+    const compact = css.slice(at, at + css.slice(at).indexOf('\n}'));
+    const hidden = compact.match(/\.masthead-kicker, \.masthead-standfirst\s*\{([^}]*)\}/)?.[1];
+    expect(hidden).toBeDefined();
+    expect(hidden).toMatch(/position:\s*absolute/);
+    expect(hidden).toMatch(/clip:\s*rect\(0, 0, 0, 0\)/);
+    expect(hidden).not.toMatch(/display:\s*none|visibility:\s*hidden/);
+    const sidebar = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8');
+    expect(sidebar).toMatch(/<div className="masthead-kicker">[^<]+<\/div>/);
+    expect(sidebar).toMatch(/<p className="masthead-standfirst">\s*How much does/);
+    // The title, the model figures and "How it works" stay on screen.
+    expect(compact).not.toMatch(/\.masthead h1|\.masthead-meta[^{]*\{[^}]*(display:\s*none|visibility)/);
+    expect(compact).not.toMatch(/\.masthead-meta a/);
   });
 });
 
@@ -273,6 +304,9 @@ describe('component tunables', () => {
     expect(clipX).toBeLessThan(gap);
     expect(clipX).toBeGreaterThanOrEqual(tapX);
     expect(clipY).toBeGreaterThanOrEqual(tapY);
+    // "How it works" is a 15 px line box (0.6875rem with its rule, measured in
+    // headless Chromium at 320 to 480 px); its tap area reaches the minimum.
+    expect(15 + 2 * tapY).toBeGreaterThanOrEqual(TAP_TARGET_MIN_PX);
     // Every drawn separator is followed by a plain <span>, the item that draws it.
     const seps = [...sidebar.matchAll(/<span className="sep">·<\/span>/g)];
     expect(seps.length).toBe(2);

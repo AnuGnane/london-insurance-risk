@@ -11,6 +11,10 @@ export const SMALL_MAX_WIDTH = 560;
  *  fills it in (index.css `@media (max-width: 440px)`; measured in headless
  *  Chromium: two rows up to 437 px, one from 439 px, rounded up to 440). */
 export const MASTHEAD_META_WRAP_MAX_WIDTH = 440;
+/** Phones in portrait: the masthead tightens to the title, the model figures and
+ *  "How it works", so the search shows on the first screen (index.css
+ *  `@media (max-width: 480px)`). The kicker and standfirst stay for screen readers. */
+export const MASTHEAD_COMPACT_MAX_WIDTH = 480;
 
 /** The phone layout: map on top, the panel as a bottom sheet. */
 export const PHONE_QUERY = `(max-width: ${PHONE_MAX_WIDTH}px)`;
