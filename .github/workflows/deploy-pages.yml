@@ -26,7 +26,10 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: Playwright 1.56 has no Chromium for Ubuntu 26.04,
+    # so on ubuntu-latest the share card (og.png) is silently skipped and the
+    # og:image link 404s. Unpin when Playwright is upgraded.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
