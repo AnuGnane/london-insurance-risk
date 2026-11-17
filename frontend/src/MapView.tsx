@@ -625,7 +625,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   className={`seg-fill${selectedQ === i + 1 ? ' seg-selected' : ''}`}
                   style={{ background: c, color: QUINTILE_TEXT[i] }}
                 >
-                  Q{i + 1}
+                  <span>Q{i + 1}</span>
                 </span>
               ))}
             </div>

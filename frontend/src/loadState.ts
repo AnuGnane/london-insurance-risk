@@ -21,3 +21,29 @@ export const areasMayLoad = (tilesSettled: boolean, waitOver: boolean): boolean 
 
 /** The next load attempt: a new value re-runs the effect that fetches the GeoJSON. */
 export const nextAttempt = (attempt: number): number => attempt + 1;
+
+/** Shown in the map's place when the browser cannot draw it. */
+export const NO_WEBGL_MESSAGE =
+  'This browser cannot draw the map: WebGL is switched off or not supported. ' +
+  'Search, the rankings and area details still work in the panel.';
+
+/** Something that can make a canvas, as `document` does (a stub in tests). */
+export interface CanvasMaker {
+  createElement(tag: 'canvas'): { getContext(id: string): unknown };
+}
+
+/** Whether MapLibre can draw here: a WebGL 2 or WebGL 1 context can be created. */
+export function webglAvailable(doc: CanvasMaker | null = typeof document === 'undefined' ? null : document): boolean {
+  if (!doc) return false;
+  try {
+    const canvas = doc.createElement('canvas');
+    const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as {
+      getExtension?(name: string): { loseContext?(): void } | null;
+    } | null;
+    // Hand the probe's context back: browsers cap how many a page may hold.
+    gl?.getExtension?.('WEBGL_lose_context')?.loseContext?.();
+    return gl != null;
+  } catch {
+    return false;
+  }
+}
