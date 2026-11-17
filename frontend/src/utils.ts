@@ -86,8 +86,9 @@ export const quintileColor = (q: number): string =>
 export const gbp = (n?: number | null): string =>
   n == null ? '—' : `£${Math.round(n).toLocaleString('en-GB')}`;
 
-/** Ordinal percentile label, e.g. 91 -> "91st", 22 -> "22nd", 86 -> "86th". */
-export const ordinalPct = (n?: number | null): string => {
+/** Ordinal of a whole number, e.g. 1 -> "1st", 22 -> "22nd", 111 -> "111th"
+ *  (a rank position; rounded first). */
+export const ordinal = (n?: number | null): string => {
   if (n == null || !isFinite(n)) return '—';
   const v = Math.round(n);
   const t = v % 100;
@@ -98,6 +99,19 @@ export const ordinalPct = (n?: number | null): string => {
     : 'th';
   return `${v}${s}`;
 };
+
+/**
+ * Ordinal percentile label, e.g. 91 -> "91st", 22 -> "22nd", 86 -> "86th".
+ * The baked `*_pct` figures are pandas `rank(pct=True) * 100` within the area's
+ * ranking group: the share of areas at or below this one (ties averaged), so the
+ * highest area is exactly 100 and the lowest a hair above 0 (0 once rounded to
+ * 1 dp, or to a whole number for the diagnostics). As a position that is 1st to
+ * 99th: rounded, then held inside that range, so the top area reads "99th", not
+ * "100th", and the bottom "1st", not "0th". Only the label: the dots, bars, map
+ * colours and sort orders keep the figure itself.
+ */
+export const ordinalPct = (n?: number | null): string =>
+  n == null || !isFinite(n) ? '—' : ordinal(Math.min(99, Math.max(1, Math.round(n))));
 
 /** Read the quintile from a feature regardless of whether the backend
  *  named it `quintile` or `risk_bucket`. */
@@ -705,7 +719,7 @@ export const showMoreLabel = (n: number): string => `Show ${formatFigure(n)} mor
 
 /** The "Show more" button's suffix when the open area sits further down the
  *  rankings: index 33 (0-based) -> "yours is 34th". */
-export const yoursIsLabel = (index: number): string => `yours is ${ordinalPct(index + 1)}`;
+export const yoursIsLabel = (index: number): string => `yours is ${ordinal(index + 1)}`;
 
 /** The line under an area's £ figure and band (README "What it doesn't claim": the
  *  model validates at postcode-area grain and extrapolates to small areas). */

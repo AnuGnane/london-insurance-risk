@@ -236,7 +236,17 @@ body {
 .masthead-meta b { color: var(--ink); font-weight: 600; }
 .masthead-meta a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule); }
 .masthead-meta a:hover { color: var(--accent); border-color: var(--accent); }
-.masthead-meta .sep { color: var(--rule-strong); }
+/* No "·" at either end of a row. Each separator keeps its place in the flow but is
+   not drawn; the item after it draws it, 14 px (the gap) to its own left, in the
+   same spot. When that item wraps to start a row, the dot falls left of the line,
+   where the clip hides it (10 px of slack keeps the link's tap area). */
+.masthead-meta { clip-path: inset(-20px -10px); }
+.masthead-meta .sep { visibility: hidden; }
+.masthead-meta > .sep:not(.meta-reserve) + span { position: relative; }
+.masthead-meta > .sep:not(.meta-reserve) + span::before {
+  content: '·'; content: '·' / '';
+  position: absolute; right: 100%; margin-right: 14px; color: var(--rule-strong);
+}
 /* Holds the places of R², the hold-out error and the area count while they load (R-70) */
 .masthead-meta .meta-reserve { visibility: hidden; }
 

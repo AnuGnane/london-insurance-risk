@@ -240,6 +240,47 @@ describe('component tunables', () => {
       /\.maplibregl-ctrl-attrib\.maplibregl-compact-show\s*\{[^}]*width:\s*calc\(100% - 20px\)/
     );
   });
+
+  it('leaves no "·" at either end of a masthead row', () => {
+    // On a narrow phone the line wrapped after "£77 hold-out error ·", leaving the
+    // separator hanging. Each separator now holds its place unseen, and the item
+    // after it draws the dot one gap to its left; when that item starts a row the
+    // dot falls outside the line's clip.
+    const sidebar = read('./Sidebar.tsx');
+    const css = read('./index.css');
+    const px = (s: string | undefined) => Number(s?.replace('px', ''));
+    const meta = css.match(/\.masthead-meta\s*\{([^}]*)\}/)?.[1] ?? '';
+    const gap = px(meta.match(/gap:\s*(\d+px)/)?.[1]);
+    expect(gap).toBeGreaterThan(0);
+    expect(css).toMatch(/\.masthead-meta \.sep\s*\{\s*visibility:\s*hidden;\s*\}/);
+    const dot = css.match(
+      /\.masthead-meta > \.sep:not\(\.meta-reserve\) \+ span::before\s*\{([^}]*)\}/
+    )?.[1];
+    expect(dot).toBeDefined();
+    expect(dot).toMatch(/content:\s*'·'/);
+    expect(dot).toMatch(/position:\s*absolute/);
+    expect(dot).toMatch(/right:\s*100%/);
+    // Drawn exactly where its own separator sits: one gap left of the item.
+    expect(px(dot?.match(/margin-right:\s*(\d+px)/)?.[1])).toBe(gap);
+    // The clip hides a dot at a row's start (a gap or more left of the line) but
+    // keeps the link's enlarged tap area (index.css, phone block) whole.
+    const [clipY, clipX] = (css.match(/\.masthead-meta\s*\{\s*clip-path:\s*inset\((-\d+px) (-\d+px)\)/) ?? [])
+      .slice(1)
+      .map((v) => -px(v));
+    const [tapY, tapX] = (css.match(/\.masthead-meta a::after\s*\{[^}]*inset:\s*(-\d+px) (-\d+px)/) ?? [])
+      .slice(1)
+      .map((v) => -px(v));
+    expect(clipX).toBeLessThan(gap);
+    expect(clipX).toBeGreaterThanOrEqual(tapX);
+    expect(clipY).toBeGreaterThanOrEqual(tapY);
+    // Every drawn separator is followed by a plain <span>, the item that draws it.
+    const seps = [...sidebar.matchAll(/<span className="sep">·<\/span>/g)];
+    expect(seps.length).toBe(2);
+    for (const s of seps) {
+      const after = sidebar.slice(s.index + s[0].length);
+      expect(after.match(/<(?![/>])[^>]*>/)?.[0]).toBe('<span>');
+    }
+  });
 });
 
 describe('the rankings mark the area opened last (R-73)', () => {

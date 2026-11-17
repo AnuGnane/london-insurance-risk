@@ -40,6 +40,7 @@ import {
   rankingGroup,
   gbp,
   MODEL_DRIVERS,
+  ordinal,
   ordinalPct,
   premiumToRampPos,
   quintilePremiumBands,
@@ -100,22 +101,73 @@ describe('gbp', () => {
   });
 });
 
+describe('percentile labels on screen', () => {
+  it('go through ordinalPct (1st to 99th), never the plain ordinal', () => {
+    for (const f of ['./DetailPanel.tsx', './MapView.tsx']) {
+      const src = readFileSync(new URL(f, import.meta.url), 'utf8');
+      expect(src, f).toContain('ordinalPct(');
+      expect(src, f).not.toMatch(/\bordinal\(/);
+      expect(src, f).not.toMatch(/Math\.round\([^)]*(pct|percentile)/);
+    }
+  });
+});
+
+describe('ordinal', () => {
+  it.each([
+    [1, '1st'], [2, '2nd'], [3, '3rd'], [4, '4th'],
+    [11, '11th'], [12, '12th'], [13, '13th'],
+    [21, '21st'], [22, '22nd'], [23, '23rd'],
+    [91, '91st'], [100, '100th'], [101, '101st'], [111, '111th'], [112, '112th'],
+  ])('%i -> %s', (n, want) => {
+    expect(ordinal(n)).toBe(want);
+  });
+  it('shows a dash for missing or non-finite values', () => {
+    expect(ordinal(null)).toBe('—');
+    expect(ordinal(NaN)).toBe('—');
+  });
+});
+
 describe('ordinalPct', () => {
   it.each([
     [1, '1st'], [2, '2nd'], [3, '3rd'], [4, '4th'],
     [11, '11th'], [12, '12th'], [13, '13th'],
     [21, '21st'], [22, '22nd'], [23, '23rd'],
-    [91, '91st'], [100, '100th'], [111, '111th'],
+    [50, '50th'], [91, '91st'], [99, '99th'],
   ])('%i -> %s', (n, want) => {
     expect(ordinalPct(n)).toBe(want);
   });
   it('rounds before choosing the suffix', () => {
     expect(ordinalPct(21.4)).toBe('21st');
     expect(ordinalPct(11.6)).toBe('12th');
+    expect(ordinalPct(2.5)).toBe('3rd');
+  });
+  it('reads the top of a ranking as the 99th, never the 100th', () => {
+    // rank(pct=True) * 100 gives the highest area exactly 100; drivers ship at 1 dp.
+    for (const n of [100, 99.9, 99.5]) expect(ordinalPct(n)).toBe('99th');
+    expect(ordinalPct(99.4)).toBe('99th');
+    expect(ordinalPct(98.5)).toBe('99th');
+    expect(ordinalPct(98.4)).toBe('98th');
+  });
+  it('reads the bottom of a ranking as the 1st, never the 0th', () => {
+    // The lowest area is 100/n, which rounds to 0 at 1 dp and as a whole number.
+    for (const n of [0, 0.1, 0.4, 0.5, 100 / 41729]) expect(ordinalPct(n)).toBe('1st');
+    expect(ordinalPct(1.4)).toBe('1st');
+    expect(ordinalPct(1.5)).toBe('2nd');
+  });
+  it('holds float error at either end inside 1st to 99th', () => {
+    expect(ordinalPct(0.1 + 0.2 - 0.3)).toBe('1st');        // 5.55e-17
+    expect(ordinalPct(-1e-12)).toBe('1st');
+    expect(ordinalPct(-0)).toBe('1st');
+    expect(ordinalPct(99.49999999999999)).toBe('99th');
+    expect(ordinalPct(100.00000000000001)).toBe('99th');
+    expect(ordinalPct((100 * 3) / 3)).toBe('99th');
+    expect(ordinalPct(0.7 * 100)).toBe('70th');              // 70.00000000000001
   });
   it('shows a dash for missing or non-finite values', () => {
     expect(ordinalPct(null)).toBe('—');
+    expect(ordinalPct(undefined)).toBe('—');
     expect(ordinalPct(NaN)).toBe('—');
+    expect(ordinalPct(Infinity)).toBe('—');
   });
 });
 
@@ -367,6 +419,15 @@ describe('explainArea', () => {
     expect(explainArea(d.steps!, d.premium_baseline!, d.calibrated_premium!)).toBe(
       'Cheaper than a typical GB area mainly because of crime deprivation (1st percentile within England, −£145) ' +
         'and young drivers (16th percentile, −£130); cars per household (2nd percentile) pushes it up £83.'
+    );
+  });
+
+  it('names a factor at either end of its ranking as the 99th or 1st percentile', () => {
+    // The dearest area: young drivers at 99.9 and cars per household at 0.
+    const steps = [step('young_driver_share', 406, 99.9), step('cars_per_household', -60, 0)];
+    expect(explainArea(steps, 500, 846)).toBe(
+      'Dearer than a typical GB area mainly because of young drivers (99th percentile, +£406); ' +
+        'cars per household (1st percentile) pulls it back £60.'
     );
   });
 
@@ -660,6 +721,7 @@ describe('yoursIsLabel', () => {
     [21, 'yours is 22nd'],
     [33, 'yours is 34th'],
     [99, 'yours is 100th'],
+    [110, 'yours is 111th'],
   ])('index %i reads "%s"', (i, want) => {
     expect(yoursIsLabel(i)).toBe(want);
   });
