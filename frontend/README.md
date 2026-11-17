@@ -28,10 +28,13 @@ GITHUB_PAGES=1 npm run build
 
 ### The og-image skip path
 
-`scripts/og-image.mjs` renders the card with Playwright's Chromium. A share image is a
-nicety, so if Chromium or the render fails the script logs
-`og-image: skipped, no dist/og.png (...)` and exits 0: the build, and the deploy, never
-break on it. It exits 1 only when `dist/` is missing (run `vite build` first).
+`scripts/og-image.mjs` renders the card with Playwright's Chromium. Locally a share
+image is a nicety, so if Chromium is not installed or the render fails the script logs
+`og-image: skipped, no dist/og.png (...)` and exits 0 (`npx playwright install chromium`
+gets the browser). It exits 1 when `dist/` is missing (run `vite build` first), and when
+`OG_IMAGE_REQUIRED=1` is set and no non-empty `dist/og.png` was written. CI and the
+deploy set it and check `dist/og.png` again after the build, so the site is never
+published without the card: a failed deploy leaves the previous site up.
 
 ## The gate
 
@@ -106,3 +109,4 @@ most with their own test file (see below):
 | `src/utils.test.ts` | Formatting (`gbp`, `ordinal`, `ordinalPct` (a percentile reads 1st to 99th, never "0th" or "100th"), figures), bounds and point-in-area helpers, premium bands and ramp, the detail/explain/compare text and `premiumMultiplier`, `rankStatement` (the dearest area is never "more expensive than 100%", the cheapest never "0%"), `formatP`, `methodologyNote`, nation and ranking group, and that About covers every colour mode, counts areas by nation and gives the premium span from a prop |
 | `src/waterfallTable.test.ts` | The premium waterfall is a table with a caption and headers, its bars hidden from screen readers but each bar cell read as a share of the largest step, and no `display` on a table element |
 | `scripts/og-template.test.mjs` | The share card shows the figures from `methodology.json`, leaves out any it lacks, and takes its colours from `index.css` |
+| `scripts/og-workflow.test.mjs` | CI and the deploy run on `ubuntu-latest`, install Chromium without `continue-on-error`, build with `OG_IMAGE_REQUIRED=1` and check `dist/og.png` before the Pages upload |
