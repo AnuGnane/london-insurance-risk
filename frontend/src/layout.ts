@@ -12,6 +12,9 @@ export const SMALL_MAX_WIDTH = 560;
  *  Chromium: two rows up to 437 px, one from 439 px, rounded up to 440). */
 export const MASTHEAD_META_WRAP_MAX_WIDTH = 440;
 
+/** The phone layout: map on top, the panel as a bottom sheet. */
+export const PHONE_QUERY = `(max-width: ${PHONE_MAX_WIDTH}px)`;
+
 /** Touch-first devices: no hover popup, a tap card instead. */
 export const TOUCH_QUERY = '(hover: none)';
 
@@ -79,6 +82,16 @@ export const detailBodyState = (
 /** Live regions: how long a repeated message stays cleared before it is set again,
  *  ms, so screen readers read the same text twice (see announce.ts). */
 export const ANNOUNCE_CLEAR_MS = 100;
+
+/**
+ * Where the panel scrolls when an area opens, so its premium is in view. On desktop
+ * that is the top: the area sits just under the search. On a phone the search, the
+ * "Try" chips and the colour controls fill the short sheet, so it scrolls to the
+ * area's own section (`sectionTop`, its offset in the scrolled content, CSS px).
+ */
+export function openedAreaScrollTop(isPhone: boolean, sectionTop: number): number {
+  return isPhone ? Math.max(0, Math.round(sectionTop)) : 0;
+}
 
 /** CSS custom properties that carry these values into index.css. */
 export const layoutCssVars = {

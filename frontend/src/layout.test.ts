@@ -15,6 +15,8 @@ import {
   RANKINGS_MAX,
   RANKINGS_STEP,
   nextRankingsCount,
+  openedAreaScrollTop,
+  PHONE_QUERY,
   SHARE_CONFIRM_MS,
   REDUCED_MOTION_QUERY,
   SMALL_MAX_WIDTH,
@@ -274,5 +276,18 @@ describe('a shared postcode link shows its postcode in the box (R-78)', () => {
   it('App passes the restored postcode and Sidebar seeds its term from it', () => {
     expect(read('./App.tsx')).toContain('initialTerm={initialTerm(initialLink.pc)}');
     expect(read('./Sidebar.tsx')).toContain('useState(initialTerm)');
+  });
+});
+
+describe('an opened area is in view (openedAreaScrollTop)', () => {
+  it('scrolls the desktop panel to its top, where the area sits under the search', () => {
+    expect(openedAreaScrollTop(false, 640)).toBe(0);
+  });
+  it("scrolls a phone's sheet to the area's own section, past the controls above it", () => {
+    expect(openedAreaScrollTop(true, 640.4)).toBe(640);
+    expect(openedAreaScrollTop(true, -12)).toBe(0);
+  });
+  it('the phone query is the sheet breakpoint', () => {
+    expect(PHONE_QUERY).toBe(`(max-width: ${PHONE_MAX_WIDTH}px)`);
   });
 });

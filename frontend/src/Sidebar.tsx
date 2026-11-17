@@ -16,7 +16,14 @@ import {
   saveCalloutDismissed,
   shouldShowCallout,
 } from './callout';
-import { detailBodyState, META_RESERVE, REDUCED_MOTION_QUERY, useMediaQuery } from './layout';
+import {
+  detailBodyState,
+  META_RESERVE,
+  openedAreaScrollTop,
+  PHONE_QUERY,
+  REDUCED_MOTION_QUERY,
+  useMediaQuery,
+} from './layout';
 import {
   escapeAction,
   isTextField,
@@ -337,10 +344,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setSaidFor(compareCode);
     if (compareCode == null) setPairSaid('');
   }
-  // A new area (or a new second area) opens at the top of the sheet, its premium in
-  // view, even when the sheet was scrolled down into the rankings or the methodology.
+  // A new area (or a new second area) opens with its premium in view, even when the
+  // sheet was scrolled down into the rankings or the methodology: the top of the
+  // panel on desktop, the area's own section on a phone (openedAreaScrollTop).
   const contentRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
+  const isPhone = useMediaQuery(PHONE_QUERY);
   const detailCode = detail?.lsoa11cd ?? null;
   // The rankings show only once the detail closes, so they mark the area opened last
   // (R-73): kept until another opens, adjusted in render as `shown` is in RankingsPanel.
@@ -355,8 +365,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [sameSaid, saySame] = useAnnouncer<string>('');
   useEffect(() => {
     const next = { code: detailCode, code2: compareCode, tick: openTick };
-    if (shouldScrollToTop(shownCodes.current, next)) {
-      contentRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+    const content = contentRef.current;
+    if (content && shouldScrollToTop(shownCodes.current, next)) {
+      const section = detailRef.current;
+      const sectionTop = section
+        ? section.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop
+        : 0;
+      content.scrollTo({
+        top: openedAreaScrollTop(isPhone, sectionTop),
+        behavior: reducedMotion ? 'auto' : 'smooth',
+      });
     }
     // A map or ranking tap on the open area only scrolls (R-74 ruling 1).
     if (detailCode != null && searchedPc != null && reopenedSameArea(shownCodes.current, next)) {
@@ -364,7 +382,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       saySame(ALREADY_SHOWN(p?.lsoa_name ? String(p.lsoa_name) : detailCode));
     }
     shownCodes.current = next;
-  }, [detailCode, compareCode, openTick, searchedPc, lookup, reducedMotion, saySame]);
+  }, [detailCode, compareCode, openTick, searchedPc, lookup, reducedMotion, isPhone, saySame]);
   const [locating, setLocating] = useState(false);
   // The first-visit "what am I looking at" card (callout.ts).
   const [calloutDismissed, setCalloutDismissed] = useState(loadCalloutDismissed);
@@ -642,7 +660,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="skel-line" style={{ width: '70%' }} />
           </div>
         ) : detail ? (
-          <div className="section">
+          <div className="section" ref={detailRef}>
             <div className="detail-actions">
               <button className="back-link" onClick={closeDetail}>
                 <ArrowLeft size={14} /> Back to rankings
