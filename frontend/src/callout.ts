@@ -7,7 +7,7 @@ import { defaultStorage, type StorageLike } from './postcode';
 const CALLOUT_KEY = 'price-of-place:callout-dismissed';
 
 export const CALLOUT_COPY: readonly string[] = [
-  "A territorial risk proxy ranking Great Britain's small areas by factors that correlate with motor-insurance claims, using only public data.",
+  "A territorial risk proxy ranking Great Britain's small areas by factors that track published car-insurance prices, using only public data.",
   'It is not an insurance quote and uses no individual driver or vehicle details.',
 ];
 

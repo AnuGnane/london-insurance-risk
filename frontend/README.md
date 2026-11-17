@@ -87,7 +87,7 @@ most with their own test file (see below):
 |------|------|
 | `src/announce.test.ts` | `announce` clears the region and sets the text after a pause, so a repeated message is read again |
 | `src/api.test.ts` | `getRankings` ordering and its nation filter, `getMethodology`, `getGeojson`'s streaming and progress, `tilesUrl`, `examplePairs` and `premiumSpan` |
-| `src/callout.test.ts` | When the first-visit card shows, that its sentences match `README.md` and the About intro, and how its dismissal is stored |
+| `src/callout.test.ts` | When the first-visit card shows, that its sentences are quoted from `README.md` or the About intro and describe a model calibrated on published prices, not claims, and how its dismissal is stored |
 | `src/colors.test.ts` | Each step of the colour ramp and quintile fill gets darker (CIE L*), so the scale reads without colour; WCAG AA contrast for legend labels and faint ink; `index.css` tokens mirror the JS colours, keep hard-coded colours out, and define a dark scheme |
 | `src/css.test.ts` | One forced-colours block in `index.css`: the swatches, dots and bars keep their colour, it borders the legend and the toast, rings focus in `Highlight`, and uses system colour keywords only |
 | `src/keyboard.test.ts` | Arrow, Home/End and type-ahead index maths for the rankings and segmented controls; `escapeAction` |

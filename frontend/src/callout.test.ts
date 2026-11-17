@@ -51,6 +51,15 @@ describe('callout copy', () => {
   it.each(CALLOUT_COPY)('"%s" is quoted from the README or the About intro', (s) => {
     expect(readme.includes(s) || aboutIntro.includes(s)).toBe(true);
   });
+  it('describes the model as calibrated on published prices, not on claims', () => {
+    // The README: "calibrated against published price indices"; the anchor is
+    // "not claims data". The card and the About intro say the same.
+    expect(readme).toContain('calibrated against published price indices');
+    for (const text of [CALLOUT_COPY[0], aboutIntro]) {
+      expect(text).toContain('factors that track published car-insurance prices');
+      expect(text).not.toMatch(/claims/i);
+    }
+  });
   it('carries no figure', () => {
     for (const s of CALLOUT_COPY) expect(s).not.toMatch(/\d/);
   });
