@@ -915,7 +915,7 @@ body {
   .map-container .maplibregl-ctrl-group button { width: var(--tap-min); height: var(--tap-min); }
   /* "How it works": a full-size tap area without changing the meta line's height (R-70) */
   .masthead-meta a { position: relative; }
-  .masthead-meta a::after { content: ''; position: absolute; inset: -14px -10px; }
+  .masthead-meta a::after { content: ''; position: absolute; inset: -15px -10px; }  /* 15 px link + 2 x 15 = 45 */
 
   /* The attribution's corner keeps its height from first paint, the row at its
      foot, so the attribution arriving with the style shifts nothing (R-70) */
@@ -1074,6 +1074,18 @@ body {
 @media (max-width: 560px) {
   .waterfall .wf-cell-track { width: 0; padding-left: 0; }
   .wf-track { display: none; }            /* keep the signed £ + percentile, drop the bar */
+}
+
+/* Phones in portrait: the title, the model figures and "How it works", so the
+   search reaches the first screen. The kicker and standfirst leave the layout but
+   not the accessibility tree, so screen readers still read the whole masthead. */
+@media (max-width: 480px) {
+  .masthead { padding-bottom: 10px; }
+  .masthead-kicker, .masthead-standfirst {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  .masthead-meta { margin-top: 6px; }
 }
 
 @media (max-width: 440px) {
