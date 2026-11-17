@@ -534,8 +534,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             })}
           </div>
           <p className="drivers-note">
-            Diagnostic layers are shown on the map but the calibration found no
-            independent premium signal once the drivers above are accounted for.
+            Diagnostic layers are shown on the map, but the calibration's evidence
+            gate did not keep them as premium drivers.
           </p>
         </div>
       )}
