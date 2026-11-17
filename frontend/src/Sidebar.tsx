@@ -486,8 +486,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}{' '}
             areas mapped
           </span>
-          {/* No "·" before the link: it wraps onto its own row in the sidebar, where a
-              separator would dangle at the end of the first. */}
+          {/* No "·" before the link: it reads as a link without one. Each "·" above
+              is drawn by the item after it and hidden when that item starts a row
+              (index.css), so no row ends or starts with one. */}
           {/* Built into dist/ by scripts/copy-methodology.mjs (not served by `npm run dev`). */}
           <a href={`${import.meta.env.BASE_URL}methodology.html`}>How it works</a>
         </div>
