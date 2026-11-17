@@ -13,8 +13,9 @@ export function cssVar(css, name, fallback) {
 
 /**
  * The three figures on the card, formatted as the masthead formats them:
- * R² to three places, the leave-one-area-out MAE as "±£77", and the matched
- * anchor observations. null where the JSON lacks the field (never typed in).
+ * R² to three places, the leave-one-area-out MAE as "£77" (a mean error on
+ * anchor areas held out of the fit, not a band around each small area), and the
+ * matched anchor observations. null where the JSON lacks the field (never typed in).
  */
 export function ogFigures(m) {
   const r2 = m?.r_squared;
@@ -22,7 +23,7 @@ export function ogFigures(m) {
   const n = m?.n_matched;
   return {
     r2: typeof r2 === 'number' ? r2.toFixed(3) : null,
-    mae: typeof mae === 'number' ? `±£${Math.round(mae).toLocaleString('en-GB')}` : null,
+    mae: typeof mae === 'number' ? `£${Math.round(mae).toLocaleString('en-GB')}` : null,
     n: typeof n === 'number' ? n.toLocaleString('en-GB') : null,
   };
 }
@@ -62,7 +63,7 @@ export function ogHtml(m, css = '') {
   <p class="stand">How much does where you park move your car-insurance premium? Every small area in Great Britain, mapped.</p>
   <div class="stats">
     ${stat(f.r2, 'panel R²')}
-    ${stat(f.mae, 'per area, leave-one-area-out error')}
+    ${stat(f.mae, 'hold-out error on unseen anchor areas')}
     ${stat(f.n, 'anchor observations')}
   </div>
 </body></html>`;

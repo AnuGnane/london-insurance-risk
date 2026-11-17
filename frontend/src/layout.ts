@@ -27,7 +27,7 @@ export const SHEET_HEIGHT = { collapsed: '40%', expanded: '70%' } as const;
 /** Minimum tap target on touch layouts (Apple HIG / WCAG 2.5.5), CSS px. */
 export const TAP_TARGET_MIN_PX = 44;
 
-/** The masthead's meta line (R², the ± error, the area count, "How it works")
+/** The masthead's meta line (R², the hold-out error, the area count, "How it works")
  *  wraps onto a second row below MASTHEAD_META_WRAP_MAX_WIDTH once methodology.json
  *  fills in the model figures. Its two-row height, CSS px, is reserved from
  *  first paint so the sidebar under it does not shift (measured at 320 to 430 px,
@@ -35,11 +35,11 @@ export const TAP_TARGET_MIN_PX = 44;
 export const MASTHEAD_META_MIN_HEIGHT_PX = 43;
 
 /** Invisible stand-ins for the masthead's figures while they load: the same
- *  shape in tabular digits as what replaces them (R² to three places, the ± error
- *  in pounds, the area count with its thousands comma), so the line keeps its
+ *  shape in tabular digits as what replaces them (R² to three places, the hold-out
+ *  error in pounds, the area count with its thousands comma), so the line keeps its
  *  layout and nothing after them shifts. No real figure: those come from
  *  methodology.json and the loaded areas. */
-export const META_RESERVE = { r2: 'R² 0.000', mae: '±£00 per area', count: '00,000' } as const;
+export const META_RESERVE = { r2: 'R² 0.000', mae: '£00 hold-out error', count: '00,000' } as const;
 
 /** MapLibre's attribution on a phone: one compact row (24 px) and its 10 px
  *  margins, CSS px. Reserved for the map's bottom-right corner from first paint,

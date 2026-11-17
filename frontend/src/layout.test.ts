@@ -222,7 +222,11 @@ describe('component tunables', () => {
     // Each stand-in has the shape of what replaces it, and is no real figure.
     expect(META_RESERVE.r2).toBe(`R² ${(0).toFixed(3)}`);
     expect(META_RESERVE.count).toMatch(/^0{2},0{3}$/);
-    expect(META_RESERVE.mae).toMatch(/^±£0+ per area$/);
+    expect(META_RESERVE.mae).toMatch(/^£0+ hold-out error$/);
+    // The leave-one-area-out MAE is a mean error on held-out anchor areas, not a
+    // band around each small area, so the masthead gives it no "±" and no "per area".
+    expect(sidebar).toContain('£{Math.round(methodology.loao_mae)} hold-out error</span>');
+    expect(sidebar).not.toMatch(/±£|per area/);
     // A reserved height with one row in it keeps that row at the top.
     expect(css).toMatch(/\.masthead-meta\s*\{[^}]*align-content:\s*flex-start/);
     expect(css).toMatch(/\.masthead-meta \.meta-reserve\s*\{\s*visibility:\s*hidden;/);
