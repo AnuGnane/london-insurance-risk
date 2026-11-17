@@ -21,7 +21,7 @@ import {
   type Order,
 } from './utils';
 import { getGeojson, getMethodology } from './api';
-import { areasMayLoad, nextAttempt, searchBlockedMessage } from './loadState';
+import { areasMayLoad, nextAttempt, NO_WEBGL_MESSAGE, searchBlockedMessage, webglAvailable } from './loadState';
 import { findMyArea } from './locate';
 import { isCurrent, searchTarget } from './search';
 import { buildShareUrl, pageTitle, parseShareUrl } from './url';
@@ -70,6 +70,16 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: bool
   }
 }
 
+/** In the map's place when the browser has no WebGL: the panel still works, and the
+ *  map chunk (MapLibre) is never downloaded. */
+const NoMap = () => (
+  <main className="map-container" aria-label="Map of estimated car-insurance premiums">
+    <div className="map-toast map-toast-error" role="alert">
+      {NO_WEBGL_MESSAGE}
+    </div>
+  </main>
+);
+
 function App() {
   // The loaded GeoJSON is our client-side data store: it powers the map,
   // instant click-details, and client-side fly-to (no per-click round-trips).
@@ -82,7 +92,9 @@ function App() {
   // First paint: the GeoJSON download waits for the streamed tiles to colour the
   // map (MapView reports it), or for AREAS_WAIT_FOR_TILES_MS, so the two do not
   // share the first seconds of bandwidth.
-  const [tilesSettled, setTilesSettled] = useState(false);
+  // Without WebGL there are no tiles to wait for (and no map to draw them on).
+  const [canDrawMap] = useState(() => webglAvailable());
+  const [tilesSettled, setTilesSettled] = useState(!canDrawMap);
   const [tilesWaitOver, setTilesWaitOver] = useState(false);
   useEffect(() => {
     const id = window.setTimeout(() => setTilesWaitOver(true), AREAS_WAIT_FOR_TILES_MS);
@@ -507,6 +519,7 @@ function App() {
           setComparing(false);
         }}
       />
+      {canDrawMap ? (
       <MapErrorBoundary>
       <Suspense fallback={<MapFallback />}>
       <MapView
@@ -530,6 +543,9 @@ function App() {
       />
       </Suspense>
       </MapErrorBoundary>
+      ) : (
+        <NoMap />
+      )}
     </div>
   );
 }
