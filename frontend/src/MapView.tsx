@@ -671,13 +671,13 @@ export const MapView: React.FC<MapViewProps> = ({
               style={{ background: `linear-gradient(to right, ${RAMP.join(',')})` }}
             />
             <div className="legend-scale" aria-hidden="true">
-              <span className="legend-tick edge-l" style={{ left: 0 }}>0th</span>
-              <span className="legend-tick" style={{ left: '50%' }}>50th</span>
-              <span className="legend-tick edge-r" style={{ left: '100%' }}>100th pct</span>
+              <span className="legend-tick edge-l" style={{ left: 0 }}>lowest</span>
+              <span className="legend-tick" style={{ left: '50%' }}>median</span>
+              <span className="legend-tick edge-r" style={{ left: '100%' }}>highest</span>
             </div>
             <p className="sr-only">
-              Areas are coloured by {driverLabel} percentile, from the 0th (lightest) to the
-              100th (darkest). Grey means no data.
+              Areas are coloured by {driverLabel} percentile, from the lowest (lightest) through
+              the median to the highest (darkest). Grey means no data.
             </p>
           </>
         )}

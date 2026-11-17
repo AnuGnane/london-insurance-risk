@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- GitHub Pages serves this file for any missing address on the site, at any
+         depth, so every URL here is absolute under the /london-insurance-risk/ base.
+         Vite copies public/ as is: nothing in this file is rewritten at build time. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#FBF7F0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1B1916" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/london-insurance-risk/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Page not found — The Price of Place</title>
+    <style>
+      /* The app's tokens (src/index.css), only the ones this page uses */
+      :root {
+        --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+        --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        --paper: #fbf7f0;
+        --ink: #24211c;
+        --ink-soft: #5c544b;
+        --ink-faint: #6c6256;
+        --rule: #e6dccc;
+        --accent: #c8102e;
+        --r-sm: 8px;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #1b1916;
+          --ink: #f1ebe2;
+          --ink-soft: #c9c0b4;
+          --ink-faint: #a39a8e;
+          --rule: #3a352f;
+          --accent: #ff6b7d;
+        }
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        min-height: 100vh; min-height: 100dvh;
+        display: grid; place-items: center;
+        padding: 32px max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left));
+        font-family: var(--font-sans); color: var(--ink); background: var(--paper);
+        -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+      }
+      main { width: 100%; max-width: 30rem; }
+      .kicker {
+        font-size: 0.7rem; font-weight: 600; color: var(--ink-faint);
+        text-transform: uppercase; letter-spacing: 0.08em;
+        padding-bottom: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--rule);
+      }
+      h1 {
+        font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em;
+        font-size: clamp(2rem, 8vw, 2.75rem); line-height: 1.1; margin-bottom: 12px;
+      }
+      p { font-size: 1rem; line-height: 1.55; color: var(--ink-soft); margin-bottom: 24px; }
+      a {
+        display: inline-block; padding: 11px 18px; border-radius: var(--r-sm);
+        background: var(--ink); color: var(--paper);
+        font-size: 0.95rem; font-weight: 600; text-decoration: none;
+      }
+      a:hover { text-decoration: underline; text-underline-offset: 3px; }
+      a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+      @media (forced-colors: active) {
+        a { border: 1px solid LinkText; }
+        a:focus-visible { outline-color: Highlight; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="kicker">The Price of Place</p>
+      <h1>Page not found</h1>
+      <p>There is no page at this address.</p>
+      <a href="/london-insurance-risk/">Back to the map</a>
+    </main>
+  </body>
+</html>
