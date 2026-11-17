@@ -11,6 +11,7 @@ import {
   methodologyNote,
   MULTIPLIER_MIN,
   computeDistribution,
+  rankStatement,
   dominantDriver,
   EXPLAIN_MIN_STEP_GBP,
   explainArea,
@@ -241,6 +242,46 @@ describe('computeDistribution', () => {
       Array.from({ length: 20 }, (_, i) => area(`F${i}`, [square(0, 0, 1, 1)], { x: 7 }))
     );
     expect(computeDistribution(flat, 'x', 7)).toBeNull();
+  });
+});
+
+describe('rankStatement', () => {
+  const text = (r: number) => {
+    const s = rankStatement(r);
+    return `${s.lead}${s.figure} of GB areas`;
+  };
+  // The share of areas strictly cheaper, as computeDistribution gives it.
+  const rankOf = (below: number, n: number) => (below / n) * 100;
+  it('never says the dearest area is dearer than 100% of areas', () => {
+    expect(text(rankOf(41_728, 41_729))).toBe('More expensive than 99% of GB areas');
+    expect(text(99.5)).toBe('More expensive than 99% of GB areas');
+    expect(text(99)).toBe('More expensive than 99% of GB areas');
+  });
+  it('rounds down, so the claim always holds', () => {
+    expect(text(50)).toBe('More expensive than 50% of GB areas');
+    expect(text(98.99)).toBe('More expensive than 98% of GB areas');
+    expect(text(1)).toBe('More expensive than 1% of GB areas');
+    expect(text(rankOf(29, 100))).toBe('More expensive than 29% of GB areas');
+  });
+  it('puts the cheapest areas among the cheapest 1%, not "more expensive than 0%"', () => {
+    expect(text(0)).toBe('Among the cheapest 1% of GB areas');
+    expect(text(rankOf(1, 41_729))).toBe('Among the cheapest 1% of GB areas');
+    expect(text(0.99)).toBe('Among the cheapest 1% of GB areas');
+  });
+  it('agrees with computeDistribution at both ends', () => {
+    const lookup = lookupOf(
+      Array.from({ length: 1000 }, (_, i) => area(`R${i}`, [square(0, 0, 1, 1)], { x: i }))
+    );
+    const at = (v: number) => text(computeDistribution(lookup, 'x', v)!.percentileRank);
+    expect(at(999)).toBe('More expensive than 99% of GB areas');
+    expect(at(0)).toBe('Among the cheapest 1% of GB areas');
+    expect(at(500)).toBe('More expensive than 50% of GB areas');
+  });
+  it('is what the detail panel shows', () => {
+    const src = readFileSync(new URL('./DetailPanel.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('rankStatement(dist.percentileRank)');
+    expect(src).toContain('<b>{rank.figure}</b> of GB areas');
+    expect(src).not.toMatch(/Math\.round\(dist\.percentileRank\)/);
   });
 });
 

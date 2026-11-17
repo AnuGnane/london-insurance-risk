@@ -53,7 +53,7 @@ export const AboutPanel: React.FC<{
           <p className="about-intro">
             A <b>territorial risk proxy</b> ranking Great Britain's{' '}
             {areaCount > 0 && `${formatFigure(areaCount)} `}small areas by factors
-            that correlate with motor-insurance claims, using only public data. It is <b>not an insurance quote</b> and uses no
+            that track published car-insurance prices, using only public data. It is <b>not an insurance quote</b> and uses no
             individual driver or vehicle details.
           </p>
           {anyNation && (

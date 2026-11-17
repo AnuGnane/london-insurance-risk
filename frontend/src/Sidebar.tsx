@@ -473,7 +473,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
           {methodology?.loao_mae != null && (
             <>
-              <span>±£{Math.round(methodology.loao_mae)} per area</span>
+              <span>£{Math.round(methodology.loao_mae)} hold-out error</span>
               <span className="sep">·</span>
             </>
           )}

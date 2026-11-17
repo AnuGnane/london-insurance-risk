@@ -435,6 +435,20 @@ export function computeDistribution(
   return { bins: normBins, selectedBin, percentileRank, avgBin };
 }
 
+/**
+ * The detail panel's "More expensive than N% of GB areas", from `percentileRank`
+ * (the share of areas strictly cheaper). N is rounded down, so the claim always
+ * holds: the dearest area reads 99%, never 100% (it cannot be dearer than
+ * itself). Below 1% the area is among the cheapest 1% rather than "more
+ * expensive than 0%". `lead` comes before the bold `figure`; " of GB areas" follows.
+ */
+export function rankStatement(percentileRank: number): { lead: string; figure: string } {
+  if (percentileRank < 1) return { lead: 'Among the cheapest ', figure: '1%' };
+  // The epsilon undoes float error: 29 of 100 areas is 28.999999999999996.
+  const pct = Math.min(99, Math.floor(percentileRank + 1e-9));
+  return { lead: 'More expensive than ', figure: `${pct}%` };
+}
+
 export interface DominantDriver { key: string; dir: 'up' | 'down'; }
 
 // The factor that moves THIS area's premium most, in either direction, with its sign:
