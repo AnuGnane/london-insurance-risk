@@ -712,6 +712,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             intensity and local demographics — calibrated against published
             average premiums. It uses no individual driver or vehicle details.
           </div>
+          {/* The attribution the Open Government Licence and the boundary and
+              postcode sources ask for (the basemap credits sit on the map). */}
+          <p className="data-credit">
+            Contains public sector information licensed under the{' '}
+            <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">
+              Open Government Licence v3.0
+            </a>
+            . Contains OS data © Crown copyright and database right; contains Royal Mail
+            data © Royal Mail copyright and database right. Postcode lookup by{' '}
+            <a href="https://postcodes.io">postcodes.io</a>.
+          </p>
         </div>
       </div>
     </aside>

@@ -653,6 +653,8 @@ body {
   margin-top: auto;
 }
 .disclaimer b { color: var(--accent); font-weight: 600; }
+.data-credit { font-size: 0.7rem; line-height: 1.5; color: var(--ink-faint); margin: 12px 0 0; }
+.data-credit a { color: inherit; }
 
 /* ===========================================================================
    Map overlays
