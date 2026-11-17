@@ -486,7 +486,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}{' '}
             areas mapped
           </span>
-          <span className="sep">·</span>
+          {/* No "·" before the link: it wraps onto its own row in the sidebar, where a
+              separator would dangle at the end of the first. */}
           {/* Built into dist/ by scripts/copy-methodology.mjs (not served by `npm run dev`). */}
           <a href={`${import.meta.env.BASE_URL}methodology.html`}>How it works</a>
         </div>
@@ -509,7 +510,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               ref={inputRef}
               id="postcode-search"
               type="text"
-              placeholder="Postcode or district, e.g. E1 6AN"
+              placeholder="Postcode, e.g. E1 6AN"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               onKeyDown={(e) => {

@@ -405,7 +405,8 @@ body {
 }
 .hero-swatch {
   width: 12px; height: 30px; border-radius: 3px; flex-shrink: 0;
-  border: 1px solid var(--hairline-soft); align-self: center;
+  border: 1px solid var(--hairline-soft);
+  align-self: flex-start; margin-top: 0.55rem;  /* beside the £ figure, not the block's middle */
 }
 .hero-caption {
   font-size: 0.72rem; color: var(--ink-faint); text-transform: uppercase;
@@ -433,13 +434,15 @@ body {
 .qpill {
   font-size: 0.68rem; font-weight: 600; color: var(--on-swatch);  /* DetailPanel sets the contrast-checked QUINTILE_TEXT */
   padding: 2px 8px; border-radius: 999px; letter-spacing: 0.02em;
+  white-space: nowrap; flex-shrink: 0;
 }
 .index-caption { font-size: 0.72rem; color: var(--ink-faint); }
 
 /* Distribution context */
 .dist { margin: 18px 0 6px; }
 .dist-statement {
-  font-size: 0.84rem; line-height: 1.4; color: var(--ink-soft); margin-bottom: 8px;
+  font-size: 0.84rem; line-height: 1.4; color: var(--ink-soft);
+  margin-bottom: 20px;  /* room for the sparkline's "avg" label above its bars */
 }
 .dist-statement b { color: var(--ink); font-weight: 600; }
 .sparkline {
@@ -678,6 +681,10 @@ body {
 /* With Q labels in the bar, the average marker spans the bar and its label sits above it. */
 .legend-quintiles + .legend-scale .legend-avg { top: -21px; bottom: auto; height: 21px; }
 .legend-quintiles + .legend-scale .legend-avg-label { top: -36px; background: transparent; }
+/* A Q label stays legible where the average marker crosses its segment. */
+.legend-quintiles .seg-fill > span {
+  position: relative; z-index: 1; background: inherit; padding: 1px 2px; border-radius: 2px;
+}
 .legend-quintiles .seg-fill {
   display: grid; place-items: center;
   font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
@@ -893,6 +900,10 @@ body {
   .compare-clear { width: var(--tap-min); height: var(--tap-min); }
   .search-bar input { padding-right: var(--tap-min); }
   .filter-indicator button { width: 32px; height: 32px; }
+  .map-container .maplibregl-ctrl-group button { width: var(--tap-min); height: var(--tap-min); }
+  /* "How it works": a full-size tap area without changing the meta line's height (R-70) */
+  .masthead-meta a { position: relative; }
+  .masthead-meta a::after { content: ''; position: absolute; inset: -14px -10px; }
 
   /* The attribution's corner keeps its height from first paint, the row at its
      foot, so the attribution arriving with the style shifts nothing (R-70) */
