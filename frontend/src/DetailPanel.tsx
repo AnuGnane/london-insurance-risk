@@ -7,6 +7,7 @@ import {
   gbp,
   ordinalPct,
   computeDistribution,
+  rankStatement,
   quintileColor,
   ledeForQuintile,
   explainArea,
@@ -204,6 +205,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         : null,
     [lookup, data, premium, nationalAvg]
   );
+  const rank = dist ? rankStatement(dist.percentileRank) : null;
 
   if (!data) return null;
 
@@ -279,10 +281,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       </div>
 
       {/* Distribution context with the national-average notch */}
-      {dist && (
+      {dist && rank && (
         <div className="dist">
           <div className="dist-statement">
-            More expensive than <b>{Math.round(dist.percentileRank)}%</b> of GB areas
+            {rank.lead}
+            <b>{rank.figure}</b> of GB areas
             {nationalAvg != null && premium != null && (
               <>
                 {' · '}
