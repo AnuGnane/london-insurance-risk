@@ -1,5 +1,5 @@
 // Layout tunables for the phone sheet, touch and map framing — one module.
-// CSS media queries cannot read variables, so the three breakpoints are repeated
+// CSS media queries cannot read variables, so the breakpoints are repeated
 // as literals in index.css; layout.test.ts fails if they drift apart.
 import { useCallback, useSyncExternalStore } from 'react';
 
@@ -15,6 +15,11 @@ export const MASTHEAD_META_WRAP_MAX_WIDTH = 440;
  *  "How it works", so the search shows on the first screen (index.css
  *  `@media (max-width: 480px)`). The kicker and standfirst stay for screen readers. */
 export const MASTHEAD_COMPACT_MAX_WIDTH = 480;
+/** Where MapLibre's open attribution strip wraps onto a second row, so the compact
+ *  legend sits one row higher to clear it (index.css `@media (max-width: 360px)`;
+ *  measured in headless Chromium: two rows up to 339 px, one from 340 px, with
+ *  headroom for wider fallback fonts on Android). */
+export const ATTRIBUTION_WRAP_MAX_WIDTH = 360;
 
 /** The phone layout: map on top, the panel as a bottom sheet. */
 export const PHONE_QUERY = `(max-width: ${PHONE_MAX_WIDTH}px)`;

@@ -1092,6 +1092,12 @@ body {
   .masthead-meta { min-height: var(--masthead-meta-min); }  /* the model figures wrap it */
 }
 
+@media (max-width: 360px) {
+  /* The open attribution strip wraps onto a second 20 px row here; the legend
+     moves up by that row so the two never overlap */
+  .legend { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+}
+
 /* Forced colours (Windows High Contrast): the swatches, dots and bars carry meaning,
    so they keep their colour; system colour keywords only in this block. */
 @media (forced-colors: active) {
