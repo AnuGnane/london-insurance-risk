@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  ATTRIBUTION_WRAP_MAX_WIDTH,
   ATTRIBUTION_MIN_HEIGHT_PX,
   CAMERA,
   META_RESERVE,
@@ -39,6 +40,7 @@ describe('breakpoints', () => {
         SMALL_MAX_WIDTH,
         MASTHEAD_COMPACT_MAX_WIDTH,
         MASTHEAD_META_WRAP_MAX_WIDTH,
+        ATTRIBUTION_WRAP_MAX_WIDTH,
       ])
     );
   });
@@ -67,6 +69,30 @@ describe('breakpoints', () => {
     expect(block(MASTHEAD_META_WRAP_MAX_WIDTH)).toMatch(reserve);
     expect(block(SMALL_MAX_WIDTH)).not.toMatch(reserve);
     expect(block(MASTHEAD_COMPACT_MAX_WIDTH)).not.toMatch(reserve);
+  });
+
+  it('lifts the compact legend one attribution row where the strip wraps', () => {
+    // On a phone the open attribution is a full-width strip under the legend. Up
+    // to 339 px it wraps onto a second 20 px row, which ran under the legend's
+    // foot; below the wrap breakpoint the legend sits that row higher.
+    const bottomPx = (width: number) => {
+      const at = css.indexOf(`@media (max-width: ${width}px)`);
+      expect(at, `no @media block at ${width}px`).toBeGreaterThanOrEqual(0);
+      const rest = css.slice(at);
+      const m = rest.slice(0, rest.indexOf('\n}')).match(
+        /\.legend\s*\{[^}]*bottom:\s*calc\((\d+)px \+ env\(safe-area-inset-bottom, 0px\)\)/
+      );
+      expect(m, `no .legend bottom at ${width}px`).not.toBeNull();
+      return Number(m![1]);
+    };
+    const ATTRIBUTION_ROW_PX = 20;
+    expect(ATTRIBUTION_WRAP_MAX_WIDTH).toBeLessThan(MASTHEAD_META_WRAP_MAX_WIDTH);
+    expect(ATTRIBUTION_WRAP_MAX_WIDTH).toBeGreaterThanOrEqual(340);
+    expect(bottomPx(ATTRIBUTION_WRAP_MAX_WIDTH)).toBe(bottomPx(PHONE_MAX_WIDTH) + ATTRIBUTION_ROW_PX);
+    // The narrower block comes later in the file, so it wins at equal specificity.
+    expect(css.indexOf(`@media (max-width: ${ATTRIBUTION_WRAP_MAX_WIDTH}px)`)).toBeGreaterThan(
+      css.indexOf(`@media (max-width: ${PHONE_MAX_WIDTH}px)`)
+    );
   });
 
   it('tightens the masthead on a phone in portrait without hiding it from screen readers', () => {
