@@ -419,8 +419,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               <p>
                 A percentile ranks this area against the other areas it is compared with:
                 the 91st percentile scores higher than about 91% of them, and the 50th is
-                the middle one. Most factors compare across Great Britain; crime and
-                deprivation are ranked within comparable groups, never across them, so
+                the middle one (the median). Most factors compare across Great Britain;
+                crime and deprivation are ranked within comparable groups, never across them, so
                 vehicle crime is ranked within Scotland for a Scottish area and within
                 England and Wales otherwise. Tap a factor to colour the map by it.
               </p>
