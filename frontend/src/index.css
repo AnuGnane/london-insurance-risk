@@ -1088,7 +1088,7 @@ body {
   .masthead-meta { margin-top: 6px; }
 }
 
-@media (max-width: 440px) {
+@media (max-width: 445px) {
   .masthead-meta { min-height: var(--masthead-meta-min); }  /* the model figures wrap it */
 }
 

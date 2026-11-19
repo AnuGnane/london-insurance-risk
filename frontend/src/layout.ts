@@ -8,9 +8,10 @@ export const PHONE_MAX_WIDTH = 820;
 /** Narrow phones: the waterfall drops its bars (index.css `@media (max-width: 560px)`). */
 export const SMALL_MAX_WIDTH = 560;
 /** Where the masthead meta line wraps onto a second row once methodology.json
- *  fills it in (index.css `@media (max-width: 440px)`; measured in headless
- *  Chromium: two rows up to 437 px, one from 439 px, rounded up to 440). */
-export const MASTHEAD_META_WRAP_MAX_WIDTH = 440;
+ *  fills it in (index.css `@media (max-width: 445px)`; measured in headless
+ *  Chromium after the figures load: two rows up to 444 px, one from 445 px, and
+ *  with the fallback fonts two rows up to 445 px). */
+export const MASTHEAD_META_WRAP_MAX_WIDTH = 445;
 /** Phones in portrait: the masthead tightens to the title, the model figures and
  *  "How it works", so the search shows on the first screen (index.css
  *  `@media (max-width: 480px)`). The kicker and standfirst stay for screen readers. */

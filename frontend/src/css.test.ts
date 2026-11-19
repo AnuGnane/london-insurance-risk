@@ -1,5 +1,6 @@
 // index.css's forced-colours block (R-67): under Windows High Contrast the swatches,
 // dots and bars keep their colour, and only system colour keywords are used.
+// Also: public/404.html repeats some of index.css's colour tokens, which must match.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
@@ -57,5 +58,43 @@ describe('forced colours', () => {
 
   it('uses system colour keywords only', () => {
     expect(forced).not.toMatch(/#|rgb\(|hsl\(|var\(/);
+  });
+});
+
+// public/404.html is a standalone page (it cannot load the hashed bundle CSS), so it
+// repeats the colour tokens it uses from index.css; they must not drift apart.
+describe('404 page colour tokens', () => {
+  const html = readFileSync(new URL('../public/404.html', import.meta.url), 'utf8');
+  const DARK = '@media (prefers-color-scheme: dark) {';
+
+  /** The custom properties declared directly in a block, comments stripped. */
+  const props = (src: string) =>
+    Object.fromEntries(
+      [...src.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(
+        (m) => [m[1], m[2].trim().replace(/\s+/g, ' ').toLowerCase()],
+      ),
+    );
+  /** Light and dark tokens: dark mode inherits whatever it does not override. */
+  const schemes = (src: string) => {
+    const light = props(block(src, ':root'));
+    return { light, dark: { ...light, ...props(block(block(src, DARK), ':root')) } };
+  };
+  const isColour = (v: string) => /^(#[0-9a-f]{3,8}\b|rgba?\(|hsla?\()/.test(v);
+
+  const page = schemes(html);
+  const app = schemes(css);
+  const colours = Object.keys({ ...page.light, ...page.dark }).filter(
+    (k) => isColour(page.light[k] ?? '') || isColour(page.dark[k] ?? ''),
+  );
+
+  it('declares colour tokens in light and dark', () => {
+    expect(colours.length).toBeGreaterThan(0);
+    expect(html).toContain(DARK);
+  });
+
+  it.each(['light', 'dark'] as const)('matches index.css in %s', (scheme) => {
+    const pick = (t: Record<string, string>) =>
+      Object.fromEntries(colours.map((k) => [k, t[k]]));
+    expect(pick(page[scheme])).toEqual(pick(app[scheme]));
   });
 });
